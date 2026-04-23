@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>App</title>
+    <meta name="description" content="Multi-tenant whitelabel application" />
+    <meta name="theme-color" content="#1E40AF" />
+
+    <!-- Default favicon — overridden dynamically per tenant via TenantProvider -->
+    <link rel="icon" id="dynamic-favicon" type="image/svg+xml" href="data:," />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="App" />
+    <meta property="og:description" content="Multi-tenant whitelabel application" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="App" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="App" />
+    <meta name="twitter:description" content="Multi-tenant whitelabel application" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,30 @@
+#!/bin/bash -e
+
+# Enable jemalloc for reduced memory usage and latency.
+if [ -z "${LD_PRELOAD+x}" ] && [ -f /usr/lib/*/libjemalloc.so.2 ]; then
+  export LD_PRELOAD="$(echo /usr/lib/*/libjemalloc.so.2)"
+fi
+
+# Wait for PostgreSQL to be ready
+if [ -n "${DB_HOST}" ] && [ "${DB_HOST}" != "/var/run/postgresql" ]; then
+  DB_PORT="${DB_PORT:-5432}"
+  echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
+  until pg_isready -h "${DB_HOST}" -p "${DB_PORT}" -q; do
+    sleep 1
+  done
+  echo "PostgreSQL is ready."
+fi
+
+# On boot: create/migrate the database (idempotent)
+if [ "${1}" == "supervisord" ] || ([ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]); then
+  echo "Running db:prepare..."
+  ./bin/rails db:prepare
+  echo "db:prepare done."
+fi
+
+# Start the requested process
+if [ "${1}" == "supervisord" ]; then
+  exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+else
+  exec "${@}"
+fi

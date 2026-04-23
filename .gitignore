@@ -1,0 +1,11 @@
+# Archive
+*.tar.gz
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (never commit secrets)
+api/.env
+web/.env

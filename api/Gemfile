@@ -1,0 +1,54 @@
+source "https://rubygems.org"
+
+gem "rails", "~> 7.2.3"
+gem "pg", "~> 1.1"
+gem "puma", ">= 5.0"
+
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+gem "bootsnap", require: false
+
+# Authentication
+gem "bcrypt", "~> 3.1.7"
+gem "jwt", "~> 2.8"
+
+# CORS
+gem "rack-cors", "~> 2.0"
+
+# Short unique IDs
+gem "nanoid", "~> 2.0"
+
+# S3 uploads
+gem "aws-sdk-s3", "~> 1.0", require: false
+
+# Pagination
+gem "kaminari", "~> 1.2"
+
+# Spreadsheet parsing for AI-powered import
+gem "roo", "~> 2.10"
+
+# Background jobs
+gem "sidekiq", "~> 7.0"
+gem "sidekiq-cron", "~> 2.0"
+gem "connection_pool", "~> 2.4"
+
+# HTTP client
+gem "faraday", "~> 2.9"
+gem "faraday-retry", "~> 2.2"
+
+# Environment variables
+gem "dotenv-rails", groups: [:development, :test]
+
+group :development do
+  gem "letter_opener_web", "~> 2.0"
+end
+
+group :development, :test do
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+  gem "brakeman", require: false
+  gem "rubocop-rails-omakase", require: false
+  gem "rspec-rails", "~> 6.0"
+  gem "factory_bot_rails", "~> 6.0"
+  gem "faker", "~> 3.0"
+  gem "shoulda-matchers", "~> 5.0"
+  gem "webmock", "~> 3.19"
+end

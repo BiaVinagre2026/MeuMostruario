@@ -1,0 +1,145 @@
+<%
+  tc = @tenant_config
+  primary        = tc&.color_primary.presence        || "#1E40AF"
+  secondary      = tc&.color_secondary.presence      || "#F97316"
+  accent         = tc&.color_accent.presence         || "#10B981"
+  header_bg      = tc&.color_header_bg.presence      || primary
+  header_text    = tc&.color_header_text.presence     || "#FFFFFF"
+  footer_text_c  = tc&.color_footer_text.presence     || "#94a3b8"
+  footer_hover_c = tc&.color_footer_text_hover.presence || primary
+  company        = tc&.company_name.presence          || "App"
+  website        = tc&.company_website.presence
+  logo           = tc&.logo_url.presence || tc&.logo_compact_url.presence
+  coin_symbol    = tc&.coin_symbol.presence
+  favicon        = tc&.favicon_url.presence
+  footer_txt     = tc&.footer_text.presence
+  phone          = tc&.company_phone.presence
+  email          = tc&.company_email.presence
+
+  socials = []
+  socials << { label: "Instagram", url: tc.social_instagram } if tc&.social_instagram.present?
+  socials << { label: "Facebook",  url: tc.social_facebook }  if tc&.social_facebook.present?
+  socials << { label: "WhatsApp",  url: tc.social_whatsapp }  if tc&.social_whatsapp.present?
+  socials << { label: "YouTube",   url: tc.social_youtube }   if tc&.social_youtube.present?
+  socials << { label: "LinkedIn",  url: tc.social_linkedin }  if tc&.social_linkedin.present?
+  socials << { label: "TikTok",    url: tc.social_tiktok }    if tc&.social_tiktok.present?
+  socials << { label: "X",         url: tc.social_twitter }   if tc&.social_twitter.present?
+  socials << { label: "Telegram",  url: tc.social_telegram }  if tc&.social_telegram.present?
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= content_for?(:subject) ? yield(:subject) : "Notification" %></title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background-color:#f1f5f9;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:24px 16px;">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background-color:<%= header_bg %>;padding:24px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <% if logo %>
+                      <img src="<%= logo %>" alt="<%= company %>" height="40" style="display:block;max-height:40px;width:auto;" />
+                    <% else %>
+                      <table cellpadding="0" cellspacing="0">
+                        <tr>
+                          <% if coin_symbol %>
+                            <td style="padding-right:10px;vertical-align:middle;">
+                              <span style="font-size:28px;line-height:1;"><%= coin_symbol %></span>
+                            </td>
+                          <% elsif favicon %>
+                            <td style="padding-right:10px;vertical-align:middle;">
+                              <img src="<%= favicon %>" alt="<%= company %>" width="32" height="32" style="display:block;border-radius:4px;" />
+                            </td>
+                          <% else %>
+                            <td style="padding-right:10px;vertical-align:middle;">
+                              <div style="width:32px;height:32px;border-radius:6px;background-color:<%= primary %>;text-align:center;line-height:32px;font-size:18px;font-weight:700;color:#ffffff;">
+                                <%= company[0]&.upcase %>
+                              </div>
+                            </td>
+                          <% end %>
+                          <td style="vertical-align:middle;">
+                            <p style="margin:0;font-size:20px;font-weight:700;color:<%= header_text %>;">
+                              <%= company %>
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    <% end %>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ACCENT BAR -->
+          <tr>
+            <td style="height:3px;background:linear-gradient(90deg, <%= primary %>, <%= secondary %>, <%= accent %>);font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding:32px;">
+              <%= yield %>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color:#f8fafc;padding:24px 32px;border-top:1px solid #e2e8f0;">
+              <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#334155;text-align:center;">
+                <%= company %>
+              </p>
+
+              <% if phone || email %>
+                <p style="margin:0 0 12px;font-size:12px;color:<%= footer_text_c %>;text-align:center;">
+                  <% if phone %><%= phone %><% end %>
+                  <% if phone && email %> &nbsp;|&nbsp; <% end %>
+                  <% if email %><a href="mailto:<%= email %>" style="color:<%= footer_hover_c %>;text-decoration:none;"><%= email %></a><% end %>
+                </p>
+              <% end %>
+
+              <% if socials.any? %>
+                <p style="margin:0 0 12px;font-size:12px;color:<%= footer_text_c %>;text-align:center;">
+                  <% socials.each_with_index do |s, i| %>
+                    <% if i > 0 %>&nbsp;&middot;&nbsp;<% end %>
+                    <a href="<%= s[:url] %>" style="color:<%= footer_hover_c %>;text-decoration:none;" target="_blank"><%= s[:label] %></a>
+                  <% end %>
+                </p>
+              <% end %>
+
+              <p style="margin:0;font-size:11px;color:<%= footer_text_c %>;text-align:center;line-height:1.6;">
+                <% if footer_txt %>
+                  <%= footer_txt %>
+                <% else %>
+                  &copy; <%= Time.current.year %> <%= company %>. All rights reserved.
+                <% end %>
+                <% if tc&.terms_url.present? %>
+                  &nbsp;|&nbsp;<a href="<%= tc.terms_url %>" style="color:<%= footer_text_c %>;text-decoration:underline;" target="_blank">Terms</a>
+                <% end %>
+                <% if tc&.privacy_url.present? %>
+                  &nbsp;|&nbsp;<a href="<%= tc.privacy_url %>" style="color:<%= footer_text_c %>;text-decoration:underline;" target="_blank">Privacy</a>
+                <% end %>
+              </p>
+
+              <% if website %>
+                <p style="margin:8px 0 0;font-size:11px;text-align:center;">
+                  <a href="<%= website %>" style="color:<%= footer_hover_c %>;text-decoration:none;" target="_blank"><%= website.sub(/\Ahttps?:\/\//, "") %></a>
+                </p>
+              <% end %>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

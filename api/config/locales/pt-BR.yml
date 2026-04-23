@@ -1,0 +1,20 @@
+pt-BR:
+  activerecord:
+    errors:
+      messages:
+        record_invalid: "A validação falhou: %{errors}"
+        blank: "não pode ficar em branco"
+        taken: "já está em uso"
+        invalid: "não é válido"
+        too_short: "é muito curto (mínimo: %{count} caracteres)"
+        too_long: "é muito longo (máximo: %{count} caracteres)"
+  errors:
+    messages:
+      not_found: "não encontrado"
+      unauthorized: "não autorizado"
+  date:
+    formats:
+      default: "%d/%m/%Y"
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"

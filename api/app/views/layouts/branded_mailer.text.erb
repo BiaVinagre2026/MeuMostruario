@@ -1,0 +1,13 @@
+<% tc = @tenant_config; company = tc&.company_name.presence || "App" %>
+<%= company %>
+================================================================================
+
+<%= yield %>
+
+--------------------------------------------------------------------------------
+<% if tc&.footer_text.present? %><%= tc.footer_text %><% else %>(c) <%= Time.current.year %> <%= company %>. All rights reserved.<% end %>
+<% if tc&.terms_url.present? %>Terms: <%= tc.terms_url %>
+<% end %><% if tc&.privacy_url.present? %>Privacy: <%= tc.privacy_url %>
+<% end %><% if tc&.company_website.present? %><%= tc.company_website %>
+<% end %><% if tc&.company_phone.present? || tc&.company_email.present? %><%= [tc&.company_phone.presence, tc&.company_email.presence].compact.join(" | ") %>
+<% end %>
