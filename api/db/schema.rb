@@ -10,8 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_17_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_22_000001) do
+  create_schema "tenant_demo"
+
   # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_trgm"
   enable_extension "plpgsql"
 
   create_table "operators", force: :cascade do |t|

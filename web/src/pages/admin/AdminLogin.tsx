@@ -12,9 +12,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useOperatorLogin } from "@/hooks/useOperatorAuth";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 
+function detectTenantSlug(): string {
+  const host = window.location.hostname;
+  const parts = host.split(".");
+  if (parts.length >= 2) {
+    const slug = parts[0];
+    if (slug && !["www", "api", "admin", "app", "localhost"].includes(slug)) {
+      return slug;
+    }
+  }
+  return "";
+}
+
 const adminLoginSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Enter a valid email."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+  email: z.string().min(1, "Email obrigatório.").email("Email inválido."),
+  password: z.string().min(6, "Mínimo 6 caracteres."),
+  tenantSlug: z.string().optional(),
 });
 
 type AdminLoginValues = z.infer<typeof adminLoginSchema>;
@@ -25,6 +38,9 @@ export default function AdminLogin() {
   const isLoading = useOperatorStore((s) => s.isLoading);
   const operatorRole = useOperatorStore((s) => s.operator?.role);
   const navigate = useNavigate();
+
+  const detectedSlug = detectTenantSlug();
+  const showTenantField = !detectedSlug;
 
   const adminHome = operatorRole === "super_admin" ? "/admin/global" : "/admin/dashboard";
 
@@ -40,28 +56,49 @@ export default function AdminLogin() {
     formState: { errors },
   } = useForm<AdminLoginValues>({
     resolver: zodResolver(adminLoginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", tenantSlug: detectedSlug },
     mode: "onBlur",
   });
 
   function onSubmit(values: AdminLoginValues) {
-    login(values, {
-      onSuccess: (operator) => {
-        const dest = operator.role === "super_admin" ? "/admin/global" : "/admin/dashboard";
-        navigate(dest, { replace: true });
-      },
-    });
+    login(
+      { ...values, tenantSlug: values.tenantSlug || detectedSlug || undefined },
+      {
+        onSuccess: (operator) => {
+          const dest = operator.role === "super_admin" ? "/admin/global" : "/admin/dashboard";
+          navigate(dest, { replace: true });
+        },
+      }
+    );
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Admin Panel</CardTitle>
-          <CardDescription>Sign in with your operator account</CardDescription>
+          <CardTitle className="text-2xl">Painel Administrativo</CardTitle>
+          <CardDescription>Entre com sua conta de operador</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            {showTenantField && (
+              <div className="space-y-2">
+                <Label htmlFor="tenantSlug">
+                  Slug do tenant{" "}
+                  <span className="text-muted-foreground text-xs">(ex: demo)</span>
+                </Label>
+                <Input
+                  id="tenantSlug"
+                  placeholder="demo"
+                  autoComplete="off"
+                  disabled={isPending}
+                  {...register("tenantSlug")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco para login de super-admin.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -76,7 +113,7 @@ export default function AdminLogin() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -90,7 +127,7 @@ export default function AdminLogin() {
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign in
+              Entrar
             </Button>
           </form>
         </CardContent>

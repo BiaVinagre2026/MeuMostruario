@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: mostruario-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: mostruario-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ruby:3.3
+    container_name: mostruario-api
+    working_dir: /app
+    volumes:
+      - ./api:/app
+      - bundle_cache:/usr/local/bundle
+    ports:
+      - "3002:3000"
+    env_file:
+      - ./api/.env
+    environment:
+      DB_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      RAILS_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      bash -c "gem install bundler:4.0.6 --no-document &&
+               bundle install &&
+               bin/rails db:prepare &&
+               bin/rails server -b 0.0.0.0"
+
+volumes:
+  postgres_data:
+  redis_data:
+  bundle_cache:

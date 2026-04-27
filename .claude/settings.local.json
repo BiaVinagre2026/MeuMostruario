@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:3000/api/v1/products\" -Headers @{\"X-Tenant-ID\"=\"1\"} -UseBasicParsing\\).Content | ConvertFrom-Json | Select-Object -ExpandProperty products | Select-Object name, sku, status | Format-Table)",
+      "PowerShell(docker cp C:\\\\dev\\\\MeuMostruario\\\\api\\\\db\\\\seeds.rb mostruario-api:/app/db/seeds.rb; docker exec mostruario-api bash -c \"cd /app && bundle exec rails db:seed 2>&1\" | Select-String -Pattern \"\\(Schema|Admin|Member|Skip|Error|Catalog|complete\\)\" | Select-Object -Last 30)",
+      "PowerShell(docker exec mostruario-postgres *)",
+      "PowerShell(docker exec mostruario-api *)",
+      "PowerShell(netstat *)",
+      "PowerShell(wmic process *)",
+      "PowerShell(Get-CimInstance *)"
+    ]
+  }
+}

@@ -29,14 +29,14 @@ export default defineConfig({
   server: {
     allowedHosts: ["localhost", ".app.local"],
     host: "::",
-    port: 8080,
+    port: 3000,
     hmr: {
       overlay: false,
     },
     proxy: {
-      "/api": { target: "http://localhost:3000" },
-      "/uploads": { target: "http://localhost:3000" },
-      "/letter_opener": { target: "http://localhost:3000" },
+      "/api": { target: "http://localhost:3002" },
+      "/uploads": { target: "http://localhost:3002" },
+      "/letter_opener": { target: "http://localhost:3002" },
     },
   },
   plugins: [react()],

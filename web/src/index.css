@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -49,6 +49,34 @@
   }
 }
 
+/* ─── Showroom brand tokens ──────────────────────────────────────────────── */
+:root {
+  --brand-primary:     #A67049;
+  --brand-background:  #FAF7F1;
+  --brand-surface:     #EFE7D7;
+  --brand-foreground:  #2B2017;
+  --brand-border:      rgba(43, 32, 23, 0.14);
+  --brand-muted:       rgba(43, 32, 23, 0.5);
+  --font-display:      "Instrument Serif", serif;
+  --font-mono:         ui-monospace, "SFMono-Regular", monospace;
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 380ms;
+  --ease:  cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.display  { font-family: var(--font-display); }
+.mono     { font-family: var(--font-mono); }
+.eyebrow  {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-muted);
+}
+.photo { user-select: none; }
+
+/* ─── Tailwind base ──────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border;

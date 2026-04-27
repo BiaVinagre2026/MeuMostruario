@@ -24,14 +24,18 @@ async function fetchCurrentOperator(): Promise<Operator> {
 }
 
 async function postOperatorLogin(credentials: OperatorLoginCredentials): Promise<Operator> {
+  const { tenantSlug, ...body } = credentials;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  if (tenantSlug) headers["X-Tenant-ID"] = tenantSlug;
+
   const response = await fetch("/api/v1/admin/auth/login", {
     method: "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(credentials),
+    headers,
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

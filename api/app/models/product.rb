@@ -8,7 +8,7 @@ class Product < ApplicationRecord
   belongs_to :category, optional: true
   belongs_to :collection, optional: true
   has_many :variants, class_name: "ProductVariant", dependent: :destroy
-  has_many :images, class_name: "ProductImage", -> { order(:position) }, dependent: :destroy
+  has_many :images, -> { order(:position) }, class_name: "ProductImage", dependent: :destroy
   has_many :look_items, dependent: :destroy
   has_many :looks, through: :look_items
   has_many :leads, dependent: :nullify

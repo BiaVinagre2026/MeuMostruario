@@ -11,6 +11,7 @@ export interface Operator {
 export interface OperatorLoginCredentials {
   email: string;
   password: string;
+  tenantSlug?: string;
 }
 
 export interface TenantOption {

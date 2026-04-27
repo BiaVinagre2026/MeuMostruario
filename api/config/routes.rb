@@ -14,6 +14,13 @@ Rails.application.routes.draw do
       # Tenant config (public - for white-label theming)
       get "tenant/config", to: "tenants#branding"
 
+      # Public catalog (no auth required)
+      resources :products,    only: [:index, :show]
+      resources :collections, only: [:index, :show]
+      resources :categories,  only: [:index]
+      resources :leads,       only: [:create]
+      resources :waitlists,   only: [:create]
+
       # Member profile (authenticated)
       get   "profile",          to: "members#show"
       patch "profile",          to: "members#update"
