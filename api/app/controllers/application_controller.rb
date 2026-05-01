@@ -28,7 +28,7 @@ class ApplicationController < ActionController::API
     payload = JwtService.decode(token)
     return render json: { error: "Unauthorized" }, status: :unauthorized unless payload
 
-    @current_member = Member.includes(:level).find_by(id: payload["member_id"])
+    @current_member = Member.find_by(id: payload["member_id"])
     render json: { error: "Unauthorized" }, status: :unauthorized unless @current_member
   rescue JwtService::TokenExpiredError
     cookies.delete(:app_token)

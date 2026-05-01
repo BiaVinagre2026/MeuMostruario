@@ -2,16 +2,26 @@ export interface Color {
   id: string;
   name: string;
   tone: string;
+  hex?: string;
+}
+
+export interface ProductImage {
+  id: number;
+  urls: { thumb?: string; small?: string; regular?: string; full?: string };
+  is_cover: boolean;
+  alt_text: string | null;
 }
 
 export interface Product {
   id: string;
   name: string;
+  sku?: string;
   collection: string;
   category: string;
   price: number;
   priceRetail: number;
   colors: Color[];
+  colorImages?: Record<string, string>;
   sizes: string[];
   tags?: string[];
   description?: string;
@@ -20,6 +30,8 @@ export interface Product {
   moq: number;
   stockBySize?: Record<string, number>;
   featured?: boolean;
+  imageUrl?: string;
+  images?: ProductImage[];
 }
 
 export interface Collection {
@@ -73,4 +85,26 @@ export interface CartItem extends Product {
   colorId: string;
   qty: Record<string, number>;
   total: number;
+}
+
+export interface LookProduct {
+  id: string;
+  name: string;
+  sku?: string;
+  collectionSlug?: string;
+  price: number;
+  priceRetail: number;
+  colors: string[];
+  imageUrl?: string;
+}
+
+export interface Look {
+  id: string;
+  name: string;
+  description?: string;
+  coverUrl?: string;
+  collectionName?: string;
+  collectionSlug?: string;
+  productCount: number;
+  products?: LookProduct[];
 }

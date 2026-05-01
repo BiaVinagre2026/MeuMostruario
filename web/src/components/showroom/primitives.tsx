@@ -1,11 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
-import { TENANT, TONE } from "@/data/catalog";
+import { TONE } from "@/data/catalog";
+import { useTenant } from "@/providers/TenantProvider";
 import { Garment, garmentTypeFor } from "./Garment";
 import type { Product } from "@/types/catalog";
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
 
 export function Logo({ size = 20 }: { size?: number }) {
+  const { tenantName } = useTenant();
   return (
     <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
       <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
@@ -14,7 +16,7 @@ export function Logo({ size = 20 }: { size?: number }) {
         <circle cx="12" cy="12" r="3" fill="currentColor"/>
       </svg>
       <span className="display" style={{ fontSize: size * 1.25, letterSpacing: "-0.04em" }}>
-        {TENANT.name}
+        {tenantName}
       </span>
     </div>
   );
@@ -31,37 +33,48 @@ interface PhotoProps {
   grainy?: boolean;
   product?: Product;
   view?: "front" | "detail" | "back" | "movement";
+  imageUrl?: string;
+  alt?: string;
 }
 
-export function Photo({ tone = "sand", ratio = "3/4", caption, children, style = {}, grainy = true, product, view = "front" }: PhotoProps) {
+export function Photo({ tone = "sand", ratio = "3/4", caption, children, style = {}, grainy = true, product, view = "front", imageUrl, alt }: PhotoProps) {
   const t = TONE[tone] ?? TONE.sand;
   return (
     <div className="photo" style={{ position: "relative", aspectRatio: ratio, background: t.bg, color: t.fg, overflow: "hidden", ...style }}>
-      <div style={{
-        position: "absolute", inset: 0,
-        background: `radial-gradient(120% 90% at 30% 20%, rgba(255,255,255,0.35), transparent 60%),
-                     radial-gradient(100% 80% at 80% 100%, rgba(0,0,0,0.22), transparent 55%)`,
-        pointerEvents: "none",
-      }}/>
-      {grainy && (
-        <div style={{
-          position: "absolute", inset: 0, mixBlendMode: "overlay", opacity: 0.35,
-          backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
-          pointerEvents: "none",
-        }}/>
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={alt ?? caption ?? ""}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center" }}
+          loading="lazy"
+        />
+      ) : (
+        <>
+          <div style={{
+            position: "absolute", inset: 0,
+            background: `radial-gradient(120% 90% at 30% 20%, rgba(255,255,255,0.35), transparent 60%),
+                         radial-gradient(100% 80% at 80% 100%, rgba(0,0,0,0.22), transparent 55%)`,
+            pointerEvents: "none",
+          }}/>
+          {grainy && (
+            <div style={{
+              position: "absolute", inset: 0, mixBlendMode: "overlay", opacity: 0.35,
+              backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`,
+              pointerEvents: "none",
+            }}/>
+          )}
+          {product ? <GarmentRender product={product} tone={tone} view={view}/> : null}
+        </>
       )}
-      {product ? (
-        <GarmentRender product={product} tone={tone} view={view}/>
-      ) : null}
       {caption && (
         <div style={{
           position: "absolute", left: 12, bottom: 12, right: 12,
           fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em",
-          textTransform: "uppercase", color: t.fg, opacity: 0.7,
+          textTransform: "uppercase", color: imageUrl ? "white" : t.fg, opacity: 0.85,
           display: "flex", justifyContent: "space-between",
+          textShadow: imageUrl ? "0 1px 4px rgba(0,0,0,0.6)" : "none",
         }}>
           <span>{caption}</span>
-          <span>{tone.toUpperCase()}</span>
         </div>
       )}
       {children}

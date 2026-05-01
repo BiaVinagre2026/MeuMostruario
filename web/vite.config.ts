@@ -30,13 +30,14 @@ export default defineConfig({
     allowedHosts: ["localhost", ".app.local"],
     host: "::",
     port: 3000,
+    strictPort: true,
     hmr: {
       overlay: false,
     },
     proxy: {
-      "/api": { target: "http://localhost:3002" },
-      "/uploads": { target: "http://localhost:3002" },
-      "/letter_opener": { target: "http://localhost:3002" },
+      "/api": { target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000" },
+      "/uploads": { target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000" },
+      "/letter_opener": { target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000" },
     },
   },
   plugins: [react()],

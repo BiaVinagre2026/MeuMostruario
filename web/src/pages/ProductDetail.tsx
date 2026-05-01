@@ -2,30 +2,73 @@ import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Photo, Btn } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
-import { PRODUCTS, TONE, TIERS, brl, activeTier } from "@/data/catalog";
+import { TONE, TIERS, brl, activeTier, TENANT } from "@/data/catalog";
+import { useProduct } from "@/hooks/useCatalog";
 import { useCartStore } from "@/stores/useCartStore";
 import type { Product, Color } from "@/types/catalog";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const addToCart = useCartStore((s) => s.add);
 
-  const p = PRODUCTS.find(x => x.id === id) ?? PRODUCTS[0];
-  const [colorId, setColorId] = useState(p.colors[0].id);
-  const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(p.sizes.map(s => [s, 0])));
-  const [tryOnOpen, setTryOnOpen] = useState(false);
-  const [tab, setTab] = useState<"grade" | "composicao" | "entrega">("grade");
+  const { data: p, isLoading, isError } = useProduct(id ?? "");
 
-  const total = Object.values(qty).reduce((a, b) => a + b, 0);
-  const color = p.colors.find(c => c.id === colorId)!;
-  const tier = activeTier(total);
-  const unitPrice = p.price * (1 - tier.discount / 100);
+  if (isLoading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+      <div className="mono" style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
+        Carregando…
+      </div>
+    </div>
+  );
+
+  if (isError || !p) return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 16 }}>
+      <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)" }}>Produto não encontrado.</div>
+      <button onClick={() => navigate("/catalog")} style={{ fontSize: 13, borderBottom: "1px solid currentColor" }}>← Voltar ao catálogo</button>
+    </div>
+  );
+
+  return <ProductDetailInner p={p} />;
+}
+
+function ProductDetailInner({ p }: { p: Product }) {
+  const navigate  = useNavigate();
+  const addToCart = useCartStore((s) => s.add);
+
+  const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
+  const [qty, setQty]         = useState<Record<string, number>>(Object.fromEntries(p.sizes.map((s) => [s, 0])));
+  const [tryOnOpen, setTryOnOpen] = useState(false);
+  const [tab, setTab]         = useState<"grade" | "composicao" | "entrega">("grade");
+  const [galleryIdx, setGalleryIdx] = useState(0);
+
+  const total    = Object.values(qty).reduce((a, b) => a + b, 0);
+  const color    = p.colors.find((c) => c.id === colorId) ?? p.colors[0];
+  const tier     = activeTier(total);
+  const unitPrice  = p.price * (1 - tier.discount / 100);
   const orderTotal = total * unitPrice;
+
+  const allImages = p.images ?? [];
+  const galleryItems: Array<{ url: string | undefined; caption: string }> =
+    allImages.length > 0
+      ? allImages.map((img, i) => ({ url: img.urls?.regular, caption: `0${i + 1}` }))
+      : [{ url: undefined, caption: "01" }, { url: undefined, caption: "02" }];
+
+  // URL da imagem da cor selecionada (se existir no mapeamento de variantes)
+  const colorImageUrl = p.colorImages?.[colorId];
+  const currentImageUrl = galleryIdx === 0 && colorImageUrl ? colorImageUrl : galleryItems[galleryIdx]?.url;
+
+  const handleColorChange = (id: string) => {
+    setColorId(id);
+    setGalleryIdx(0);
+  };
+
+  const prevPhoto = () => setGalleryIdx((i) => (i - 1 + galleryItems.length) % galleryItems.length);
+  const nextPhoto = () => setGalleryIdx((i) => (i + 1) % galleryItems.length);
 
   const handleAdd = () => {
     addToCart({ ...p, colorId, qty, total });
-    setQty(Object.fromEntries(p.sizes.map(s => [s, 0])));
+    setQty(Object.fromEntries(p.sizes.map((s) => [s, 0])));
   };
 
   return (
@@ -42,18 +85,97 @@ export default function ProductDetail() {
       </div>
 
       <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-        {/* Gallery */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, borderRight: "1px solid var(--brand-border)" }}>
-          <Photo tone={color.tone} ratio="3/4" product={p} view="front"    caption={`${p.id} · 01/04`}/>
-          <Photo tone={color.tone} ratio="3/4" product={p} view="detail"   caption="02/04 · detalhe"/>
-          <Photo tone={color.tone} ratio="3/4" product={p} view="back"     caption="03/04 · costas"/>
-          <Photo tone={color.tone} ratio="3/4" product={p} view="movement" caption="04/04 · movimento"/>
+        {/* Gallery — carousel */}
+        <div style={{ borderRight: "1px solid var(--brand-border)", position: "sticky", top: 110, height: "calc(100vh - 110px)", display: "flex", flexDirection: "column" }}>
+          {/* Main photo */}
+          <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+            <Photo
+              tone={color?.tone} ratio="auto"
+              imageUrl={currentImageUrl}
+              alt={`${p.name} · ${galleryItems[galleryIdx]?.caption}`}
+              style={{ position: "absolute", inset: 0, aspectRatio: "auto" }}
+            />
+            {/* Side arrows */}
+            {galleryItems.length > 1 && (
+              <>
+                <button onClick={prevPhoto} style={{
+                  position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)",
+                  width: 40, height: 40, background: "rgba(255,255,255,0.85)", border: "1px solid var(--brand-border)",
+                  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                }}>
+                  <span style={{ display: "flex", transform: "rotate(180deg)" }}><Icons.Arrow size={14}/></span>
+                </button>
+                <button onClick={nextPhoto} style={{
+                  position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+                  width: 40, height: 40, background: "rgba(255,255,255,0.85)", border: "1px solid var(--brand-border)",
+                  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                }}>
+                  <Icons.Arrow size={14}/>
+                </button>
+              </>
+            )}
+            {/* Photo counter */}
+            <div style={{
+              position: "absolute", bottom: 16, left: 0, right: 0,
+              display: "flex", justifyContent: "center", gap: 6,
+            }}>
+              {galleryItems.map((_, i) => (
+                <button key={i} onClick={() => setGalleryIdx(i)} style={{
+                  width: i === galleryIdx ? 24 : 6, height: 6,
+                  borderRadius: 999,
+                  background: i === galleryIdx ? "white" : "rgba(255,255,255,0.5)",
+                  border: "none", cursor: "pointer",
+                  transition: "width 0.2s ease",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                }}/>
+              ))}
+            </div>
+          </div>
+
+          {/* Thumbnails strip */}
+          {galleryItems.length > 1 && (
+            <div style={{ display: "flex", gap: 2, height: 90, flexShrink: 0 }}>
+              {galleryItems.map((item, i) => (
+                <button key={i} onClick={() => setGalleryIdx(i)} style={{
+                  flex: 1, position: "relative", overflow: "hidden",
+                  outline: i === galleryIdx ? "2px solid var(--brand-foreground)" : "none",
+                  outlineOffset: -2,
+                }}>
+                  <Photo tone={color?.tone} ratio="auto"
+                    imageUrl={item.url} alt={`${p.name} · ${item.caption}`}
+                    style={{ position: "absolute", inset: 0, aspectRatio: "auto" }}
+                  />
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    background: i === galleryIdx ? "transparent" : "rgba(255,255,255,0.35)",
+                  }}/>
+                  <div style={{
+                    position: "absolute", bottom: 4, right: 6,
+                    fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em",
+                    color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.6)",
+                  }}>{item.caption}</div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Description bar */}
+          {p.description && (
+            <div style={{
+              padding: "16px 24px",
+              borderTop: "1px solid var(--brand-border)",
+              fontSize: 12, lineHeight: 1.55, color: "var(--brand-muted)",
+              maxHeight: 80, overflow: "hidden",
+            }}>
+              {p.description}
+            </div>
+          )}
         </div>
 
         {/* Order panel */}
         <div style={{ padding: "48px 64px", position: "sticky", top: 110, height: "fit-content", maxHeight: "calc(100vh - 110px)", overflow: "auto" }}>
           <div className="mono" style={{ fontSize: 11, letterSpacing: "0.12em", color: "var(--brand-muted)", textTransform: "uppercase" }}>
-            {p.id} · {p.collection}
+            {p.sku ?? p.id} · {p.collection}
           </div>
           <h1 className="display" style={{ fontSize: 64, marginTop: 8, marginBottom: 16 }}>{p.name}</h1>
 
@@ -88,23 +210,29 @@ export default function ProductDetail() {
             </div>
           </button>
 
-          {/* Color selector */}
+          {/* Color selector — carrossel horizontal */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
               <span className="eyebrow">Cor · {color.name}</span>
               <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)" }}>{p.colors.length} opções</span>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {p.colors.map(c => (
-                <button key={c.id} onClick={() => setColorId(c.id)} style={{
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+              {p.colors.slice(0, 5).map(c => (
+                <button key={c.id} onClick={() => handleColorChange(c.id)} style={{
+                  flexShrink: 0,
                   padding: "8px 14px", display: "inline-flex", gap: 8, alignItems: "center",
                   border: "1px solid " + (colorId === c.id ? "var(--brand-foreground)" : "var(--brand-border)"),
                   fontSize: 12,
                 }}>
-                  <span style={{ width: 14, height: 14, background: TONE[c.tone].bg, borderRadius: 999 }}/>
+                  <span style={{ width: 14, height: 14, background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc", borderRadius: 999, flexShrink: 0 }}/>
                   {c.name}
                 </button>
               ))}
+              {p.colors.length > 5 && (
+                <span className="mono" style={{ alignSelf: "center", fontSize: 11, color: "var(--brand-muted)", flexShrink: 0 }}>
+                  +{p.colors.length - 5} mais
+                </span>
+              )}
             </div>
           </div>
 
@@ -164,10 +292,17 @@ export default function ProductDetail() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-            <Btn variant="primary" size="lg" disabled={total < p.moq} onClick={handleAdd}>
-              {total < p.moq ? `FALTAM ${p.moq - total} PARA MOQ` : "ADICIONAR AO PEDIDO"}
+            <Btn variant="primary" size="lg" disabled={total === 0} onClick={handleAdd}>
+              {total > 0 ? `ADICIONAR ${total} PEÇA${total !== 1 ? "S" : ""}` : "SELECIONE QUANTIDADE"}
             </Btn>
-            <Btn variant="outline" size="lg" icon={<Icons.Whats/>}>WHATSAPP</Btn>
+            <Btn variant="outline" size="lg" icon={<Icons.Whats/>}
+              onClick={() => {
+                const num = TENANT.whatsapp.replace(/\D/g, "");
+                const msg = encodeURIComponent(`Olá, tenho interesse na peça ${p.name} (${p.sku ?? p.id}). Pode me ajudar?`);
+                window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
+              }}>
+              WHATSAPP
+            </Btn>
           </div>
 
           {/* Info tabs */}
@@ -209,7 +344,7 @@ export default function ProductDetail() {
         </div>
       </section>
 
-      {tryOnOpen && <VirtualTryOn p={p} color={color} onClose={() => setTryOnOpen(false)}/>}
+      {tryOnOpen && color && <VirtualTryOn p={p} color={color} onClose={() => setTryOnOpen(false)}/>}
     </main>
   );
 }
@@ -341,7 +476,7 @@ function VirtualTryOn({ p, color, onClose }: { p: Product; color: Color; onClose
                       border: "1px solid " + (activeColorId === c.id ? "var(--brand-foreground)" : "var(--brand-border)"),
                       fontSize: 12,
                     }}>
-                      <span style={{ width: 14, height: 14, background: TONE[c.tone].bg, borderRadius: 999 }}/>
+                      <span style={{ width: 14, height: 14, background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc", borderRadius: 999 }}/>
                       {c.name}
                     </button>
                   ))}

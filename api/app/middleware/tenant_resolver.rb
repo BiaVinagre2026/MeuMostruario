@@ -50,7 +50,16 @@ class TenantResolver
     end
 
     # Priority 3: Custom domain
-    Tenant.active.find_by(custom_domain: host)
+    tenant = Tenant.active.find_by(custom_domain: host)
+    return tenant if tenant
+
+    # Priority 4 (dev only): localhost → DEFAULT_DEV_TENANT (evita editar /etc/hosts)
+    if Rails.env.development? && %w[localhost 127.0.0.1].include?(host)
+      default_slug = ENV.fetch("DEFAULT_DEV_TENANT", "demo")
+      return Tenant.active.find_by(slug: default_slug)
+    end
+
+    nil
   end
 
   def extract_subdomain(host)

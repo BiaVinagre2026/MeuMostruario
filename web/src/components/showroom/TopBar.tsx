@@ -10,9 +10,9 @@ export function TopBar() {
   const openCart = useCartStore((s) => s.open);
 
   const links = [
-    { path: "/",        label: "Início" },
-    { path: "/catalog", label: "Catálogo" },
-    { path: "/lookbook",label: "Lookbook" },
+    { path: "/",          label: "Início" },
+    { path: "/catalog",   label: "Catálogo" },
+    { path: "/lookbook",  label: "Lookbook" },
   ];
 
   const active = (path: string) => pathname === path;
@@ -64,6 +64,19 @@ export function TopBar() {
             <IconBtn onClick={openCart} label={cartCount ? String(cartCount) : ""}>
               <Icons.Bag/>
             </IconBtn>
+            <button onClick={() => navigate("/admin/login")} style={{
+              marginLeft: 8,
+              padding: "6px 12px",
+              fontFamily: "var(--font-mono)", fontSize: 9,
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              border: "1px solid var(--brand-border)",
+              color: "var(--brand-muted)",
+              cursor: "pointer",
+              background: "transparent",
+              whiteSpace: "nowrap",
+            }}>
+              Admin
+            </button>
           </div>
         </div>
       </header>

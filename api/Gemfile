@@ -38,6 +38,9 @@ gem "faraday-retry", "~> 2.2"
 # Environment variables
 gem "dotenv-rails", groups: [:development, :test]
 
+# Storefront SSR (ERB + Tailwind) — usa só o binário, sem rake tasks de assets
+gem "tailwindcss-ruby", "~> 3.0"
+
 group :development do
   gem "letter_opener_web", "~> 2.0"
 end

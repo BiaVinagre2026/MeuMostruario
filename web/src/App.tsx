@@ -26,6 +26,12 @@ import NotFound from "@/pages/NotFound";
 // Admin pages
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import ProductList from "@/pages/admin/products/ProductList";
+import ProductForm from "@/pages/admin/products/ProductForm";
+import CollectionList from "@/pages/admin/collections/CollectionList";
+import CollectionForm from "@/pages/admin/collections/CollectionForm";
+import OrderList from "@/pages/admin/orders/OrderList";
+import OrderDetail from "@/pages/admin/orders/OrderDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,12 +54,9 @@ export default function App() {
                   {/* ── Showroom (TopBar + Footer) ── */}
                   <Route element={<ShowroomLayout />}>
                     <Route path="/" element={<Home />} />
+                    <Route path="/catalog" element={<Catalog />} />
+                    <Route path="/product/:id" element={<ProductDetail />} />
                     <Route path="/lookbook" element={<Lookbook />} />
-                    {/* catalog & product require login */}
-                    <Route element={<ProtectedRoute />}>
-                      <Route path="/catalog" element={<Catalog />} />
-                      <Route path="/product/:id" element={<ProductDetail />} />
-                    </Route>
                   </Route>
 
                   {/* ── Member auth ── */}
@@ -66,6 +69,20 @@ export default function App() {
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route element={<AdminRoute />}>
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+                    {/* Products */}
+                    <Route path="/admin/products" element={<ProductList />} />
+                    <Route path="/admin/products/new" element={<ProductForm />} />
+                    <Route path="/admin/products/:id/edit" element={<ProductForm />} />
+
+                    {/* Collections */}
+                    <Route path="/admin/collections" element={<CollectionList />} />
+                    <Route path="/admin/collections/new" element={<CollectionForm />} />
+                    <Route path="/admin/collections/:id/edit" element={<CollectionForm />} />
+
+                    {/* Orders */}
+                    <Route path="/admin/orders" element={<OrderList />} />
+                    <Route path="/admin/orders/:id" element={<OrderDetail />} />
                   </Route>
 
                   <Route path="*" element={<NotFound />} />

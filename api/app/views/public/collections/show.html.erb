@@ -1,0 +1,50 @@
+<% content_for :title, @collection.name %>
+<% content_for :description, @collection.description %>
+
+<div class="max-w-7xl mx-auto px-6 py-12">
+
+  <div style="margin-bottom:48px;border-bottom:1px solid var(--brand-border);padding-bottom:32px;">
+    <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Coleção</div>
+    <h1 style="font-family:var(--font-heading);font-size:clamp(2rem,6vw,4rem);font-weight:300;letter-spacing:-0.02em;line-height:1;margin-bottom:16px;"><%= @collection.name %></h1>
+    <% if @collection.description.present? %>
+      <p style="max-width:600px;font-size:15px;line-height:1.7;color:var(--brand-muted);"><%= @collection.description %></p>
+    <% end %>
+  </div>
+
+  <% if @products.any? %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <% @products.each do |p| %>
+        <%= link_to public_product_path(p.slug), style: "text-decoration:none;color:inherit;display:block;" do %>
+          <div style="aspect-ratio:3/4;background:var(--brand-surface);overflow:hidden;margin-bottom:12px;">
+            <% if (img = cover_url(p)) %>
+              <img src="<%= img %>" alt="<%= p.name %>" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+            <% end %>
+          </div>
+          <div style="font-size:14px;font-weight:500;margin-bottom:2px;"><%= p.name %></div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--brand-muted);">SKU <%= p.sku %></div>
+          <div style="font-family:var(--font-mono);font-size:13px;margin-top:4px;font-weight:500;"><%= format_brl(p.price_wholesale) %></div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <p style="text-align:center;padding:64px 0;color:var(--brand-muted);font-family:var(--font-mono);font-size:13px;">
+      Nenhum produto publicado nesta coleção ainda.
+    </p>
+  <% end %>
+
+  <%# Lista de espera %>
+  <section style="border:1px solid var(--brand-border);margin-top:64px;padding:40px;text-align:center;">
+    <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Lista de espera</div>
+    <h3 style="font-family:var(--font-heading);font-size:22px;font-weight:500;margin-bottom:8px;">Receber novidades desta coleção</h3>
+    <p style="font-size:13px;color:var(--brand-muted);margin-bottom:24px;">Cadastre seu e-mail para ser avisado sobre novos produtos.</p>
+    <%= form_with url: waitlist_path, method: :post, style: "display:flex;gap:8px;max-width:420px;margin:0 auto;" do |f| %>
+      <%= hidden_field_tag "waitlist[collection_id]", @collection.id %>
+      <input type="email" name="waitlist[email]" placeholder="seu@email.com" required
+             style="flex:1;padding:12px;border:1px solid var(--brand-border);font-size:13px;outline:none;min-width:0;" />
+      <button type="submit" style="padding:12px 20px;background:var(--brand-foreground);color:#fff;border:0;cursor:pointer;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);white-space:nowrap;">
+        Entrar na lista
+      </button>
+    <% end %>
+  </section>
+
+</div>

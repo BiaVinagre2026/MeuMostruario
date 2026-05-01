@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { updateFavicon, type FaviconMode } from "@/lib/favicon";
+import { setActiveTenantSlug } from "@/lib/tenantContext";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -250,7 +251,7 @@ function resolveTenantId(): string | undefined {
 }
 
 function fetchBranding(): Promise<RawBrandingResponse> {
-  const tenantId = resolveTenantId();
+  const tenantId = resolveTenantId() ?? (import.meta.env.VITE_TENANT_SLUG as string | undefined);
   const apiUrl = (import.meta.env.VITE_API_URL as string) ?? "";
 
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -276,9 +277,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   });
 
   const config = useMemo<TenantConfig>(() => {
-    if (!data) return defaultConfig;
+    if (!data) {
+      setActiveTenantSlug(defaultConfig.tenantSlug);
+      return defaultConfig;
+    }
     const c = data.config;
     const t = data.tenant;
+    setActiveTenantSlug(t.slug);
     return {
       colorPrimary: c.color_primary,
       colorSecondary: c.color_secondary,

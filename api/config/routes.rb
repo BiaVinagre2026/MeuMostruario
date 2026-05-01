@@ -18,6 +18,7 @@ Rails.application.routes.draw do
       resources :products,    only: [:index, :show]
       resources :collections, only: [:index, :show]
       resources :categories,  only: [:index]
+      resources :looks,       only: [:index, :show]
       resources :leads,       only: [:create]
       resources :waitlists,   only: [:create]
 
@@ -25,6 +26,9 @@ Rails.application.routes.draw do
       get   "profile",          to: "members#show"
       patch "profile",          to: "members#update"
       patch "profile/password", to: "members#change_password"
+
+      # B2B orders (authenticated member)
+      resources :orders, only: [:index, :create]
 
       # Partner namespace
       namespace :partner do
@@ -60,6 +64,19 @@ Rails.application.routes.draw do
           end
         end
 
+        # Catalog – products, variants, images
+        resources :products, only: [:index, :show, :create, :update, :destroy] do
+          resources :variants, only: [:create, :update, :destroy], controller: "product_variants"
+          resources :images,   only: [:create, :destroy],          controller: "product_images"
+        end
+
+        # Catalog – collections & categories
+        resources :collections, only: [:index, :show, :create, :update, :destroy]
+        resources :categories,  only: [:index, :create, :update, :destroy]
+
+        # B2B orders management
+        resources :orders, only: [:index, :show, :update]
+
         # Uploads
         post "upload", to: "uploads#create"
 
@@ -76,4 +93,21 @@ Rails.application.routes.draw do
 
   # Health check
   get "up", to: proc { [200, {}, ["OK"]] }
+
+  # Storefront público SSR (fora do namespace :api)
+  scope module: "public" do
+    root to: "home#index"
+    get    "colecoes/:slug", to: "collections#show", as: :public_collection
+    get    "produtos/:slug",  to: "products#show",   as: :public_product
+    get    "looks/:slug",     to: "looks#show",      as: :public_look
+    get    "carrinho",        to: "cart#show",       as: :cart
+    get    "lojistas",        to: "lojistas#index",  as: :lojistas
+    post   "pedido",          to: "lojistas#create", as: :pedido
+    get    "entrar",          to: "sessions#new",    as: :entrar
+    post   "entrar",          to: "sessions#create"
+    delete "sair",            to: "sessions#destroy", as: :sair
+    post   "leads",           to: "leads#create",    as: :leads
+    post   "waitlist",        to: "waitlist#create", as: :waitlist
+    get    "sitemap.xml",     to: "sitemaps#show",   defaults: { format: :xml }
+  end
 end

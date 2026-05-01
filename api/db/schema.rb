@@ -10,12 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_22_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_01_000001) do
   create_schema "tenant_demo"
 
   # These are extensions that must be enabled in order to support this database
+  enable_extension "citext"
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
+  enable_extension "unaccent"
 
   create_table "operators", force: :cascade do |t|
     t.string "name", null: false
@@ -30,6 +32,35 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_22_000001) do
     t.index ["role"], name: "index_operators_on_role"
     t.index ["status"], name: "index_operators_on_status"
     t.index ["tenant_id"], name: "index_operators_on_tenant_id"
+  end
+
+  create_table "order_items", force: :cascade do |t|
+    t.bigint "order_id", null: false
+    t.bigint "product_id"
+    t.string "product_name", limit: 255, null: false
+    t.string "product_sku", limit: 100
+    t.string "color", limit: 60
+    t.string "size", limit: 30
+    t.integer "qty", default: 1, null: false
+    t.decimal "unit_price", precision: 10, scale: 2
+    t.decimal "subtotal", precision: 10, scale: 2
+    t.datetime "created_at", precision: nil, default: -> { "now()" }, null: false
+    t.index ["order_id"], name: "idx_order_items_order"
+  end
+
+  create_table "orders", force: :cascade do |t|
+    t.bigint "member_id", null: false
+    t.string "status", limit: 20, default: "pending", null: false
+    t.text "notes"
+    t.integer "total_units", default: 0, null: false
+    t.decimal "total_value", precision: 10, scale: 2, default: "0.0", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", precision: nil, default: -> { "now()" }, null: false
+    t.datetime "updated_at", precision: nil, default: -> { "now()" }, null: false
+    t.index ["created_at"], name: "idx_orders_created", order: :desc
+    t.index ["member_id"], name: "idx_orders_member"
+    t.index ["status"], name: "idx_orders_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'confirmed'::character varying, 'processing'::character varying, 'shipped'::character varying, 'cancelled'::character varying]::text[])", name: "orders_status_check"
   end
 
   create_table "partners", force: :cascade do |t|
@@ -157,7 +188,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_22_000001) do
     t.index ["status"], name: "index_tenants_on_status"
   end
 
+  create_table "test_trgm_check", id: false, force: :cascade do |t|
+    t.text "name"
+  end
+
   add_foreign_key "operators", "tenants"
+  add_foreign_key "order_items", "orders", name: "order_items_order_id_fkey", on_delete: :cascade
   add_foreign_key "partners", "operators", column: "approved_by"
   add_foreign_key "tenant_configs", "tenants"
   add_foreign_key "tenant_partner_authorizations", "partners"

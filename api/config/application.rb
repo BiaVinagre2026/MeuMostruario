@@ -15,6 +15,7 @@ module Api
     # Cookie and session support (needed for httpOnly auth cookies)
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore
+    config.middleware.use ActionDispatch::Flash
 
     # Multi-tenancy: resolve tenant from X-Tenant-ID header, subdomain, or custom domain
     require Rails.root.join("app/middleware/tenant_resolver")

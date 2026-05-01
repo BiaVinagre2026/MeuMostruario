@@ -42,7 +42,7 @@ export default function AdminLogin() {
   const detectedSlug = detectTenantSlug();
   const showTenantField = !detectedSlug;
 
-  const adminHome = operatorRole === "super_admin" ? "/admin/global" : "/admin/dashboard";
+  const adminHome = "/admin/dashboard";
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -64,9 +64,8 @@ export default function AdminLogin() {
     login(
       { ...values, tenantSlug: values.tenantSlug || detectedSlug || undefined },
       {
-        onSuccess: (operator) => {
-          const dest = operator.role === "super_admin" ? "/admin/global" : "/admin/dashboard";
-          navigate(dest, { replace: true });
+        onSuccess: () => {
+          navigate("/admin/dashboard", { replace: true });
         },
       }
     );

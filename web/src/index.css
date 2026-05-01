@@ -76,6 +76,16 @@
 }
 .photo { user-select: none; }
 
+@keyframes progress-bar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 /* ─── Tailwind base ──────────────────────────────────────────────────────── */
 @layer base {
   * {

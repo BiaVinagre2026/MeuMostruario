@@ -1,9 +1,9 @@
 import { useCartStore } from "@/stores/useCartStore";
 import { Icons } from "@/components/showroom/icons";
 import { Btn } from "@/components/showroom/primitives";
-import { TENANT, TIERS, brl, activeTier } from "@/data/catalog";
+import { TENANT, TIERS, brl, activeTier, TONE } from "@/data/catalog";
+import { apiClient } from "@/lib/api/client";
 import type { CartItem } from "@/types/catalog";
-import { TONE } from "@/data/catalog";
 
 export function CartDrawer() {
   const { items, isOpen, close, remove } = useCartStore();
@@ -16,18 +16,38 @@ export function CartDrawer() {
   const discount = subtotal * (tier.discount / 100);
   const total = subtotal - discount;
 
-  const metMinUnits = unitsTotal >= TENANT.minOrder.units;
-  const metMinAmount = total >= TENANT.minOrder.amount;
-  const canCheckout = metMinUnits && metMinAmount && items.length > 0;
+  const canCheckout = items.length > 0;
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     const lines = items.map(i => {
       const color = i.colors.find(c => c.id === i.colorId);
       const grade = Object.entries(i.qty).filter(([, q]) => q > 0).map(([s, q]) => `${s}×${q}`).join(" ");
-      return `• ${i.name} (${i.id}) · ${color?.name} · ${grade} = ${i.total}un`;
+      return `• ${i.name} (${i.id}) · ${color?.name ?? "—"} · ${grade} = ${i.total}un`;
     }).join("\n");
     const msg = `Olá ${TENANT.name}, quero fechar pedido:\n\n${lines}\n\nTotal: ${unitsTotal}un · ${brl(total)}`;
-    alert("Abriria WhatsApp com:\n\n" + msg);
+
+    // Abre WhatsApp
+    const whatsappNum = TENANT.whatsapp.replace(/\D/g, "");
+    const encoded = encodeURIComponent(msg);
+    window.open(`https://wa.me/${whatsappNum}?text=${encoded}`, "_blank");
+
+    // Envia notificação para o admin (fire-and-forget)
+    const orderSummary = {
+      source: "whatsapp_order",
+      items: items.map(i => ({
+        name: i.name,
+        sku: i.id,
+        color: i.colors.find(c => c.id === i.colorId)?.name ?? "",
+        grade: Object.entries(i.qty).filter(([, q]) => q > 0).map(([s, q]) => `${s}×${q}`).join(" "),
+        units: i.total,
+        subtotal: i.total * i.price,
+      })),
+      units_total: unitsTotal,
+      amount_total: total,
+      discount_pct: tier.discount,
+    };
+    apiClient.post("/api/v1/leads", { lead: { source: "whatsapp", message: JSON.stringify(orderSummary) } })
+      .catch(() => {});
   };
 
   return (
@@ -96,7 +116,7 @@ export function CartDrawer() {
           </div>
           <Btn variant="accent" size="lg" style={{ width: "100%" }} disabled={!canCheckout}
             icon={<Icons.Whats/>} onClick={handleWhatsApp}>
-            {canCheckout ? "Fechar pedido via WhatsApp" : `Faltam ${TENANT.minOrder.units - unitsTotal} peças para MOQ`}
+            {canCheckout ? "Fechar pedido via WhatsApp" : "Adicione peças para continuar"}
           </Btn>
         </div>
       </div>

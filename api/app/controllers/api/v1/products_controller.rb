@@ -41,6 +41,8 @@ module Api
           care_instructions:  p.care_instructions,
           size_guide:         p.size_guide,
           whatsapp_message:   p.whatsapp_message,
+          made_in:            p.try(:made_in),
+          min_order_qty:      p.try(:min_order_qty),
           images:   p.images.map { |i| image_json(i) },
           variants: p.variants.sort_by(&:position).map { |v| variant_json(v) }
         )
@@ -57,7 +59,8 @@ module Api
 
       def variant_json(v)
         { id: v.id, size: v.size, color: v.color, color_hex: v.color_hex,
-          sku: v.sku, stock_qty: v.stock_qty, price_override: v.price_override }
+          sku: v.sku, stock_qty: v.stock_qty, price_override: v.price_override,
+          image_url: v.try(:image_url) }
       end
     end
   end

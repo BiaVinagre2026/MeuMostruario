@@ -1,4 +1,5 @@
 import type { ApiError as ApiErrorType } from "@/types/auth";
+import { getActiveTenantSlug } from "@/lib/tenantContext";
 
 export class ApiError extends Error {
   public readonly status: number;
@@ -56,8 +57,9 @@ function buildHeaders(path: string, extra?: HeadersInit): Record<string, string>
     ...(extra as Record<string, string> | undefined),
   };
 
-  if (!path.startsWith("/api/v1/admin/") && !path.startsWith("/api/v1/partner/") && TENANT_ID) {
-    headers["X-Tenant-ID"] = TENANT_ID;
+  if (!path.startsWith("/api/v1/admin/") && !path.startsWith("/api/v1/partner/")) {
+    const tenantId = TENANT_ID ?? getActiveTenantSlug();
+    if (tenantId) headers["X-Tenant-ID"] = tenantId;
   }
 
   if (isAdminTenantScopedPath(path) && _getOperatorActiveTenantSlug) {

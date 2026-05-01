@@ -1,0 +1,238 @@
+<% content_for :title, @product.name %>
+<% content_for :description, @product.description %>
+<% content_for :head do %>
+  <%= json_ld_product(@product) %>
+<% end %>
+
+<%# Dados do produto para o JS %>
+<script>
+  var PRODUCT = {
+    id:       "<%= @product.id %>",
+    name:     "<%= j @product.name %>",
+    sku:      "<%= @product.sku %>",
+    price:    <%= @product.price_wholesale.to_f %>,
+    imageUrl: "<%= cover_url(@product) %>",
+    colors: <%= raw product_colors_with_images(@product).to_json %>,
+    sizes:  <%= raw product_sizes(@product).to_json %>
+  };
+  var selectedColor = PRODUCT.colors[0] || null;
+  var selectedSize  = PRODUCT.sizes[0]  || null;
+  var qty = 1;
+
+  function selectColor(name, hex, imgUrl) {
+    selectedColor = { name: name, hex: hex, imageUrl: imgUrl };
+    document.querySelectorAll("[data-color-btn]").forEach(b => {
+      b.style.outline = b.dataset.colorName === name ? "2px solid var(--brand-foreground)" : "none";
+    });
+    var src = imgUrl || PRODUCT.imageUrl;
+    if (src) document.getElementById("main-product-img").src = src;
+  }
+
+  function selectSize(size) {
+    selectedSize = size;
+    document.querySelectorAll("[data-size-btn]").forEach(b => {
+      var active = b.dataset.size === size;
+      b.style.background  = active ? "var(--brand-foreground)" : "#fff";
+      b.style.color       = active ? "#fff" : "var(--brand-foreground)";
+      b.style.borderColor = active ? "var(--brand-foreground)" : "var(--brand-border)";
+    });
+  }
+
+  function changeQty(delta) {
+    qty = Math.max(1, qty + delta);
+    document.getElementById("qty-display").textContent = qty;
+  }
+
+  function addToCart() {
+    var item = {
+      productId: PRODUCT.id,
+      name:      PRODUCT.name,
+      sku:       PRODUCT.sku,
+      price:     PRODUCT.price,
+      color:     selectedColor ? selectedColor.name : null,
+      colorHex:  selectedColor ? selectedColor.hex  : null,
+      size:      selectedSize,
+      qty:       qty,
+      imageUrl:  (selectedColor && selectedColor.imageUrl) ? selectedColor.imageUrl : PRODUCT.imageUrl,
+    };
+    Cart.addItem(item);
+  }
+</script>
+
+<div class="max-w-7xl mx-auto px-6 py-12">
+
+  <%# Breadcrumb %>
+  <div style="font-size:11px;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:32px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <%= link_to "Catálogo", root_path, style: "color:var(--brand-muted);text-decoration:none;" %>
+    <% if @product.collection %>
+      <span>·</span>
+      <%= link_to @product.collection.name, public_collection_path(@product.collection.slug), style: "color:var(--brand-muted);text-decoration:none;" %>
+    <% end %>
+    <span>·</span>
+    <span style="color:var(--brand-foreground);"><%= @product.name %></span>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+
+    <%# ── Galeria ── %>
+    <div>
+      <div style="aspect-ratio:3/4;background:var(--brand-surface);overflow:hidden;margin-bottom:8px;">
+        <% if (main = cover_url(@product)) %>
+          <img id="main-product-img" src="<%= main %>" alt="<%= @product.name %>"
+               style="width:100%;height:100%;object-fit:cover;" />
+        <% end %>
+      </div>
+      <% if @product.images.size > 1 %>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+          <% @product.images.each do |img| %>
+            <button onclick="document.getElementById('main-product-img').src='<%= img.urls['regular'] || img.urls.values.first %>'"
+                    style="aspect-ratio:1;background:var(--brand-surface);overflow:hidden;border:0;padding:0;cursor:pointer;">
+              <img src="<%= img.urls['small'] || img.urls.values.first %>" alt="<%= @product.name %>"
+                   style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# ── Info ── %>
+    <div>
+      <% if @product.collection %>
+        <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:8px;"><%= @product.collection.name %></div>
+      <% end %>
+
+      <h1 style="font-family:var(--font-heading);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:400;letter-spacing:-0.02em;line-height:1.1;margin-bottom:6px;"><%= @product.name %></h1>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--brand-muted);margin-bottom:24px;">SKU: <%= @product.sku %></div>
+
+      <%# Preços %>
+      <div style="display:flex;gap:24px;align-items:baseline;margin-bottom:28px;padding:16px 0;border-top:1px solid var(--brand-border);border-bottom:1px solid var(--brand-border);">
+        <div>
+          <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:4px;">Atacado</div>
+          <div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--brand-primary);"><%= format_brl(@product.price_wholesale) %></div>
+        </div>
+        <% if @product.price_retail.present? %>
+          <div>
+            <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:4px;">Varejo sugerido</div>
+            <div style="font-family:var(--font-mono);font-size:16px;color:var(--brand-muted);"><%= format_brl(@product.price_retail) %></div>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Cores %>
+      <% colors = product_colors_with_images(@product) %>
+      <% if colors.any? %>
+        <div style="margin-bottom:24px;">
+          <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:10px;">
+            Cor — <span id="selected-color-name"><%= colors.first[:name] %></span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <% colors.each_with_index do |c, i| %>
+              <button data-color-btn data-color-name="<%= c[:name] %>"
+                      onclick="selectColor('<%= j c[:name] %>','<%= c[:hex] %>','<%= c[:imageUrl] %>')"
+                      style="width:32px;height:32px;border-radius:50%;
+                             background:<%= c[:hex] || '#ccc' %>;
+                             border:2px solid var(--brand-border);
+                             cursor:pointer;
+                             outline:<%= i == 0 ? '2px solid var(--brand-foreground)' : 'none' %>;
+                             outline-offset:2px;"
+                      title="<%= c[:name] %>">
+              </button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Tamanhos %>
+      <% sizes = product_sizes(@product) %>
+      <% if sizes.any? %>
+        <div style="margin-bottom:28px;">
+          <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:10px;">Tamanho</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            <% sizes.each_with_index do |size, i| %>
+              <button data-size-btn data-size="<%= size %>"
+                      onclick="selectSize('<%= size %>')"
+                      style="padding:8px 16px;border:1px solid <%= i == 0 ? 'var(--brand-foreground)' : 'var(--brand-border)' %>;
+                             background:<%= i == 0 ? 'var(--brand-foreground)' : '#fff' %>;
+                             color:<%= i == 0 ? '#fff' : 'var(--brand-foreground)' %>;
+                             font-family:var(--font-mono);font-size:12px;letter-spacing:0.08em;cursor:pointer;">
+                <%= size %>
+              </button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Quantidade + Adicionar -%>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;border:1px solid var(--brand-border);">
+          <button onclick="changeQty(-1)" style="width:40px;height:48px;background:none;border:0;cursor:pointer;font-size:16px;">−</button>
+          <span id="qty-display" style="width:40px;text-align:center;font-family:var(--font-mono);font-size:14px;">1</span>
+          <button onclick="changeQty(1)"  style="width:40px;height:48px;background:none;border:0;cursor:pointer;font-size:16px;">+</button>
+        </div>
+        <button onclick="addToCart()"
+                style="flex:1;padding:14px;background:var(--brand-foreground);color:#fff;border:0;cursor:pointer;
+                       font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);">
+          Adicionar ao carrinho
+        </button>
+      </div>
+
+      <%# WhatsApp direto %>
+      <a href="<%= whatsapp_url(@product) %>" target="_blank" rel="noopener"
+         style="display:block;width:100%;padding:14px;text-align:center;border:1px solid var(--brand-border);
+                color:var(--brand-foreground);text-decoration:none;font-size:11px;letter-spacing:0.12em;
+                text-transform:uppercase;font-family:var(--font-mono);margin-bottom:28px;">
+        Consultar via WhatsApp
+      </a>
+
+      <%# Descrição / Composição / Cuidados %>
+      <% if @product.description.present? %>
+        <details open style="border-top:1px solid var(--brand-border);padding:16px 0;">
+          <summary style="cursor:pointer;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);list-style:none;">Descrição</summary>
+          <p style="font-size:14px;line-height:1.7;margin-top:12px;"><%= @product.description %></p>
+        </details>
+      <% end %>
+      <% if @product.fabric_composition.present? %>
+        <details style="border-top:1px solid var(--brand-border);padding:16px 0;">
+          <summary style="cursor:pointer;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);list-style:none;">Composição</summary>
+          <p style="font-size:13px;color:var(--brand-muted);margin-top:10px;"><%= @product.fabric_composition %></p>
+        </details>
+      <% end %>
+      <% if @product.care_instructions.present? %>
+        <details style="border-top:1px solid var(--brand-border);padding:16px 0;">
+          <summary style="cursor:pointer;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);list-style:none;">Cuidados</summary>
+          <p style="font-size:13px;color:var(--brand-muted);margin-top:10px;"><%= @product.care_instructions %></p>
+        </details>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Relacionados %>
+  <% if @related.any? %>
+    <section style="border-top:1px solid var(--brand-border);margin-top:64px;padding-top:48px;">
+      <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:24px;">Da mesma coleção</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <% @related.each do |p| %>
+          <%= link_to public_product_path(p.slug), style: "text-decoration:none;color:inherit;display:block;" do %>
+            <div style="aspect-ratio:3/4;background:var(--brand-surface);overflow:hidden;margin-bottom:12px;">
+              <% if (img = cover_url(p)) %>
+                <img src="<%= img %>" alt="<%= p.name %>" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+              <% end %>
+            </div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:4px;"><%= p.name %></div>
+            <div style="font-family:var(--font-mono);font-size:12px;font-weight:600;"><%= format_brl(p.price_wholesale) %></div>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (PRODUCT.colors.length) selectColor(PRODUCT.colors[0].name, PRODUCT.colors[0].hex, PRODUCT.colors[0].imageUrl);
+    if (PRODUCT.sizes.length)  selectSize(PRODUCT.sizes[0]);
+    document.querySelectorAll("[data-color-btn]").forEach(b => {
+      b.addEventListener("mouseenter", () => document.getElementById("selected-color-name").textContent = b.dataset.colorName);
+    });
+  });
+</script>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= content_for?(:title) ? "#{yield(:title)} — " : "" %><%= current_tenant&.name || "Meu Mostruário" %></title>
+    <meta name="description" content="<%= content_for?(:description) ? yield(:description) : "#{current_tenant&.name} — Catálogo de moda" %>" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="<%= google_fonts_url %>" />
+    <link rel="stylesheet" href="/assets/storefront.css" />
+    <style>:root{<%= brand_css_vars %>}</style>
+    <%= yield(:head) if content_for?(:head) %>
+  </head>
+  <body class="antialiased"
+        data-whatsapp-phone="<%= tenant_config&.company_phone&.gsub(/\D/, "") %>">
+
+    <% if flash[:notice] %>
+      <div style="background:var(--brand-primary);color:#fff;padding:12px 24px;text-align:center;font-size:13px;font-family:var(--font-mono);"><%= flash[:notice] %></div>
+    <% end %>
+    <% if flash[:alert] %>
+      <div style="background:#dc2626;color:#fff;padding:12px 24px;text-align:center;font-size:13px;font-family:var(--font-mono);"><%= flash[:alert] %></div>
+    <% end %>
+
+    <%# ── Navbar ── %>
+    <header style="border-bottom:1px solid var(--brand-border);position:sticky;top:0;background:#fff;z-index:50;">
+      <nav class="max-w-7xl mx-auto px-6 flex items-center justify-between" style="height:64px;">
+
+        <%# Logo %>
+        <%= link_to root_path, style: "font-family:var(--font-heading);font-size:18px;font-weight:600;letter-spacing:-0.02em;color:var(--brand-foreground);text-decoration:none;flex-shrink:0;" do %>
+          <%= current_tenant&.name || "Meu Mostruário" %>
+        <% end %>
+
+        <%# Centro — links de navegação %>
+        <div class="hidden md:flex items-center gap-8">
+          <%= link_to "Catálogo", root_path,
+              style: "font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;" %>
+          <% if member_logged_in? %>
+            <%= link_to "Fazer Pedido", lojistas_path,
+                style: "font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-foreground);text-decoration:none;" %>
+          <% end %>
+        </div>
+
+        <%# Direita — auth + carrinho %>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <% if member_logged_in? %>
+            <span style="font-size:12px;font-family:var(--font-mono);color:var(--brand-muted);display:none;" class="hidden md:inline">
+              Olá, <%= current_member["full_name"]&.split&.first %>
+            </span>
+            <%= form_with url: sair_path, method: :delete, local: true, style: "display:inline;" do |f| %>
+              <%= f.submit "Sair", style: "padding:8px 12px;border:1px solid var(--brand-border);background:#fff;cursor:pointer;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);" %>
+            <% end %>
+          <% else %>
+            <%= link_to "Acesso Lojista", entrar_path,
+                style: "font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-foreground);text-decoration:none;padding:8px 14px;border:1px solid var(--brand-foreground);" %>
+            <% admin_url = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:3000')}/admin/login" %>
+            <a href="<%= admin_url %>"
+               style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;">
+              Admin
+            </a>
+          <% end %>
+          <%# Carrinho %>
+          <button onclick="Cart.openDrawer()"
+                  style="position:relative;background:none;border:1px solid var(--brand-border);padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);">
+            Carrinho
+            <span data-cart-count style="display:none;background:var(--brand-primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;align-items:center;justify-content:center;font-family:var(--font-mono);"></span>
+          </button>
+        </div>
+
+      </nav>
+    </header>
+
+    <main><%= yield %></main>
+
+    <footer style="border-top:1px solid var(--brand-border);margin-top:96px;">
+      <div class="max-w-7xl mx-auto px-6 py-16">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <div style="font-family:var(--font-heading);font-size:18px;font-weight:600;letter-spacing:-0.02em;margin-bottom:12px;"><%= current_tenant&.name || "Meu Mostruário" %></div>
+            <% if tenant_config&.footer_text.present? %>
+              <p style="font-size:13px;color:var(--brand-muted);line-height:1.6;"><%= tenant_config.footer_text %></p>
+            <% end %>
+          </div>
+          <div>
+            <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Contato</div>
+            <% if tenant_config&.company_email.present? %>
+              <a href="mailto:<%= tenant_config.company_email %>" style="display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;"><%= tenant_config.company_email %></a>
+            <% end %>
+            <% if tenant_config&.company_phone.present? %>
+              <a href="https://wa.me/<%= tenant_config.company_phone.gsub(/\D/, '') %>" target="_blank" rel="noopener" style="display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;"><%= tenant_config.company_phone %></a>
+            <% end %>
+          </div>
+          <div>
+            <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Navegação</div>
+            <%= link_to "Catálogo", root_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
+            <%= link_to "Acesso Lojista", entrar_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
+            <%= link_to "Carrinho", "/carrinho", style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;" %>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--brand-border);margin-top:32px;padding-top:24px;font-size:11px;color:var(--brand-muted);font-family:var(--font-mono);">
+          © <%= Date.current.year %> <%= current_tenant&.name || "Meu Mostruário" %> · Powered by MeuMostruário
+        </div>
+      </div>
+    </footer>
+
+    <%# ── Cart Overlay ── %>
+    <div id="cart-overlay"
+         onclick="Cart.closeDrawer()"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:90;"></div>
+
+    <%# ── Cart Drawer ── %>
+    <div id="cart-drawer"
+         style="position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:#fff;z-index:100;
+                transform:translateX(100%);transition:transform 0.3s ease;
+                display:flex;flex-direction:column;border-left:1px solid var(--brand-border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--brand-border);">
+        <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;">Carrinho</span>
+        <button onclick="Cart.closeDrawer()" style="background:none;border:0;cursor:pointer;font-size:22px;color:var(--brand-muted);line-height:1;">×</button>
+      </div>
+      <div id="cart-items" style="flex:1;overflow-y:auto;padding:0 24px;"></div>
+      <div id="cart-footer" style="padding:20px 24px;border-top:1px solid var(--brand-border);display:none;"></div>
+    </div>
+
+    <script src="/assets/cart.js"></script>
+  </body>
+</html>

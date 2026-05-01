@@ -20,7 +20,9 @@ class TenantSchemaSql
       looks_sql,
       look_items_sql,
       leads_sql,
-      waitlists_sql
+      waitlists_sql,
+      orders_sql,
+      order_items_sql
     ].join("\n\n")
   end
 
@@ -34,8 +36,14 @@ class TenantSchemaSql
       looks_sql,
       look_items_sql,
       leads_sql,
-      waitlists_sql
+      waitlists_sql,
+      orders_sql,
+      order_items_sql
     ].join("\n\n")
+  end
+
+  def self.orders_tables_sql
+    [orders_sql, order_items_sql].join("\n\n")
   end
 
   # ---------------------------------------------------------------------------
@@ -239,6 +247,8 @@ class TenantSchemaSql
         size_guide          JSONB          DEFAULT '{}',
         custom_fields       JSONB          DEFAULT '{}',
         whatsapp_message    TEXT,
+        made_in             VARCHAR(100),
+        min_order_qty       INTEGER        DEFAULT 1,
         created_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
         updated_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
         CONSTRAINT products_slug_unique UNIQUE (slug),
@@ -271,6 +281,7 @@ class TenantSchemaSql
         sku             VARCHAR(100),
         stock_qty       INTEGER        DEFAULT 0,
         price_override  DECIMAL(10,2),
+        image_url       VARCHAR(500),
         position        INTEGER        NOT NULL DEFAULT 0,
         created_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
         updated_at      TIMESTAMP      NOT NULL DEFAULT NOW()
@@ -391,6 +402,53 @@ class TenantSchemaSql
 
       CREATE INDEX IF NOT EXISTS idx_waitlists_collection ON waitlists (collection_id);
       CREATE INDEX IF NOT EXISTS idx_waitlists_product ON waitlists (product_id);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Orders — B2B wholesale orders placed by members via the lojistas storefront
+  # ---------------------------------------------------------------------------
+  def self.orders_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS orders (
+        id              BIGSERIAL PRIMARY KEY,
+        member_id       BIGINT         NOT NULL,
+        status          VARCHAR(20)    NOT NULL DEFAULT 'pending',
+        notes           TEXT,
+        total_units     INTEGER        NOT NULL DEFAULT 0,
+        total_value     DECIMAL(10,2)  NOT NULL DEFAULT 0,
+        metadata        JSONB          NOT NULL DEFAULT '{}',
+        created_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT orders_status_check CHECK (status IN ('pending','confirmed','processing','shipped','cancelled'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_orders_member ON orders (member_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
+      CREATE INDEX IF NOT EXISTS idx_orders_created ON orders (created_at DESC);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Order items — individual line items belonging to an order
+  # ---------------------------------------------------------------------------
+  def self.order_items_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS order_items (
+        id              BIGSERIAL PRIMARY KEY,
+        order_id        BIGINT         NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id      BIGINT,
+        product_name    VARCHAR(255)   NOT NULL,
+        product_sku     VARCHAR(100),
+        color           VARCHAR(60),
+        size            VARCHAR(30),
+        qty             INTEGER        NOT NULL DEFAULT 1,
+        unit_price      DECIMAL(10,2),
+        subtotal        DECIMAL(10,2),
+        created_at      TIMESTAMP      NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items (order_id);
     SQL
   end
 end

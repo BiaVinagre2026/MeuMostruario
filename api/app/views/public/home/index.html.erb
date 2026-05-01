@@ -1,0 +1,120 @@
+<% content_for :title, "Catálogo" %>
+
+<%# ── Hero ── %>
+<section style="border-bottom:1px solid var(--brand-border);padding:80px 0 72px;">
+  <div class="max-w-7xl mx-auto px-6">
+    <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:16px;">Catálogo Digital</div>
+    <h1 style="font-family:var(--font-heading);font-size:clamp(3rem,10vw,7rem);font-weight:300;letter-spacing:-0.03em;line-height:1;margin-bottom:24px;">
+      <%= current_tenant&.name || "Meu Mostruário" %>
+    </h1>
+    <% if tenant_config&.footer_text.present? %>
+      <p style="max-width:480px;font-size:15px;line-height:1.7;color:var(--brand-muted);margin-bottom:40px;"><%= tenant_config.footer_text %></p>
+    <% end %>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="#catalogo"
+         style="display:inline-block;padding:14px 32px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);background:var(--brand-foreground);color:#fff;text-decoration:none;">
+        Ver catálogo ↓
+      </a>
+      <% if member_logged_in? %>
+        <%= link_to "Fazer Pedido →", lojistas_path,
+            style: "display:inline-block;padding:14px 32px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);border:1px solid var(--brand-foreground);color:var(--brand-foreground);text-decoration:none;" %>
+      <% else %>
+        <%= link_to "Acesso Lojista →", entrar_path,
+            style: "display:inline-block;padding:14px 32px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);border:1px solid var(--brand-foreground);color:var(--brand-foreground);text-decoration:none;" %>
+      <% end %>
+    </div>
+  </div>
+</section>
+
+<%# ── Coleções ── %>
+<% if @collections.any? %>
+  <section style="padding:64px 0;" id="colecoes">
+    <div class="max-w-7xl mx-auto px-6">
+      <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:24px;">Coleções</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <% @collections.each do |col| %>
+          <%= link_to public_collection_path(col.slug), style: "text-decoration:none;color:inherit;display:block;" do %>
+            <div style="aspect-ratio:4/3;background:var(--brand-surface);overflow:hidden;margin-bottom:14px;">
+              <% if col.cover_url.present? %>
+                <img src="<%= col.cover_url %>" alt="<%= col.name %>" style="width:100%;height:100%;object-fit:cover;transition:transform 0.35s;"
+                     onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'" loading="lazy" />
+              <% end %>
+            </div>
+            <div style="font-family:var(--font-heading);font-size:17px;font-weight:500;margin-bottom:4px;"><%= col.name %></div>
+            <% if col.description.present? %>
+              <div style="font-size:12px;color:var(--brand-muted);"><%= truncate(col.description, length: 80) %></div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </section>
+<% end %>
+
+<%# ── Carrossel de Produtos ── %>
+<% if @featured_products.any? %>
+  <section style="padding:64px 0;border-top:1px solid var(--brand-border);" id="catalogo">
+    <div class="max-w-7xl mx-auto px-6">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);">Destaques</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="scrollCarousel(-1)" style="width:36px;height:36px;border:1px solid var(--brand-border);background:#fff;cursor:pointer;font-size:16px;">‹</button>
+          <button onclick="scrollCarousel(1)"  style="width:36px;height:36px;border:1px solid var(--brand-border);background:#fff;cursor:pointer;font-size:16px;">›</button>
+        </div>
+      </div>
+
+      <div id="product-carousel"
+           style="display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
+                  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;">
+        <% @featured_products.each do |p| %>
+          <div style="flex:0 0 calc(25% - 12px);min-width:220px;scroll-snap-align:start;">
+            <%= link_to public_product_path(p.slug), style: "text-decoration:none;color:inherit;display:block;" do %>
+              <div style="aspect-ratio:3/4;background:var(--brand-surface);overflow:hidden;margin-bottom:12px;">
+                <% if (img = cover_url(p)) %>
+                  <img src="<%= img %>" alt="<%= p.name %>"
+                       style="width:100%;height:100%;object-fit:cover;transition:transform 0.35s;" loading="lazy"
+                       onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'" />
+                <% end %>
+              </div>
+              <div style="font-size:14px;font-weight:500;margin-bottom:2px;"><%= p.name %></div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--brand-muted);"><%= p.sku %></div>
+              <div style="font-family:var(--font-mono);font-size:13px;margin-top:4px;font-weight:600;color:var(--brand-primary);"><%= format_brl(p.price_wholesale) %></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+<% end %>
+
+<%# ── CTA Lojista (rodapé da home) ── %>
+<section style="padding:64px 0;border-top:1px solid var(--brand-border);background:var(--brand-surface);">
+  <div class="max-w-7xl mx-auto px-6 text-center">
+    <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Para lojistas</div>
+    <h2 style="font-family:var(--font-heading);font-size:clamp(1.5rem,4vw,2.5rem);font-weight:300;letter-spacing:-0.02em;margin-bottom:16px;">
+      Compre no atacado
+    </h2>
+    <p style="font-size:14px;color:var(--brand-muted);margin-bottom:32px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.7;">
+      Faça login para acessar preços de atacado, montar seu pedido por grade e enviar direto pelo WhatsApp.
+    </p>
+    <% if member_logged_in? %>
+      <%= link_to "Fazer Pedido →", lojistas_path,
+          style: "display:inline-block;padding:14px 40px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);background:var(--brand-foreground);color:#fff;text-decoration:none;" %>
+    <% else %>
+      <%= link_to "Entrar como Lojista →", entrar_path,
+          style: "display:inline-block;padding:14px 40px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);background:var(--brand-foreground);color:#fff;text-decoration:none;" %>
+    <% end %>
+  </div>
+</section>
+
+<style>
+  #product-carousel::-webkit-scrollbar { display: none; }
+</style>
+<script>
+  function scrollCarousel(dir) {
+    var c = document.getElementById("product-carousel");
+    var item = c.querySelector("div[style*='scroll-snap-align']");
+    var w = item ? item.offsetWidth + 16 : 260;
+    c.scrollBy({ left: dir * w * 2, behavior: "smooth" });
+  }
+</script>

@@ -1,0 +1,28 @@
+<% content_for :title, "Acesso Lojista" %>
+
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:48px 24px;background:var(--brand-surface);">
+  <div style="width:100%;max-width:400px;background:#fff;padding:40px;border:1px solid var(--brand-border);">
+
+    <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:10px;">Acesso Lojista</div>
+    <h1 style="font-family:var(--font-heading);font-size:1.75rem;font-weight:400;letter-spacing:-0.02em;margin-bottom:28px;">Entrar</h1>
+
+    <%= form_with url: entrar_path, method: :post, local: true do |f| %>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:6px;">E-mail</label>
+        <%= f.email_field :email, required: true, autocomplete: "email", placeholder: "seu@email.com",
+            style: "width:100%;padding:12px;border:1px solid var(--brand-border);font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" %>
+      </div>
+      <div style="margin-bottom:24px;">
+        <label style="display:block;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:6px;">Senha</label>
+        <%= f.password_field :password, required: true, autocomplete: "current-password", placeholder: "••••••••",
+            style: "width:100%;padding:12px;border:1px solid var(--brand-border);font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" %>
+      </div>
+      <%= f.submit "Entrar →",
+          style: "width:100%;padding:14px;background:var(--brand-foreground);color:#fff;border:0;cursor:pointer;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);" %>
+    <% end %>
+
+    <p style="margin-top:20px;text-align:center;font-size:12px;color:var(--brand-muted);font-family:var(--font-mono);">
+      <%= link_to "← Voltar ao catálogo", root_path, style: "color:var(--brand-muted);text-decoration:none;" %>
+    </p>
+  </div>
+</div>

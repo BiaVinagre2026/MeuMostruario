@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc><%= request.base_url %></loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <% @collections.each do |col| %>
+  <url>
+    <loc><%= request.base_url + public_collection_path(col.slug) %></loc>
+    <lastmod><%= col.updated_at.iso8601 %></lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <% end %>
+  <% @products.each do |p| %>
+  <url>
+    <loc><%= request.base_url + public_product_path(p.slug) %></loc>
+    <lastmod><%= p.updated_at.iso8601 %></lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <% end %>
+  <% @looks.each do |look| %>
+  <url>
+    <loc><%= request.base_url + public_look_path(look.slug) %></loc>
+    <lastmod><%= look.updated_at.iso8601 %></lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <% end %>
+</urlset>
