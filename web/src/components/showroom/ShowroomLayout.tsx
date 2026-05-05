@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { TopBar } from "./TopBar";
 import { Footer } from "./Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import "@/styles/showroom-responsive.css";
 
 export function ShowroomLayout() {
   const { pathname } = useLocation();

@@ -65,6 +65,7 @@ export interface ProductListItem {
   cover_url: string | null;
   collection: ProductRef | null;
   variants_count: number;
+  stock_by_size: Record<string, number>;
 }
 
 export interface ProductListResponse {

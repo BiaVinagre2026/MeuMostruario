@@ -86,25 +86,3 @@ export interface CartItem extends Product {
   qty: Record<string, number>;
   total: number;
 }
-
-export interface LookProduct {
-  id: string;
-  name: string;
-  sku?: string;
-  collectionSlug?: string;
-  price: number;
-  priceRetail: number;
-  colors: string[];
-  imageUrl?: string;
-}
-
-export interface Look {
-  id: string;
-  name: string;
-  description?: string;
-  coverUrl?: string;
-  collectionName?: string;
-  collectionSlug?: string;
-  productCount: number;
-  products?: LookProduct[];
-}

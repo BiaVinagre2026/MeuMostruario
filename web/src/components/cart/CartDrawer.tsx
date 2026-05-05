@@ -1,123 +1,187 @@
+import { useState } from "react";
 import { useCartStore } from "@/stores/useCartStore";
 import { Icons } from "@/components/showroom/icons";
 import { Btn } from "@/components/showroom/primitives";
-import { TENANT, TIERS, brl, activeTier, TONE } from "@/data/catalog";
+import { TIERS, brl, activeTier, TONE } from "@/data/catalog";
+import { useTenant } from "@/providers/TenantProvider";
 import { apiClient } from "@/lib/api/client";
 import type { CartItem } from "@/types/catalog";
 
+// Extrai número limpo de uma URL wa.me ou string de telefone
+function extractWhatsappNumber(raw: string | undefined): string {
+  if (!raw) return "";
+  // https://wa.me/5511999999999 → 5511999999999
+  const match = raw.match(/wa\.me\/(\d+)/);
+  if (match) return match[1];
+  return raw.replace(/\D/g, "");
+}
+
 export function CartDrawer() {
   const { items, isOpen, close, remove } = useCartStore();
+  const tenant = useTenant();
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const subtotal = items.reduce((a, item) => a + item.total * item.price, 0);
-  const unitsTotal = items.reduce((a, item) => a + item.total, 0);
-  const tier = activeTier(unitsTotal);
-  const discount = subtotal * (tier.discount / 100);
-  const total = subtotal - discount;
+  const subtotal    = items.reduce((a, item) => a + item.total * item.price, 0);
+  const unitsTotal  = items.reduce((a, item) => a + item.total, 0);
+  const tier        = activeTier(unitsTotal);
+  const discount    = subtotal * (tier.discount / 100);
+  const total       = subtotal - discount;
+  const canCheckout = items.length > 0 && !loading;
 
-  const canCheckout = items.length > 0;
+  const whatsappNum = extractWhatsappNumber(tenant.social.whatsapp);
 
-  const handleWhatsApp = async () => {
+  function buildWhatsappMessage() {
     const lines = items.map(i => {
       const color = i.colors.find(c => c.id === i.colorId);
-      const grade = Object.entries(i.qty).filter(([, q]) => q > 0).map(([s, q]) => `${s}×${q}`).join(" ");
-      return `• ${i.name} (${i.id}) · ${color?.name ?? "—"} · ${grade} = ${i.total}un`;
+      const grade = Object.entries(i.qty)
+        .filter(([, q]) => q > 0)
+        .map(([s, q]) => `${s}×${q}`)
+        .join(" ");
+      return `• ${i.name} · ${color?.name ?? "—"} · ${grade} = ${i.total}un · ${brl(i.total * i.price)}`;
     }).join("\n");
-    const msg = `Olá ${TENANT.name}, quero fechar pedido:\n\n${lines}\n\nTotal: ${unitsTotal}un · ${brl(total)}`;
+    const name = tenant.tenantName || tenant.companyName || "Mostruário";
+    return `Olá ${name}, quero fechar pedido:\n\n${lines}\n\nSubtotal: ${brl(subtotal)}${tier.discount > 0 ? `\nDesconto ${tier.discount}%: -${brl(discount)}` : ""}\n*Total: ${brl(total)}* · ${unitsTotal} peças`;
+  }
 
-    // Abre WhatsApp
-    const whatsappNum = TENANT.whatsapp.replace(/\D/g, "");
-    const encoded = encodeURIComponent(msg);
-    window.open(`https://wa.me/${whatsappNum}?text=${encoded}`, "_blank");
+  const handleCheckout = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const orderItems = items.map(i => {
+        const color = i.colors.find(c => c.id === i.colorId);
+        return {
+          product_name: i.name,
+          sku:          i.sku ?? i.id,
+          color:        color?.name ?? "",
+          color_hex:    color?.hex ?? "",
+          image_url:    i.colorImages?.[i.colorId] ?? i.imageUrl ?? "",
+          price:        i.price,
+          qty:          i.qty,
+          total:        i.total * i.price,
+        };
+      });
 
-    // Envia notificação para o admin (fire-and-forget)
-    const orderSummary = {
-      source: "whatsapp_order",
-      items: items.map(i => ({
-        name: i.name,
-        sku: i.id,
-        color: i.colors.find(c => c.id === i.colorId)?.name ?? "",
-        grade: Object.entries(i.qty).filter(([, q]) => q > 0).map(([s, q]) => `${s}×${q}`).join(" "),
-        units: i.total,
-        subtotal: i.total * i.price,
-      })),
-      units_total: unitsTotal,
-      amount_total: total,
-      discount_pct: tier.discount,
-    };
-    apiClient.post("/api/v1/leads", { lead: { source: "whatsapp", message: JSON.stringify(orderSummary) } })
-      .catch(() => {});
+      await apiClient.post("/api/v1/orders", {
+        order: {
+          items:        orderItems,
+          subtotal:     subtotal,
+          discount:     discount,
+          discount_pct: tier.discount,
+          total:        total,
+        },
+      });
+
+      // Abre WhatsApp com a mensagem do pedido
+      if (whatsappNum) {
+        const msg = buildWhatsappMessage();
+        window.open(`https://wa.me/${whatsappNum}?text=${encodeURIComponent(msg)}`, "_blank");
+      }
+
+      // Limpa o carrinho e fecha
+      useCartStore.setState({ items: [], isOpen: false });
+    } catch {
+      setError("Não foi possível registrar o pedido. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.4)", zIndex: 150, display: "flex", justifyContent: "flex-end" }}
+      style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.45)", zIndex: 150, display: "flex", justifyContent: "flex-end" }}
       onClick={close}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: 560, background: "white", height: "100%", display: "flex", flexDirection: "column",
+      <div onClick={e => e.stopPropagation()} className="sr-cart-drawer" style={{
+        background: "white", height: "100%",
+        display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(0,0,0,0.12)",
       }}>
         {/* Header */}
-        <div style={{ padding: 24, borderBottom: "1px solid var(--brand-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--brand-border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div className="eyebrow">Pedido em andamento</div>
-            <div className="display" style={{ fontSize: 32, marginTop: 4 }}>Seu mostruário</div>
+            <div className="eyebrow" style={{ fontSize: 10, letterSpacing: "0.12em" }}>Pedido em andamento</div>
+            <div className="display" style={{ fontSize: 28, marginTop: 4, lineHeight: 1.1 }}>Carrinho de compras</div>
           </div>
-          <button onClick={close}><Icons.X/></button>
+          <button onClick={close} style={{ marginTop: 4, color: "var(--brand-muted)", lineHeight: 1 }}><Icons.X/></button>
         </div>
 
-        {/* MOQ progress */}
-        <div style={{ padding: 16, background: "var(--brand-surface)", borderBottom: "1px solid var(--brand-border)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-            <span>Pedido mínimo</span>
-            <span>{unitsTotal}/{TENANT.minOrder.units} peças · {brl(total)}/{brl(TENANT.minOrder.amount)}</span>
+        {/* Progresso de desconto por volume */}
+        <div style={{ padding: "12px 24px", background: "var(--brand-surface)", borderBottom: "1px solid var(--brand-border)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, color: "var(--brand-muted)" }}>
+            <span>Peças no pedido</span>
+            <span style={{ color: "var(--brand-foreground)", fontWeight: 600 }}>{unitsTotal} peças</span>
           </div>
-          <div style={{ height: 3, background: "var(--brand-border)" }}>
+          <div style={{ height: 3, background: "var(--brand-border)", borderRadius: 2 }}>
             <div style={{
-              height: "100%",
-              background: canCheckout ? "var(--brand-primary)" : "var(--brand-foreground)",
-              width: `${Math.min(100, (unitsTotal / TENANT.minOrder.units) * 100)}%`,
-              transition: "width var(--dur-2) var(--ease)",
+              height: "100%", borderRadius: 2,
+              background: tier.discount > 0 ? "var(--brand-primary)" : "var(--brand-foreground)",
+              width: `${Math.min(100, (unitsTotal / (TIERS[TIERS.length - 1]?.min ?? 100)) * 100)}%`,
+              transition: "width 0.3s ease",
             }}/>
           </div>
           {tier.discount > 0 && (
-            <div style={{ marginTop: 10, fontSize: 12, color: "var(--brand-primary)", fontFamily: "var(--font-mono)", letterSpacing: "0.08em" }}>
-              Desconto {tier.label}: −{tier.discount}%
+            <div style={{ marginTop: 8, fontSize: 11, color: "var(--brand-primary)", fontFamily: "var(--font-mono)", letterSpacing: "0.08em", fontWeight: 600 }}>
+              Desconto aplicado: −{tier.discount}% ({tier.label})
             </div>
           )}
         </div>
 
-        {/* Items */}
+        {/* Lista de itens */}
         <div style={{ flex: 1, overflow: "auto" }}>
           {items.length === 0 ? (
             <div style={{ padding: 48, textAlign: "center", color: "var(--brand-muted)", fontFamily: "var(--font-mono)", fontSize: 12 }}>
               Nenhuma peça adicionada ainda.
             </div>
           ) : (
-            items.map((item, i) => <CartItemRow key={i} item={item} onRemove={() => remove(i)}/>)
+            <div style={{ padding: "8px 0" }}>
+              {items.map((item, i) => (
+                <CartItemRow key={i} item={item} onRemove={() => remove(i)}/>
+              ))}
+            </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: 24, borderTop: "1px solid var(--brand-border)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14 }}>
-            <span>Subtotal</span>
-            <span className="mono">{brl(subtotal)}</span>
+        {/* Erro */}
+        {error && (
+          <div style={{ padding: "10px 24px", background: "#fef2f2", borderTop: "1px solid #fecaca", fontSize: 13, color: "#dc2626" }}>
+            {error}
           </div>
-          {tier.discount > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 14, color: "var(--brand-primary)" }}>
-              <span>Desconto volume ({tier.discount}%)</span>
-              <span className="mono">−{brl(discount)}</span>
+        )}
+
+        {/* Footer com totais e botão */}
+        <div style={{ padding: "20px 24px", borderTop: "1px solid var(--brand-border)" }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--brand-muted)", marginBottom: 6 }}>
+              <span>Subtotal ({unitsTotal} peças)</span>
+              <span className="mono">{brl(subtotal)}</span>
             </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-            <span style={{ fontWeight: 600 }}>Total</span>
-            <span className="display" style={{ fontSize: 28 }}>{brl(total)}</span>
+            {tier.discount > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--brand-primary)", marginBottom: 6 }}>
+                <span>Desconto volume ({tier.discount}%)</span>
+                <span className="mono">−{brl(discount)}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: "1px solid var(--brand-border)", paddingTop: 10, marginTop: 4 }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>Total</span>
+              <span className="display" style={{ fontSize: 26 }}>{brl(total)}</span>
+            </div>
           </div>
-          <Btn variant="accent" size="lg" style={{ width: "100%" }} disabled={!canCheckout}
-            icon={<Icons.Whats/>} onClick={handleWhatsApp}>
-            {canCheckout ? "Fechar pedido via WhatsApp" : "Adicione peças para continuar"}
+
+          <Btn
+            variant="accent" size="lg"
+            style={{ width: "100%", gap: 10, opacity: loading ? 0.7 : 1 }}
+            disabled={!canCheckout}
+            icon={loading ? undefined : <Icons.Whats/>}
+            onClick={handleCheckout}>
+            {loading ? "Registrando pedido…" : canCheckout ? "Fechar pedido" : "Adicione peças para continuar"}
           </Btn>
+
+          {!whatsappNum && (
+            <p style={{ marginTop: 8, fontSize: 11, color: "var(--brand-muted)", textAlign: "center", fontFamily: "var(--font-mono)" }}>
+              WhatsApp não configurado — pedido será registrado normalmente.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -125,20 +189,60 @@ export function CartDrawer() {
 }
 
 function CartItemRow({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
-  const color = item.colors.find(c => c.id === item.colorId);
-  const tone = TONE[color?.tone ?? "sand"];
-  const grade = Object.entries(item.qty).filter(([, q]) => q > 0).map(([s, q]) => `${s}×${q}`).join(" ");
+  const color     = item.colors.find(c => c.id === item.colorId);
+  const tone      = TONE[color?.tone ?? "sand"];
+  const imageUrl  = item.colorImages?.[item.colorId] ?? item.imageUrl;
+  const grade     = Object.entries(item.qty)
+    .filter(([, q]) => q > 0)
+    .map(([s, q]) => `${s}×${q}`)
+    .join("  ");
 
   return (
-    <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--brand-border)", display: "grid", gridTemplateColumns: "48px 1fr auto", gap: 16, alignItems: "center" }}>
-      <div style={{ width: 48, height: 60, background: tone.bg, flexShrink: 0 }}/>
-      <div>
-        <div style={{ fontWeight: 500 }}>{item.name}</div>
-        <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", marginTop: 2 }}>{item.id} · {color?.name}</div>
-        <div className="mono" style={{ fontSize: 11, marginTop: 4 }}>{grade}</div>
-        <div className="mono" style={{ fontSize: 11, marginTop: 2, color: "var(--brand-primary)" }}>{item.total} peças · {brl(item.total * item.price)}</div>
+    <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--brand-border)", display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 14, alignItems: "center" }}>
+      {/* Foto da cor ou swatch */}
+      <div style={{
+        width: 56, height: 72, borderRadius: 6, flexShrink: 0, overflow: "hidden",
+        background: imageUrl ? "transparent" : (color?.hex ?? tone.bg),
+        border: "1px solid var(--brand-border)",
+      }}>
+        {imageUrl && (
+          <img src={imageUrl} alt={color?.name ?? item.name}
+               style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
+        )}
       </div>
-      <button onClick={onRemove} style={{ color: "var(--brand-muted)" }}><Icons.X/></button>
+
+      {/* Detalhes */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {item.name}
+        </div>
+        {item.sku && (
+          <div className="mono" style={{ fontSize: 10, color: "var(--brand-muted)", marginTop: 2 }}>
+            {item.sku}
+          </div>
+        )}
+        {color && (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
+            <span style={{
+              display: "inline-block", width: 10, height: 10, borderRadius: "50%",
+              background: color.hex ?? tone.bg, border: "1px solid rgba(0,0,0,0.12)",
+            }}/>
+            <span style={{ fontSize: 11, color: "var(--brand-muted)" }}>{color.name}</span>
+          </div>
+        )}
+        <div className="mono" style={{ fontSize: 11, marginTop: 5, color: "var(--brand-foreground)", letterSpacing: "0.05em" }}>
+          {grade}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)" }}>{item.total} peças</span>
+          <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-primary)" }}>{brl(item.total * item.price)}</span>
+        </div>
+      </div>
+
+      {/* Remover */}
+      <button onClick={onRemove} style={{ color: "var(--brand-muted)", padding: 4, lineHeight: 1 }}>
+        <Icons.X/>
+      </button>
     </div>
   );
 }

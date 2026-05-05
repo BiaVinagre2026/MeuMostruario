@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Photo, Btn } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
-import { TONE, TIERS, brl, activeTier, TENANT } from "@/data/catalog";
+import { TONE, brl, activeTier, TENANT } from "@/data/catalog";
 import { useProduct } from "@/hooks/useCatalog";
 import { useCartStore } from "@/stores/useCartStore";
 import type { Product, Color } from "@/types/catalog";
@@ -29,7 +29,7 @@ export default function ProductDetail() {
     </div>
   );
 
-  return <ProductDetailInner p={p} />;
+  return <ProductDetailInner key={p.id} p={p} />;
 }
 
 function ProductDetailInner({ p }: { p: Product }) {
@@ -54,9 +54,8 @@ function ProductDetailInner({ p }: { p: Product }) {
       ? allImages.map((img, i) => ({ url: img.urls?.regular, caption: `0${i + 1}` }))
       : [{ url: undefined, caption: "01" }, { url: undefined, caption: "02" }];
 
-  // URL da imagem da cor selecionada (se existir no mapeamento de variantes)
   const colorImageUrl = p.colorImages?.[colorId];
-  const currentImageUrl = galleryIdx === 0 && colorImageUrl ? colorImageUrl : galleryItems[galleryIdx]?.url;
+  const currentImageUrl = galleryItems[galleryIdx]?.url ?? colorImageUrl;
 
   const handleColorChange = (id: string) => {
     setColorId(id);
@@ -74,7 +73,7 @@ function ProductDetailInner({ p }: { p: Product }) {
   return (
     <main>
       {/* Breadcrumb */}
-      <div style={{ padding: "20px 32px", borderBottom: "1px solid var(--brand-border)" }}>
+      <div className="sr-breadcrumb" style={{ padding: "20px 32px", borderBottom: "1px solid var(--brand-border)" }}>
         <div style={{ maxWidth: 1440, margin: "0 auto", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
           <button onClick={() => navigate("/")}>Início</button>
           {" / "}
@@ -84,9 +83,9 @@ function ProductDetailInner({ p }: { p: Product }) {
         </div>
       </div>
 
-      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-        {/* Gallery — carousel */}
-        <div style={{ borderRight: "1px solid var(--brand-border)", position: "sticky", top: 110, height: "calc(100vh - 110px)", display: "flex", flexDirection: "column" }}>
+      <section className="sr-product-layout">
+        {/* Gallery */}
+        <div className="sr-product-gallery">
           {/* Main photo */}
           <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
             <Photo
@@ -95,7 +94,6 @@ function ProductDetailInner({ p }: { p: Product }) {
               alt={`${p.name} · ${galleryItems[galleryIdx]?.caption}`}
               style={{ position: "absolute", inset: 0, aspectRatio: "auto" }}
             />
-            {/* Side arrows */}
             {galleryItems.length > 1 && (
               <>
                 <button onClick={prevPhoto} style={{
@@ -114,7 +112,7 @@ function ProductDetailInner({ p }: { p: Product }) {
                 </button>
               </>
             )}
-            {/* Photo counter */}
+            {/* Photo counter dots */}
             <div style={{
               position: "absolute", bottom: 16, left: 0, right: 0,
               display: "flex", justifyContent: "center", gap: 6,
@@ -134,7 +132,7 @@ function ProductDetailInner({ p }: { p: Product }) {
 
           {/* Thumbnails strip */}
           {galleryItems.length > 1 && (
-            <div style={{ display: "flex", gap: 2, height: 90, flexShrink: 0 }}>
+            <div className="sr-hide-mobile" style={{ display: "flex", gap: 2, height: 90, flexShrink: 0 }}>
               {galleryItems.map((item, i) => (
                 <button key={i} onClick={() => setGalleryIdx(i)} style={{
                   flex: 1, position: "relative", overflow: "hidden",
@@ -161,7 +159,7 @@ function ProductDetailInner({ p }: { p: Product }) {
 
           {/* Description bar */}
           {p.description && (
-            <div style={{
+            <div className="sr-hide-mobile" style={{
               padding: "16px 24px",
               borderTop: "1px solid var(--brand-border)",
               fontSize: 12, lineHeight: 1.55, color: "var(--brand-muted)",
@@ -173,13 +171,13 @@ function ProductDetailInner({ p }: { p: Product }) {
         </div>
 
         {/* Order panel */}
-        <div style={{ padding: "48px 64px", position: "sticky", top: 110, height: "fit-content", maxHeight: "calc(100vh - 110px)", overflow: "auto" }}>
+        <div className="sr-product-order-panel">
           <div className="mono" style={{ fontSize: 11, letterSpacing: "0.12em", color: "var(--brand-muted)", textTransform: "uppercase" }}>
             {p.sku ?? p.id} · {p.collection}
           </div>
-          <h1 className="display" style={{ fontSize: 64, marginTop: 8, marginBottom: 16 }}>{p.name}</h1>
+          <h1 className="display sr-product-title" style={{ fontSize: 64, marginTop: 8, marginBottom: 16 }}>{p.name}</h1>
 
-          <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
             <div className="display" style={{ fontSize: 40 }}>{brl(unitPrice)}</div>
             <div className="mono" style={{ fontSize: 12, color: "var(--brand-muted)" }}>atacado · un</div>
             <div style={{ fontSize: 12, color: "var(--brand-muted)", textDecoration: "line-through" }}>
@@ -210,7 +208,7 @@ function ProductDetailInner({ p }: { p: Product }) {
             </div>
           </button>
 
-          {/* Color selector — carrossel horizontal */}
+          {/* Color selector */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
               <span className="eyebrow">Cor · {color.name}</span>
@@ -242,7 +240,7 @@ function ProductDetailInner({ p }: { p: Product }) {
               <span className="eyebrow">Grade de tamanhos</span>
               <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)" }}>MOQ {p.moq} un</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${p.sizes.length}, 1fr)`, gap: 4 }}>
+            <div className="sr-product-size-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${p.sizes.length}, 1fr)`, gap: 4 }}>
               {p.sizes.map(s => {
                 const stock = p.stockBySize?.[s] ?? 60;
                 const low = stock < 30;
@@ -291,7 +289,8 @@ function ProductDetailInner({ p }: { p: Product }) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+          {/* CTA inline — escondido no mobile, substituído pelo sticky */}
+          <div className="sr-product-cta-inline" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
             <Btn variant="primary" size="lg" disabled={total === 0} onClick={handleAdd}>
               {total > 0 ? `ADICIONAR ${total} PEÇA${total !== 1 ? "S" : ""}` : "SELECIONE QUANTIDADE"}
             </Btn>
@@ -344,6 +343,20 @@ function ProductDetailInner({ p }: { p: Product }) {
         </div>
       </section>
 
+      {/* CTA fixo no bottom — aparece apenas no mobile */}
+      <div className="sr-product-cta-sticky">
+        <Btn variant="primary" size="lg" disabled={total === 0} onClick={handleAdd} style={{ flex: 1 }}>
+          {total > 0 ? `ADICIONAR ${total} PEÇA${total !== 1 ? "S" : ""}` : "SELECIONE QUANTIDADE"}
+        </Btn>
+        <Btn variant="outline" size="lg" icon={<Icons.Whats/>}
+          onClick={() => {
+            const num = TENANT.whatsapp.replace(/\D/g, "");
+            const msg = encodeURIComponent(`Olá, tenho interesse na peça ${p.name} (${p.sku ?? p.id}). Pode me ajudar?`);
+            window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
+          }}>
+        </Btn>
+      </div>
+
       {tryOnOpen && color && <VirtualTryOn p={p} color={color} onClose={() => setTryOnOpen(false)}/>}
     </main>
   );
@@ -374,22 +387,19 @@ function VirtualTryOn({ p, color, onClose }: { p: Product; color: Color; onClose
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
       onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background: "white", width: "min(1100px, 100%)", height: "min(720px, 90vh)",
-        display: "grid", gridTemplateColumns: "1.2fr 1fr", overflow: "hidden",
-      }}>
+      <div onClick={e => e.stopPropagation()} className="sr-tryon-modal">
         {/* Canvas */}
-        <div style={{ background: "var(--brand-surface)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="sr-tryon-canvas" style={{ background: "var(--brand-surface)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           {step === 1 && (
             <div style={{ textAlign: "center" }}>
               <div style={{
-                width: 280, height: 360, border: "1.5px dashed var(--brand-border)",
+                width: "min(280px, 100%)", height: 360, border: "1.5px dashed var(--brand-border)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: 12, margin: "0 auto", cursor: "pointer",
               }} onClick={() => fileRef.current?.click()}>
                 <Icons.Upload size={28}/>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>Arraste uma foto</div>
-                <div style={{ fontSize: 11, color: "var(--brand-muted)" }}>ou clique para escolher · JPG/PNG · até 10MB</div>
+                <div style={{ fontSize: 11, color: "var(--brand-muted)" }}>ou clique · JPG/PNG · até 10MB</div>
               </div>
               <input type="file" accept="image/*" ref={fileRef} onChange={onFile} style={{ display: "none" }}/>
               <div style={{ marginTop: 24 }}>
@@ -434,7 +444,7 @@ function VirtualTryOn({ p, color, onClose }: { p: Product; color: Color; onClose
         </div>
 
         {/* Controls */}
-        <div style={{ padding: 40, display: "flex", flexDirection: "column", gap: 24, overflow: "auto" }}>
+        <div className="sr-tryon-controls" style={{ padding: 40, display: "flex", flexDirection: "column", gap: 24, overflow: "auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div className="eyebrow">Prova virtual · passo {step}/3</div>
             <button onClick={onClose}><Icons.X/></button>
@@ -469,7 +479,7 @@ function VirtualTryOn({ p, color, onClose }: { p: Product; color: Color; onClose
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
                 <div className="eyebrow" style={{ marginBottom: 10 }}>Trocar cor ao vivo</div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {p.colors.map(c => (
                     <button key={c.id} onClick={() => setActiveColorId(c.id)} style={{
                       padding: "8px 12px", display: "inline-flex", gap: 8, alignItems: "center",

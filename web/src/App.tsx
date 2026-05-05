@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -16,7 +16,6 @@ import { ShowroomLayout } from "@/components/showroom/ShowroomLayout";
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
 import ProductDetail from "@/pages/ProductDetail";
-import Lookbook from "@/pages/Lookbook";
 
 // Auth / member pages
 import Login from "@/pages/Login";
@@ -32,6 +31,7 @@ import CollectionList from "@/pages/admin/collections/CollectionList";
 import CollectionForm from "@/pages/admin/collections/CollectionForm";
 import OrderList from "@/pages/admin/orders/OrderList";
 import OrderDetail from "@/pages/admin/orders/OrderDetail";
+import SettingsPage from "@/pages/admin/settings/SettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,7 +56,6 @@ export default function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/catalog" element={<Catalog />} />
                     <Route path="/product/:id" element={<ProductDetail />} />
-                    <Route path="/lookbook" element={<Lookbook />} />
                   </Route>
 
                   {/* ── Member auth ── */}
@@ -68,7 +67,8 @@ export default function App() {
                   {/* ── Admin ── */}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route element={<AdminRoute />}>
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
+                    <Route path="/admin/dashboard" element={<Navigate to="/admin/products" replace />} />
 
                     {/* Products */}
                     <Route path="/admin/products" element={<ProductList />} />
@@ -83,6 +83,9 @@ export default function App() {
                     {/* Orders */}
                     <Route path="/admin/orders" element={<OrderList />} />
                     <Route path="/admin/orders/:id" element={<OrderDetail />} />
+
+                    {/* Settings */}
+                    <Route path="/admin/settings" element={<SettingsPage />} />
                   </Route>
 
                   <Route path="*" element={<NotFound />} />

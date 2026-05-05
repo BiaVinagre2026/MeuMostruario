@@ -1,4 +1,4 @@
-import type { Product, Collection, Category, Color, Look, LookProduct } from "@/types/catalog";
+import type { Product, Collection, Category, Color } from "@/types/catalog";
 
 // ── Raw API shapes ────────────────────────────────────────────────────────────
 
@@ -55,42 +55,14 @@ export interface ApiProduct {
   category: ApiCategory | null;
   collection: ApiCollection | null;
   cover_image: ApiImage | null;
-  colors?: string[];
+  colors?: Array<{ name: string; hex: string | null }> | string[];
+  sizes?: string[];
   images?: ApiImage[];
   variants?: ApiVariant[];
 }
 
 export interface ApiCollectionDetail extends ApiCollection {
   products?: ApiProduct[];
-}
-
-interface ApiLookProduct {
-  id: number;
-  slug: string;
-  name: string;
-  sku: string;
-  price_wholesale: number | null;
-  price_retail: number | null;
-  currency: string;
-  status: string;
-  tags: string[] | null;
-  category: { id: number; name: string; slug: string } | null;
-  collection: { id: number; name: string; slug: string } | null;
-  cover_image: ApiImage | null;
-  colors: string[];
-}
-
-export interface ApiLook {
-  id: number;
-  slug: string;
-  name: string;
-  description?: string | null;
-  cover_url?: string | null;
-  status: string;
-  position: number;
-  collection?: { id: number; name: string; slug: string } | null;
-  product_count: number;
-  products?: ApiLookProduct[];
 }
 
 export interface ApiCategoryWithSubs {
@@ -125,6 +97,8 @@ function buildColorImages(variants: ApiVariant[]): Record<string, string> {
   const map: Record<string, string> = {};
   for (const v of variants) {
     if (!v.color || !v.image_url) continue;
+    // Ignorar URLs externas (Unsplash, CDNs) — usar só uploads locais
+    if (!v.image_url.startsWith("/uploads/")) continue;
     const id = v.color.toLowerCase().replace(/\s+/g, "-");
     if (!map[id]) map[id] = v.image_url;
   }
@@ -145,6 +119,17 @@ function hexToTone(hex: string | null): string {
   if (r > g + 30) return "coral";
   if (g > r + 10) return "olive";
   return "sand";
+}
+
+function buildColorsFromApi(colors: ApiProduct["colors"]): Color[] {
+  if (!colors || colors.length === 0) return [];
+  if (typeof colors[0] === "string") return [];
+  return (colors as Array<{ name: string; hex: string | null }>).map((c) => ({
+    id:   c.name.toLowerCase().replace(/\s+/g, "-"),
+    name: c.name,
+    hex:  c.hex ?? undefined,
+    tone: hexToTone(c.hex),
+  }));
 }
 
 function buildSizes(variants: ApiVariant[]): string[] {
@@ -175,9 +160,9 @@ export function adaptProduct(p: ApiProduct): Product {
     category:    p.category?.slug   ?? "",
     price:       p.price_wholesale  ?? 0,
     priceRetail: p.price_retail     ?? 0,
-    colors:      buildColors(variants),
+    colors:      variants.length > 0 ? buildColors(variants) : buildColorsFromApi(p.colors),
     colorImages: buildColorImages(variants),
-    sizes:       buildSizes(variants),
+    sizes:       p.sizes ?? buildSizes(variants),
     tags:        p.tags             ?? [],
     description: p.description        ?? undefined,
     fabric:      p.fabric_composition ?? undefined,
@@ -213,24 +198,3 @@ export function adaptCategory(c: ApiCategoryWithSubs): Category {
   };
 }
 
-export function adaptLook(l: ApiLook): Look {
-  return {
-    id:             l.slug,
-    name:           l.name,
-    description:    l.description    ?? undefined,
-    coverUrl:       l.cover_url      ?? undefined,
-    collectionName: l.collection?.name,
-    collectionSlug: l.collection?.slug,
-    productCount:   l.product_count,
-    products: l.products?.map((p): LookProduct => ({
-      id:            p.slug,
-      name:          p.name,
-      sku:           p.sku,
-      collectionSlug: p.collection?.slug,
-      price:         p.price_wholesale ?? 0,
-      priceRetail:   p.price_retail    ?? 0,
-      colors:        p.colors          ?? [],
-      imageUrl:      imageUrl(p.cover_image),
-    })),
-  };
-}

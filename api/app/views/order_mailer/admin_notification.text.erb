@@ -1,0 +1,22 @@
+NOVO PEDIDO #<%= @order.id %>
+<%= @order.created_at.strftime("%d/%m/%Y %H:%M") %> · <%= @items.sum(&:qty) %> peças
+
+<% if @order.notes.present? %>Observações: <%= @order.notes %>
+<% end %>
+---
+<% @items.each do |item| %>
+- <%= item.product_name %> (<%= item.product_sku %>) · <%= item.color %> · tam. <%= item.size %> · <%= item.qty %>un · R$ <%= format('%.2f', item.unit_price.to_f * item.qty).tr('.', ',') %>
+<% end %>
+---
+<% meta = @meta || {}
+   subtotal     = meta["subtotal"].to_f
+   discount     = meta["discount"].to_f
+   discount_pct = meta["discount_pct"].to_i
+   total        = meta["total"].to_f
+   total        = @order.total_value.to_f if total.zero?
+%>
+<% if subtotal > 0 && discount > 0 %>
+Subtotal: R$ <%= format('%.2f', subtotal).tr('.', ',') %>
+Desconto (<%= discount_pct %>%): -R$ <%= format('%.2f', discount).tr('.', ',') %>
+<% end %>
+Total: R$ <%= format('%.2f', total).tr('.', ',') %>

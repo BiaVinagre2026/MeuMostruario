@@ -96,14 +96,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
     }
   }
 
-  let errorBody: ApiErrorType = { error: response.statusText };
+  let message = response.statusText;
+  let details: Record<string, string[]> | undefined;
   try {
-    errorBody = (await response.json()) as ApiErrorType;
+    const body = await response.json() as { error?: string; errors?: string[] | string; details?: Record<string, string[]> };
+    if (body.error) message = body.error;
+    else if (Array.isArray(body.errors)) message = body.errors.join(", ");
+    else if (typeof body.errors === "string") message = body.errors;
+    details = body.details;
   } catch {
     // non-JSON error body
   }
 
-  throw new ApiError(errorBody.error, response.status, errorBody.details);
+  throw new ApiError(message, response.status, details);
 }
 
 export const apiClient = {

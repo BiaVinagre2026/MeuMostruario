@@ -72,8 +72,19 @@ module Api
           )
         end
 
+        SIZE_ORDER = %w[PP P M G GG XGG Único].freeze
+
         def product_summary_json(p)
           cover = p.images.find(&:is_cover) || p.images.first
+
+          raw_stock = p.variants.each_with_object(Hash.new(0)) do |v, h|
+            h[v.size.to_s] += v.stock_qty.to_i if v.size.present?
+          end
+          stock_by_size = SIZE_ORDER
+            .filter_map { |s| [s, raw_stock[s]] if raw_stock.key?(s) }
+            .concat(raw_stock.reject { |s, _| SIZE_ORDER.include?(s) }.to_a)
+            .to_h
+
           {
             id:              p.id,
             name:            p.name,
@@ -83,10 +94,16 @@ module Api
             price_wholesale: p.price_wholesale,
             price_retail:    p.price_retail,
             collection:      p.collection ? { id: p.collection.id, name: p.collection.name } : nil,
-            cover_url:       cover ? cover.urls&.dig("original") : nil,
+            cover_url:       cover_url_for(cover),
             variants_count:  p.variants.size,
+            stock_by_size:   stock_by_size,
             created_at:      p.created_at
           }
+        end
+
+        def cover_url_for(img)
+          return nil unless img&.urls.is_a?(Hash)
+          img.urls["thumb"] || img.urls["small"] || img.urls["regular"] || img.urls["original"] || img.urls.values.compact.first
         end
 
         def product_full_json(p)

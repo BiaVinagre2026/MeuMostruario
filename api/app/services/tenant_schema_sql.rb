@@ -445,6 +445,7 @@ class TenantSchemaSql
         qty             INTEGER        NOT NULL DEFAULT 1,
         unit_price      DECIMAL(10,2),
         subtotal        DECIMAL(10,2),
+        metadata        JSONB          NOT NULL DEFAULT '{}',
         created_at      TIMESTAMP      NOT NULL DEFAULT NOW()
       );
 

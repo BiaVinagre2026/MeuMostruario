@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useForm,
@@ -37,6 +37,7 @@ import {
   deleteProductImage,
   uploadFile,
 } from "@/lib/api/products";
+import { ApiError } from "@/lib/api/client";
 import { getCollections, getCategories } from "@/lib/api/collections";
 import type { Product, ProductVariant, ProductImage, ProductStatus } from "@/types/product";
 
@@ -91,7 +92,10 @@ export default function ProductForm() {
   const productId = id ? parseInt(id, 10) : null;
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<TabId>("info");
+  const [searchParams] = useSearchParams();
+  const initialTab = isEdit ? ((searchParams.get("tab") as TabId) ?? "info") : "info";
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [pendingTab, setPendingTab] = useState<TabId | null>(null);
 
   // Fetch existing product for edit
   const { data: product, isLoading: isLoadingProduct } = useQuery({
@@ -161,9 +165,11 @@ export default function ProductForm() {
   const createMutation = useMutation({
     mutationFn: (data: Partial<Product>) => createProduct(data),
     onSuccess: (created) => {
-      toast.success("Produto criado. Agora adicione fotos e variantes.");
+      toast.success("Produto criado!");
       void queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
-      navigate(`/admin/products/${created.id}/edit`, { replace: true });
+      const goTo = pendingTab ?? "info";
+      setPendingTab(null);
+      navigate(`/admin/products/${created.id}/edit?tab=${goTo}`, { replace: true });
     },
     onError: () => toast.error("Erro ao criar produto."),
   });
@@ -179,6 +185,15 @@ export default function ProductForm() {
   });
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  function handleTabClick(tabId: TabId) {
+    if (!isEdit && tabId !== "info") {
+      setPendingTab(tabId);
+      void handleSubmit(onSubmit)();
+      return;
+    }
+    setActiveTab(tabId);
+  }
 
   function onSubmit(values: ProductFormValues) {
     const payload: Partial<Product> = {
@@ -232,24 +247,27 @@ export default function ProductForm() {
       {/* Tabs */}
       <div className="border-b px-6">
         <div className="flex gap-0">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              disabled={!isEdit && tab.id !== "info"}
-              className={[
-                "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-                !isEdit && tab.id !== "info"
-                  ? "opacity-40 cursor-not-allowed"
-                  : "",
-              ].join(" ")}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const lockedOnNew = !isEdit && tab.id !== "info";
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id)}
+                title={lockedOnNew ? "Salva as informações básicas para acessar esta aba" : undefined}
+                className={[
+                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5",
+                  activeTab === tab.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                ].join(" ")}
+              >
+                {tab.label}
+                {lockedOnNew && (
+                  <span className="text-xs text-muted-foreground/60">↵</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -266,11 +284,15 @@ export default function ProductForm() {
             isEdit={isEdit}
           />
         )}
-        {activeTab === "photos" && isEdit && product && (
-          <PhotosTab product={product} productId={productId!} />
+        {activeTab === "photos" && (
+          isEdit && product
+            ? <PhotosTab product={product} productId={productId!} />
+            : <div className="text-sm text-muted-foreground py-8">Preencha as informações básicas e clique nesta aba para salvar e continuar.</div>
         )}
-        {activeTab === "variants" && isEdit && product && (
-          <VariantsTab product={product} productId={productId!} />
+        {activeTab === "variants" && (
+          isEdit && product
+            ? <VariantsTab product={product} productId={productId!} />
+            : <div className="text-sm text-muted-foreground py-8">Preencha as informações básicas e clique nesta aba para salvar e continuar.</div>
         )}
       </div>
 
@@ -678,7 +700,7 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
       toast.success("Variante adicionada.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
     },
-    onError: () => toast.error("Erro ao criar variante."),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao criar variante."),
   });
 
   const updateVariantMutation = useMutation({
@@ -688,7 +710,7 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
       toast.success("Variante salva.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
     },
-    onError: () => toast.error("Erro ao salvar variante."),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao salvar variante."),
   });
 
   const deleteVariantMutation = useMutation({
@@ -697,7 +719,7 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
       toast.success("Variante removida.");
       void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
     },
-    onError: () => toast.error("Erro ao remover variante."),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao remover variante."),
   });
 
   function addRow() {
@@ -714,9 +736,19 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
     setNewRows((rows) => rows.filter((_, i) => i !== index));
   }
 
+  function normalizeHex(hex: string): string {
+    const h = hex.trim();
+    // Expand shorthand #RGB → #RRGGBB
+    if (/^#[0-9A-Fa-f]{3}$/.test(h)) {
+      return `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`;
+    }
+    return h;
+  }
+
   async function saveRow(index: number) {
     const row = newRows[index];
-    await createVariantMutation.mutateAsync(row);
+    const normalized = { ...row, color_hex: normalizeHex(row.color_hex) };
+    await createVariantMutation.mutateAsync(normalized);
     setNewRows((rows) => rows.filter((_, i) => i !== index));
   }
 

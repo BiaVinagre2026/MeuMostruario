@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Photo, Btn, Tag } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
@@ -15,6 +15,12 @@ export default function Home() {
   const [b2bOpen, setB2bOpen]         = useState(false);
   const [tryOnOpen, setTryOnOpen]     = useState(false);
   const [howOpen, setHowOpen]         = useState(false);
+  const [isMobile, setIsMobile]       = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   const featured = allProducts.slice(0, 8);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -51,7 +57,7 @@ export default function Home() {
   return (
     <main>
       {/* Hero */}
-      <section style={{ position: "relative", height: "calc(100vh - 110px)", minHeight: 600 }}>
+      <section className="sr-hero" style={{ position: "relative", minHeight: 500 }}>
         {featured[0]?.imageUrl ? (
           <img
             src={featured[0].imageUrl}
@@ -62,41 +68,49 @@ export default function Home() {
           <div style={{ position: "absolute", inset: 0, background: "var(--brand-surface)" }}/>
         )}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 45%, transparent 100%)" }}/>
-        <div style={{ position: "absolute", inset: 0, padding: 48, display: "flex", flexDirection: "column", justifyContent: "flex-end", color: "white" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 32 }}>
+        <div className="sr-hero-content">
+          <div className="sr-hero-inner">
             <div>
               <div className="mono" style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.8, marginBottom: 24 }}>
                 {collections[0]?.name ?? "Drop"} · {allProducts.length > 0 ? `${allProducts.length} peças` : "Mostruário"}
               </div>
-              <h1 className="display" style={{ fontSize: "clamp(64px, 9vw, 168px)", fontStyle: "italic", maxWidth: "9ch" }}>
+              <h1 className="display" style={{ fontSize: "clamp(44px, 9vw, 168px)", fontStyle: "italic", maxWidth: "9ch" }}>
                 {collections[0]?.name ?? "Mostruário"}.
               </h1>
-              <div className="display" style={{ fontSize: "clamp(28px, 3vw, 44px)", marginTop: -12, opacity: 0.9 }}>
+              <div className="display" style={{ fontSize: "clamp(22px, 3vw, 44px)", marginTop: -8, opacity: 0.9 }}>
                 Mostruário aberto para multimarca.
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end", minWidth: 320 }}>
+            <div className="sr-hero-cta-col">
               <div className="mono" style={{ fontSize: 11, letterSpacing: "0.1em", opacity: 0.75, textAlign: "right" }}>
                 Prazo de produção 30 dias · Envio a partir de 15.06
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <Btn variant="accent" size="lg" onClick={() => navigate("/catalog")} icon={<Icons.Arrow/>}>Ver catálogo</Btn>
+              <div style={{ display: "flex", gap: 10, width: "100%" }}>
+                <Btn
+                  variant="accent" size="lg"
+                  onClick={() => navigate("/catalog")}
+                  icon={<Icons.Arrow/>}
+                  style={{ flex: 1, justifyContent: "center" }}
+                >
+                  Ver catálogo
+                </Btn>
               </div>
             </div>
           </div>
         </div>
-        <div style={{ position: "absolute", top: 48, right: 48, writingMode: "vertical-rl", color: "white", fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.7 }}>
+        <div className="sr-hero-index">
           Índice 01/{String(collections.length || 1).padStart(2, "0")} · {collections[0]?.name ?? "Drop"}
         </div>
       </section>
 
       {/* How it works */}
       <section style={{ borderTop: "1px solid var(--brand-border)", borderBottom: "1px solid var(--brand-border)" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+        <div className="sr-how-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)" }}>
 
           {/* 01 — Cadastro Lojista */}
           <button
             onClick={() => setB2bOpen(true)}
+            className="sr-how-item"
             style={{ padding: "40px 32px", borderRight: "1px solid var(--brand-border)", textAlign: "left", cursor: "pointer", transition: "background 0.15s" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--brand-surface)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -112,7 +126,7 @@ export default function Home() {
           </button>
 
           {/* 02 — Pedido mínimo */}
-          <div style={{ padding: "40px 32px", borderRight: "1px solid var(--brand-border)" }}>
+          <div className="sr-how-item" style={{ padding: "40px 32px", borderRight: "1px solid var(--brand-border)" }}>
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>02</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Pedido mínimo</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
@@ -120,8 +134,8 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 03 — Grade flexível com chips de tamanho */}
-          <div style={{ padding: "40px 32px", borderRight: "1px solid var(--brand-border)" }}>
+          {/* 03 — Grade flexível */}
+          <div className="sr-how-item" style={{ padding: "40px 32px", borderRight: "1px solid var(--brand-border)" }}>
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>03</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Grade flexível</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
@@ -130,7 +144,7 @@ export default function Home() {
           </div>
 
           {/* 04 — Pagamento */}
-          <div style={{ padding: "40px 32px" }}>
+          <div className="sr-how-item" style={{ padding: "40px 32px" }}>
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>04</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Pagamento</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
@@ -140,29 +154,27 @@ export default function Home() {
               onClick={() => setB2bOpen(true)}
               style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)", borderBottom: "1px solid var(--brand-muted)", paddingBottom: 2 }}
             >
-              Consultar outras formas de pagamento <Icons.Arrow/>
+              Consultar formas de pagamento <Icons.Arrow/>
             </button>
           </div>
         </div>
       </section>
 
-      {/* Tabela de preços por volume — abaixo dos 4 cards */}
+      {/* Tabela de preços por volume */}
       <section style={{ padding: "32px 32px 36px", background: "var(--brand-surface)", borderBottom: "1px solid var(--brand-border)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div className="eyebrow" style={{ marginBottom: 10, textAlign: "center" }}>Quanto mais pedir, mais margem.</div>
           <div style={{ background: "white", border: "1px solid var(--brand-border)" }}>
             {TIERS.map((t, i) => (
-              <div key={i} style={{
-                display: "grid", gridTemplateColumns: "40px 1fr 1fr 100px",
-                alignItems: "center", padding: "14px 24px",
+              <div key={i} className="sr-tiers-row" style={{
                 borderBottom: i < TIERS.length - 1 ? "1px solid var(--brand-border)" : "none",
               }}>
                 <span className="mono" style={{ fontSize: 10, color: "var(--brand-muted)" }}>0{i + 1}</span>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{t.label}</span>
-                <span className="mono" style={{ fontSize: 12, color: "var(--brand-muted)" }}>
+                <span className="mono sr-tiers-pieces" style={{ fontSize: 12, color: "var(--brand-muted)" }}>
                   {t.min}{t.max ? `–${t.max}` : "+"} peças
                 </span>
-                <span className="display" style={{ fontSize: 24, color: t.discount ? "var(--brand-primary)" : "var(--brand-foreground)", textAlign: "right" }}>
+                <span className="display sr-tiers-discount" style={{ fontSize: 24, color: t.discount ? "var(--brand-primary)" : "var(--brand-foreground)", textAlign: "right" }}>
                   {t.discount ? `−${t.discount}%` : "base"}
                 </span>
               </div>
@@ -172,12 +184,12 @@ export default function Home() {
       </section>
 
       {/* Featured products — carrossel horizontal */}
-      <section style={{ padding: "56px 0 56px 32px" }}>
+      <section className="sr-featured-section">
         <div style={{ maxWidth: 1440, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, paddingRight: 32 }}>
+          <div className="sr-featured-header">
             <div>
               <div className="eyebrow" style={{ marginBottom: 16 }}>Destaques do drop</div>
-              <h2 className="display" style={{ fontSize: 72 }}>{allProducts.length > 0 ? `${allProducts.length} peças` : "Destaques"}. <em>Saem primeiro.</em></h2>
+              <h2 className="display sr-featured-title" style={{ fontSize: "clamp(26px, 7vw, 72px)", lineHeight: 1.05 }}>{allProducts.length > 0 ? `${allProducts.length} peças` : "Destaques"}. <em>Saem primeiro.</em></h2>
             </div>
             <button onClick={() => navigate("/catalog")} style={{
               fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase",
@@ -187,73 +199,96 @@ export default function Home() {
           </div>
 
           <div style={{ position: "relative" }}>
-            {/* Scroll container */}
-            <div
-              ref={carouselRef}
-              style={{
-                display: "flex", gap: 4,
-                overflowX: "auto", scrollbarWidth: "none",
-                scrollSnapType: "x mandatory",
-                paddingRight: 32,
-              }}
-            >
-              {featured.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => navigate(`/product/${p.id}`)}
+            {isMobile ? (
+              /* Mobile: grid 2 colunas vertical, sem scroll horizontal */
+              <div style={{
+                display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2,
+                paddingRight: 16,
+              }}>
+                {featured.slice(0, 4).map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => navigate(`/product/${p.id}`)}
+                    style={{ textAlign: "left", display: "block" }}
+                  >
+                    <div style={{ position: "relative", aspectRatio: "4/5", overflow: "hidden", background: "var(--brand-surface)" }}>
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={p.name}
+                          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}/>
+                      ) : (
+                        <div style={{ position: "absolute", inset: 0, background: TONE[p.colors[0]?.tone ?? "sand"]?.bg ?? "#e5e0db" }}/>
+                      )}
+                      <div style={{ position: "absolute", bottom: 8, left: 8, fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+                        {p.sku ?? p.id}
+                      </div>
+                    </div>
+                    <div style={{ padding: "8px 2px" }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{p.name}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* Desktop: carrossel horizontal */
+              <>
+                <div
+                  ref={carouselRef}
                   style={{
-                    flexShrink: 0,
-                    width: "calc((100% - 32px) / 3 - 4px)",
-                    textAlign: "left",
-                    scrollSnapAlign: "start",
-                    display: "block",
+                    display: "flex", gap: 4,
+                    overflowX: "auto", scrollbarWidth: "none",
+                    scrollSnapType: "x mandatory",
+                    paddingRight: 32,
                   }}
                 >
-                  <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden", background: "var(--brand-surface)" }}>
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
-                      />
-                    ) : (
-                      <div style={{ position: "absolute", inset: 0, background: TONE[p.colors[0]?.tone ?? "sand"]?.bg ?? "#e5e0db" }}/>
-                    )}
-                    <div style={{ position: "absolute", bottom: 12, left: 12, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
-                      {p.sku ?? p.id}
-                    </div>
-                  </div>
-                  <div style={{ padding: "14px 4px" }}>
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>{p.name}</div>
-                  </div>
+                  {featured.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => navigate(`/product/${p.id}`)}
+                      className="sr-featured-item"
+                      style={{ textAlign: "left", scrollSnapAlign: "start", display: "block" }}
+                    >
+                      <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden", background: "var(--brand-surface)" }}>
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt={p.name}
+                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}/>
+                        ) : (
+                          <div style={{ position: "absolute", inset: 0, background: TONE[p.colors[0]?.tone ?? "sand"]?.bg ?? "#e5e0db" }}/>
+                        )}
+                        <div style={{ position: "absolute", bottom: 12, left: 12, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "white", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+                          {p.sku ?? p.id}
+                        </div>
+                      </div>
+                      <div style={{ padding: "14px 4px" }}>
+                        <div style={{ fontSize: 15, fontWeight: 500 }}>{p.name}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={scrollCarousel}
+                  style={{
+                    position: "absolute", right: 40, top: "40%", transform: "translateY(-50%)",
+                    width: 48, height: 48,
+                    background: "white", border: "1px solid var(--brand-border)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.12)",
+                    zIndex: 2,
+                  }}
+                >
+                  <Icons.Arrow size={16}/>
                 </button>
-              ))}
-            </div>
-
-            {/* Seta direita */}
-            <button
-              onClick={scrollCarousel}
-              style={{
-                position: "absolute", right: 40, top: "40%", transform: "translateY(-50%)",
-                width: 48, height: 48,
-                background: "white", border: "1px solid var(--brand-border)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.12)",
-                zIndex: 2,
-              }}
-            >
-              <Icons.Arrow size={16}/>
-            </button>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       {/* Collections */}
-      <section style={{ padding: "0 32px 56px" }}>
+      <section className="sr-collections-section" style={{ padding: "0 32px 56px" }}>
         <div style={{ maxWidth: 1440, margin: "0 auto" }}>
           <div className="eyebrow" style={{ marginBottom: 16 }}>Arquitetura da coleção</div>
-          <h2 className="display" style={{ fontSize: 72, marginBottom: 48 }}>{collections.length || 3} {collections.length === 1 ? "linha" : "linhas"}. <em>Um atelier.</em></h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+          <h2 className="display sr-collections-title" style={{ fontSize: "clamp(24px, 6vw, 72px)", marginBottom: "clamp(16px, 3vw, 48px)", lineHeight: 1.1 }}>{collections.length || 3} {collections.length === 1 ? "linha" : "linhas"}. <em>Um atelier.</em></h2>
+          <div className="sr-collections-grid">
             {(collections.length ? collections : []).map((c, i) => {
               const imgUrl   = collectionImages[c.id];
               const colors   = collectionColors[c.id] ?? [];
@@ -299,23 +334,31 @@ export default function Home() {
       </section>
 
       {/* Virtual try-on callout */}
-      <section style={{ background: "var(--brand-foreground)", color: "white", padding: "64px 32px" }}>
-        <div style={{ maxWidth: 1440, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
-          <div>
-            <div className="eyebrow" style={{ color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Experimentação digital</div>
-            <h2 className="display" style={{ fontSize: 84, lineHeight: 0.95 }}>Sua cliente <em>prova antes</em> de pedir.</h2>
-            <p style={{ fontSize: 17, lineHeight: 1.55, color: "rgba(255,255,255,0.7)", marginTop: 32, maxWidth: 480 }}>
-              Envie uma foto, escolha cor e tamanho, e veja a peça ajustada no corpo em segundos.
-              Reduz troca, acelera o fechamento do pedido, e transforma a lojista em embaixadora do drop.
-            </p>
-            <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
-              <Btn variant="accent" size="lg" onClick={() => setTryOnOpen(true)}>Abrir prova virtual</Btn>
-              <Btn variant="ghost" size="lg" style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }} onClick={() => setHowOpen(true)}>Como funciona</Btn>
+      <section className="sr-tryon-section" style={{ background: "var(--brand-foreground)", color: "white", padding: "64px 32px" }}>
+        <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+          <div className="sr-tryon-grid">
+            <div>
+              <div className="eyebrow" style={{ color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Experimentação digital</div>
+              <h2 className="display sr-tryon-title">Sua cliente <em>prova antes</em> de pedir.</h2>
+              <p style={{ fontSize: 17, lineHeight: 1.55, color: "rgba(255,255,255,0.7)", marginTop: 32, maxWidth: 480 }}>
+                Envie uma foto, escolha cor e tamanho, e veja a peça ajustada no corpo em segundos.
+                Reduz troca, acelera o fechamento do pedido, e transforma a lojista em embaixadora do drop.
+              </p>
+              <div className="sr-tryon-actions">
+                <Btn variant="accent" size="lg" onClick={() => setTryOnOpen(true)}>Abrir prova virtual</Btn>
+                <Btn variant="ghost" size="lg" style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }} onClick={() => setHowOpen(true)}>Como funciona</Btn>
+              </div>
             </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-            <Photo tone="sand" ratio="3/4" caption="Antes · sem peça"/>
-            <Photo tone="clay" ratio="3/4" imageUrl={featured[0]?.imageUrl} alt={featured[0]?.name} caption={featured[0] ? `Depois · ${featured[0].sku}` : "Depois · prova virtual"}/>
+            <div className="sr-tryon-photos" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+              <Photo
+                tone="sand" ratio="3/4"
+                imageUrl={featured[0]?.imageUrl}
+                alt={featured[0]?.name}
+                caption="Antes · sem peça"
+                style={{ filter: "saturate(0.08) sepia(0.45) brightness(1.06)" }}
+              />
+              <Photo tone="clay" ratio="3/4" imageUrl={featured[0]?.imageUrl} alt={featured[0]?.name} caption={featured[0] ? `Depois · ${featured[0].sku}` : "Depois · prova virtual"}/>
+            </div>
           </div>
         </div>
       </section>
@@ -499,7 +542,7 @@ function TryOnModal({ onClose, products }: { onClose: () => void; products: Prod
           <div className="eyebrow" style={{ marginBottom: 8 }}>Provador virtual</div>
           <h2 className="display" style={{ fontSize: 36 }}>Experimente antes de pedir</h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div className="sr-tryon-modal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           {/* Left: upload + result */}
           <div>
             <div style={{ marginBottom: 12, fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
@@ -547,7 +590,6 @@ function TryOnModal({ onClose, products }: { onClose: () => void; products: Prod
             <div style={{ marginBottom: 12, fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
               02 · Peça
             </div>
-            {/* Product thumbnail */}
             <div style={{ aspectRatio: "3/4", background: "var(--brand-surface)", overflow: "hidden", marginBottom: 16 }}>
               {product?.imageUrl
                 ? <img src={product.imageUrl} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}/>
@@ -624,7 +666,7 @@ function HowItWorksModal({ onClose }: { onClose: () => void }) {
     },
     {
       n: "02",
-      title: "Clique em "Provar no corpo"",
+      title: "Clique em \"Provar no corpo\"",
       desc: "No detalhe da peça, o botão de provador virtual abre o painel de experimentação. Selecione a cor e o tamanho desejados antes de gerar a prova.",
     },
     {
@@ -694,10 +736,12 @@ function HowItWorksModal({ onClose }: { onClose: () => void }) {
 function Overlay({ children, onClose, wide }: { children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div
+      className="sr-modal-overlay"
       style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(10,10,10,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, overflowY: "auto" }}
       onClick={onClose}
     >
       <div
+        className={`sr-modal-box${wide ? " sr-modal-box-wide" : ""}`}
         style={{ background: "white", padding: wide ? 48 : 40, width: "100%", maxWidth: wide ? 820 : 560, maxHeight: "90vh", overflowY: "auto", position: "relative" }}
         onClick={(e) => e.stopPropagation()}
       >

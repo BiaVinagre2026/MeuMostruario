@@ -9,6 +9,18 @@ class OrderItem < ApplicationRecord
 
   before_save :compute_subtotal
 
+  def color_hex
+    metadata&.dig("color_hex")
+  end
+
+  def image_url
+    metadata&.dig("image_url")
+  end
+
+  def qty_by_size
+    metadata&.dig("qty_by_size") || {}
+  end
+
   private
 
   def compute_subtotal

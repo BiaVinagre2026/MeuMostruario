@@ -41,14 +41,15 @@ export default function Catalog() {
 
   return (
     <main>
-      <section style={{ padding: "48px 32px 32px", borderBottom: "1px solid var(--brand-border)" }}>
+      {/* Cabeçalho */}
+      <section className="sr-catalog-section-header" style={{ padding: "48px 32px 32px", borderBottom: "1px solid var(--brand-border)" }}>
         <div style={{ maxWidth: 1440, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div className="sr-catalog-header-row">
             <div>
               <div className="eyebrow" style={{ marginBottom: 12 }}>Mostruário</div>
-              <h1 className="display" style={{ fontSize: 88 }}>Catálogo</h1>
+              <h1 className="display sr-catalog-title">Catálogo</h1>
             </div>
-            <div style={{ textAlign: "right" }}>
+            <div className="sr-catalog-view-toggle">
               <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Visualização</div>
               <div style={{ display: "inline-flex", marginTop: 8, border: "1px solid var(--brand-border)" }}>
                 <button onClick={() => setView("grid")} style={viewBtn(view === "grid")}>
@@ -63,39 +64,43 @@ export default function Catalog() {
         </div>
       </section>
 
-      <section style={{ padding: "0 32px", borderBottom: "1px solid var(--brand-border)", position: "sticky", top: 83, background: "white", zIndex: 10 }}>
-        <div style={{ maxWidth: 1440, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0" }}>
-          <div style={{ display: "flex", gap: 4 }}>
-            {allCategories.map((c) => (
-              <button key={c.id} onClick={() => setCat(c.id)} style={chip(cat === c.id)}>
-                {c.label} <span style={{ opacity: 0.4 }}>{c.count}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <select value={collection} onChange={(e) => setCollection(e.target.value)} style={sel}>
-              <option value="all">Todas coleções</option>
-              {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value)} style={sel}>
-              <option value="featured">Destaques</option>
-              <option value="price-asc">Preço ↑</option>
-              <option value="price-desc">Preço ↓</option>
-            </select>
+      {/* Barra de filtros */}
+      <section className="sr-filter-bar-sticky" style={{ padding: "0 32px", borderBottom: "1px solid var(--brand-border)", position: "sticky", top: 83, background: "white", zIndex: 10 }}>
+        <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+          <div className="sr-filter-bar">
+            <div className="sr-filter-chips">
+              {allCategories.map((c) => (
+                <button key={c.id} onClick={() => setCat(c.id)} style={chip(cat === c.id)}>
+                  {c.label} <span style={{ opacity: 0.4 }}>{c.count}</span>
+                </button>
+              ))}
+            </div>
+            <div className="sr-filter-selects">
+              <select value={collection} onChange={(e) => setCollection(e.target.value)} style={sel}>
+                <option value="all">Todas coleções</option>
+                {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <select value={sort} onChange={(e) => setSort(e.target.value)} style={sel}>
+                <option value="featured">Destaques</option>
+                <option value="price-asc">Preço ↑</option>
+                <option value="price-desc">Preço ↓</option>
+              </select>
+            </div>
           </div>
         </div>
       </section>
 
-      <section style={{ padding: "32px 32px 96px" }}>
+      {/* Produtos */}
+      <section className="sr-catalog-body" style={{ padding: "32px 32px 96px" }}>
         <div style={{ maxWidth: 1440, margin: "0 auto" }}>
           {isLoading ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
+            <div className="sr-product-grid-loading">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} style={{ aspectRatio: "3/4", background: "var(--brand-surface)", animation: "pulse 1.5s infinite" }}/>
               ))}
             </div>
           ) : view === "grid" ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
+            <div className="sr-product-grid">
               {filtered.map((p) => (
                 <ProductCard key={p.id} p={p}
                   onOpen={() => requireAuth(() => navigate(`/product/${p.id}`))}
@@ -130,6 +135,7 @@ const chip = (active: boolean): React.CSSProperties => ({
   background: active ? "var(--brand-foreground)" : "transparent",
   color: active ? "white" : "var(--brand-foreground)",
   border: "1px solid " + (active ? "var(--brand-foreground)" : "var(--brand-border)"),
+  whiteSpace: "nowrap",
 });
 const sel: React.CSSProperties = {
   border: "1px solid var(--brand-border)", padding: "8px 12px",
@@ -178,40 +184,56 @@ function ProductCard({ p, onOpen, onQuickAdd }: { p: Product; onOpen: () => void
             <div style={{ position: "absolute", inset: 0, background: TONE[p.colors[colorIdx]?.tone ?? "sand"]?.bg ?? "#e5e0db" }}/>
           )}
 
-          {/* Seta esquerda */}
+          {/* Setas — apenas desktop (hover) */}
           {hasCarousel && hovered && (
-            <button
-              onClick={prevImg}
-              style={{
-                position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer",
-                fontSize: 18, padding: "4px 8px", lineHeight: 1,
-              }}
-            >
-              ‹
-            </button>
+            <button onClick={prevImg} style={{
+              position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)",
+              background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer",
+              fontSize: 18, padding: "4px 8px", lineHeight: 1,
+            }}>‹</button>
+          )}
+          {hasCarousel && hovered && (
+            <button onClick={nextImg} style={{
+              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+              background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer",
+              fontSize: 18, padding: "4px 8px", lineHeight: 1,
+            }}>›</button>
           )}
 
-          {/* Seta direita */}
-          {hasCarousel && hovered && (
-            <button
-              onClick={nextImg}
-              style={{
-                position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer",
-                fontSize: 18, padding: "4px 8px", lineHeight: 1,
-              }}
-            >
-              ›
-            </button>
+          {/* Bolinhas de cor */}
+          {p.colors.length > 0 && (
+            <div style={{ position: "absolute", bottom: 10, left: 8, display: "flex", alignItems: "center", zIndex: 3 }}>
+              {p.colors.slice(0, 4).map((c, i) => (
+                <button
+                  key={c.id}
+                  onClick={(e) => { e.stopPropagation(); setColorIdx(i); }}
+                  title={c.name}
+                  style={{
+                    width: 18, height: 18, borderRadius: 999, flexShrink: 0,
+                    background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
+                    border: "2px solid white",
+                    marginLeft: i > 0 ? -5 : 0,
+                    position: "relative", zIndex: 4 - i,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }}
+                />
+              ))}
+              {p.colors.length > 4 && (
+                <span style={{
+                  marginLeft: 4, fontSize: 9, fontFamily: "var(--font-mono)",
+                  background: "rgba(255,255,255,0.88)", borderRadius: 999,
+                  padding: "1px 5px", color: "var(--brand-foreground)", fontWeight: 600,
+                }}>+{p.colors.length - 4}</span>
+              )}
+            </div>
           )}
         </div>
       </button>
 
-      {/* Botão "Adicionar grade" — sobre a foto, acima das setas */}
+      {/* "Adicionar grade" ao hover (escondido no mobile, substituído pelo tap) */}
       {hovered && (
-        <button onClick={onQuickAdd} style={{
-          position: "absolute", bottom: 80, left: 12, right: 12,
+        <button onClick={onQuickAdd} className="sr-hide-mobile" style={{
+          position: "absolute", bottom: 90, left: 12, right: 12,
           background: "white", color: "var(--brand-foreground)",
           padding: "12px", fontFamily: "var(--font-mono)", fontSize: 11,
           letterSpacing: "0.12em", textTransform: "uppercase",
@@ -223,115 +245,95 @@ function ProductCard({ p, onOpen, onQuickAdd }: { p: Product; onOpen: () => void
         </button>
       )}
 
+      {/* Botão de adicionar — sempre visível no mobile (abaixo da foto) */}
+      <button onClick={onQuickAdd} className="sr-hide-desktop" style={{
+        display: "flex",
+        width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "10px",
+        marginTop: 4,
+        background: "var(--brand-surface)",
+        border: "1px solid var(--brand-border)",
+        fontFamily: "var(--font-mono)", fontSize: 10,
+        letterSpacing: "0.12em", textTransform: "uppercase",
+        gap: 6,
+      }}>
+        <Icons.Plus size={12}/> Grade
+      </button>
+
       {/* Info abaixo da foto */}
-      <div style={{ padding: "14px 4px 4px" }}>
-        {/* Nome e preço */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>{p.name}</div>
-            <div className="mono" style={{ fontSize: 10, color: "var(--brand-muted)", marginTop: 2 }}>{p.sku ?? p.id}</div>
-          </div>
-          <div className="mono" style={{ fontSize: 14, fontWeight: 500, flexShrink: 0 }}>{brl(p.price)}</div>
+      <div style={{ padding: "14px 2px 8px" }}>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.3 }}>{p.name}</div>
+          <div className="mono" style={{ fontSize: 10, color: "var(--brand-muted)", marginTop: 2 }}>{p.sku ?? p.id}</div>
+          <div className="mono" style={{ fontSize: 14, fontWeight: 600, marginTop: 6 }}>{brl(p.price)}</div>
         </div>
 
-        {/* Grade de cores — carrossel horizontal, máx 5 */}
-        {p.colors.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--brand-muted)", marginBottom: 6 }}>
-              Cores · {p.colors.length}
-            </div>
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
-              {p.colors.slice(0, 5).map((c, i) => (
-                <button
-                  key={c.id}
-                  onClick={(e) => { e.stopPropagation(); setColorIdx(i); }}
-                  title={c.name}
-                  style={{
-                    flexShrink: 0,
-                    width: 20, height: 20, borderRadius: 999,
-                    background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
-                    border: i === colorIdx ? "2px solid var(--brand-foreground)" : "1px solid var(--brand-border)",
-                    outline: i === colorIdx ? "2px solid white" : "none",
-                    outlineOffset: -3,
-                  }}
-                />
-              ))}
-              {p.colors.length > 5 && (
-                <span className="mono" style={{ fontSize: 9, color: "var(--brand-muted)", alignSelf: "center", flexShrink: 0 }}>
-                  +{p.colors.length - 5}
-                </span>
-              )}
-            </div>
+        {p.sizes.length > 0 && (
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {p.sizes.map((s) => (
+              <span key={s} className="mono" style={{
+                fontSize: 11, padding: "5px 9px", letterSpacing: "0.06em",
+                border: "1px solid var(--brand-foreground)",
+                color: "var(--brand-foreground)",
+                background: "white",
+              }}>
+                {s}
+              </span>
+            ))}
           </div>
         )}
-
-        {/* Grade de tamanhos PP→GG */}
-        <div style={{ marginBottom: 4 }}>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--brand-muted)", marginBottom: 6 }}>
-            Grade
-          </div>
-          <div style={{ display: "flex", gap: 3 }}>
-            {["PP", "P", "M", "G", "GG"].map((s) => {
-              const available = p.sizes.includes(s);
-              return (
-                <span key={s} className="mono" style={{
-                  fontSize: 9, padding: "2px 5px",
-                  border: "1px solid " + (available ? "var(--brand-foreground)" : "var(--brand-border)"),
-                  color: available ? "var(--brand-foreground)" : "var(--brand-muted)",
-                  opacity: available ? 1 : 0.3,
-                  letterSpacing: "0.04em",
-                  flexShrink: 0,
-                }}>
-                  {s}
-                </span>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
 }
+
+const WHOLESALE_SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XGG", "Único"];
 
 function WholesaleTable({ products, addToCart, onOpen }: {
   products: Product[];
   addToCart: (item: CartItem) => void;
   onOpen: (id: string) => void;
 }) {
-  const sizes = ["PP", "P", "M", "G", "GG"];
+  const allSizes = useMemo(() => {
+    const seen = new Set(products.flatMap((p) => p.sizes));
+    return WHOLESALE_SIZE_ORDER.filter((s) => seen.has(s)).concat(
+      [...seen].filter((s) => !WHOLESALE_SIZE_ORDER.includes(s))
+    );
+  }, [products]);
+
   return (
-    <div style={{ border: "1px solid var(--brand-border)" }}>
-      <div style={{
-        display: "grid", gridTemplateColumns: "80px 2fr 1.5fr repeat(5, 60px) 80px 120px",
-        padding: "14px 20px", background: "var(--brand-surface)",
-        fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em",
-        textTransform: "uppercase", color: "var(--brand-muted)",
-        borderBottom: "1px solid var(--brand-border)",
+    <div className="sr-wholesale-table">
+      {/* Cabeçalho — visível apenas no desktop via CSS */}
+      <div className="sr-wholesale-header" style={{
+        gridTemplateColumns: `80px 2fr 1.5fr repeat(${allSizes.length}, 60px) 80px 120px`,
+        color: "var(--brand-muted)",
       }}>
         <span>SKU</span><span>Peça</span><span>Cores</span>
-        {sizes.map((s) => <span key={s} style={{ textAlign: "center" }}>{s}</span>)}
+        {allSizes.map((s) => <span key={s} style={{ textAlign: "center" }}>{s}</span>)}
         <span style={{ textAlign: "right" }}>R$</span>
         <span style={{ textAlign: "right" }}>Ação</span>
       </div>
-      {products.map((p) => <WholesaleRow key={p.id} p={p} addToCart={addToCart} onOpen={onOpen}/>)}
+      {products.map((p) => <WholesaleRow key={p.id} p={p} allSizes={allSizes} addToCart={addToCart} onOpen={onOpen}/>)}
     </div>
   );
 }
 
-function WholesaleRow({ p, addToCart, onOpen }: { p: Product; addToCart: (item: CartItem) => void; onOpen: (id: string) => void }) {
-  const sizes = ["PP", "P", "M", "G", "GG"];
-  const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(sizes.map((s) => [s, 0])));
+function WholesaleRow({ p, allSizes, addToCart, onOpen }: { p: Product; allSizes: string[]; addToCart: (item: CartItem) => void; onOpen: (id: string) => void }) {
+  const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(allSizes.map((s) => [s, 0])));
   const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
   return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "80px 2fr 1.5fr repeat(5, 60px) 80px 120px",
-      padding: "16px 20px", borderBottom: "1px solid var(--brand-border)",
-      alignItems: "center", fontSize: 13,
+    <div className="sr-wholesale-row" style={{
+      gridTemplateColumns: `80px 2fr 1.5fr repeat(${allSizes.length}, 60px) 80px 120px`,
     }}>
-      <button onClick={() => onOpen(p.id)} className="mono" style={{ fontSize: 11, letterSpacing: "0.08em", textAlign: "left", color: "var(--brand-muted)" }}>
+      {/* SKU */}
+      <button onClick={() => onOpen(p.id)} className="mono sr-wholesale-cell-sku" style={{ fontSize: 11, letterSpacing: "0.08em", textAlign: "left", color: "var(--brand-muted)" }}>
         {p.sku ?? p.id}
       </button>
+
+      {/* Nome + foto */}
       <button onClick={() => onOpen(p.id)} style={{ display: "flex", gap: 12, alignItems: "center", textAlign: "left" }}>
         <div style={{ width: 40, height: 52, flexShrink: 0, overflow: "hidden" }}>
           {p.imageUrl
@@ -342,8 +344,12 @@ function WholesaleRow({ p, addToCart, onOpen }: { p: Product; addToCart: (item: 
         <div>
           <div style={{ fontWeight: 500 }}>{p.name}</div>
           <div style={{ fontSize: 11, color: "var(--brand-muted)" }}>{p.collection}</div>
+          {/* Preço visível mobile (dentro do card) */}
+          <div className="mono sr-hide-desktop" style={{ fontSize: 12, fontWeight: 600, marginTop: 4 }}>{brl(p.price)}</div>
         </div>
       </button>
+
+      {/* Cores */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {p.colors.map((c) => (
           <button key={c.id} onClick={() => setColorId(c.id)} style={{
@@ -356,20 +362,26 @@ function WholesaleRow({ p, addToCart, onOpen }: { p: Product; addToCart: (item: 
           </button>
         ))}
       </div>
-      {sizes.map((s) => {
+
+      {/* Inputs de qtd por tamanho */}
+      {allSizes.map((s) => {
         const available = p.sizes.includes(s);
         return (
-          <div key={s} style={{ display: "flex", justifyContent: "center" }}>
+          <div key={s} className="sr-wholesale-sizes-row" style={{ display: "flex", justifyContent: "center" }}>
             <input type="number" min={0} value={available ? qty[s] : ""} disabled={!available}
               onChange={(e) => setQty({ ...qty, [s]: Math.max(0, parseInt(e.target.value || "0")) })}
               style={{ width: 44, height: 32, textAlign: "center", border: "1px solid var(--brand-border)", background: available ? "white" : "var(--brand-surface)", fontFamily: "var(--font-mono)", fontSize: 12 }}/>
           </div>
         );
       })}
-      <div className="mono" style={{ textAlign: "right", fontWeight: 500 }}>{brl(p.price)}</div>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+
+      {/* Preço desktop */}
+      <div className="mono sr-hide-mobile" style={{ textAlign: "right", fontWeight: 500 }}>{brl(p.price)}</div>
+
+      {/* Ação */}
+      <div className="sr-wholesale-actions-row" style={{ display: "flex", justifyContent: "flex-end" }}>
         <Btn size="sm" variant={total > 0 ? "primary" : "subtle"} disabled={total === 0}
-          onClick={() => { addToCart({ ...p, colorId, qty, total }); setQty(Object.fromEntries(sizes.map((s) => [s, 0]))); }}>
+          onClick={() => { addToCart({ ...p, colorId, qty, total }); setQty(Object.fromEntries(allSizes.map((s) => [s, 0]))); }}>
           {total ? `+${total}` : "Adicionar"}
         </Btn>
       </div>
@@ -390,7 +402,7 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.4)", zIndex: 100, display: "flex", justifyContent: "flex-end" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 480, background: "white", height: "100%", padding: 32, overflow: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} className="sr-quick-add-drawer" style={{ background: "white", height: "100%", padding: 32, overflow: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div className="eyebrow">Grade rápida · {p.sku ?? p.id}</div>
           <button onClick={onClose}><Icons.X/></button>
@@ -408,7 +420,7 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
         </div>
         <div>
           <div className="eyebrow" style={{ marginBottom: 10 }}>Cor</div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {p.colors.map((c) => (
               <button key={c.id} onClick={() => setColorId(c.id)} style={{
                 padding: "8px 12px", display: "inline-flex", gap: 8, alignItems: "center",
@@ -422,7 +434,7 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
         </div>
         <div>
           <div className="eyebrow" style={{ marginBottom: 10 }}>Grade de tamanhos</div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${p.sizes.length}, 1fr)`, gap: 4 }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(p.sizes.length, 3)}, 1fr)`, gap: 4 }}>
             {p.sizes.map((s) => (
               <div key={s} style={{ border: "1px solid var(--brand-border)", padding: 12, textAlign: "center" }}>
                 <div className="mono" style={{ fontSize: 12, color: "var(--brand-muted)", marginBottom: 8 }}>{s}</div>

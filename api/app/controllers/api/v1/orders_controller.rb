@@ -17,18 +17,27 @@ module Api
 
       # POST /api/v1/orders
       def create
-        items = Array(order_params[:items]).map(&:to_unsafe_h).map(&:symbolize_keys)
+        items = raw_items
+        return render json: { errors: ["items não pode estar vazio"] },
+                      status: :unprocessable_entity if items.empty?
 
-        if items.empty?
-          return render json: { errors: ["items não pode estar vazio"] },
-                        status: :unprocessable_entity
-        end
-
+        p = order_base_params
         order = OrderBuilderService.build(
-          member_id: current_member.id,
-          items:     items,
-          notes:     order_params[:notes]
+          member_id:    current_member.id,
+          items:        items,
+          notes:        p[:notes],
+          subtotal:     p[:subtotal],
+          discount:     p[:discount],
+          discount_pct: p[:discount_pct],
+          total:        p[:total]
         )
+
+        tc = current_tenant.tenant_config
+        begin
+          OrderMailer.admin_notification(order, tc).deliver_later if tc&.email_configured?
+        rescue => e
+          Rails.logger.warn("[OrderMailer] falhou: #{e.message}")
+        end
 
         render json: { order: order_full_json(order) }, status: :created
       rescue ActiveRecord::RecordInvalid => e
@@ -38,11 +47,14 @@ module Api
 
       private
 
-      def order_params
-        params.require(:order).permit(
-          :notes,
-          items: %i[product_id product_name product_sku color size qty unit_price]
-        )
+      def order_base_params
+        params.require(:order).permit(:notes, :subtotal, :discount, :discount_pct, :total)
+      end
+
+      def raw_items
+        Array(params.dig(:order, :items) || []).map do |item|
+          item.respond_to?(:to_unsafe_h) ? item.to_unsafe_h.with_indifferent_access : item.to_h.with_indifferent_access
+        end
       end
 
       def order_summary_json(o)
@@ -58,7 +70,8 @@ module Api
 
       def order_full_json(o)
         order_summary_json(o).merge(
-          items: o.order_items.map { |i| item_json(i) }
+          metadata: o.metadata,
+          items:    o.order_items.map { |i| item_json(i) }
         )
       end
 
@@ -72,7 +85,8 @@ module Api
           size:         i.size,
           qty:          i.qty,
           unit_price:   i.unit_price,
-          subtotal:     i.subtotal
+          subtotal:     i.subtotal,
+          metadata:     i.metadata
         }
       end
     end

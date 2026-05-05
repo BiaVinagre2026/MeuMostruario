@@ -22,7 +22,12 @@ module Api
 
       private
 
+      SIZE_ORDER = %w[PP P M G GG XGG Único].freeze
+
       def product_summary(p)
+        seen_sizes  = p.variants.map(&:size).compact.uniq
+        sorted_sizes = SIZE_ORDER.select { |s| seen_sizes.include?(s) } +
+                       seen_sizes.reject { |s| SIZE_ORDER.include?(s) }
         {
           id: p.id, slug: p.slug, name: p.name, sku: p.sku,
           price_wholesale: p.price_wholesale, price_retail: p.price_retail, currency: p.currency,
@@ -30,7 +35,8 @@ module Api
           category:   p.category   && { id: p.category.id,   name: p.category.name,   slug: p.category.slug },
           collection: p.collection && { id: p.collection.id, name: p.collection.name, slug: p.collection.slug },
           cover_image: cover_image_json(p),
-          colors: p.variants.map(&:color).compact.uniq
+          colors: p.variants.map { |v| v.color ? { name: v.color, hex: v.color_hex } : nil }.compact.uniq { |c| c[:name] },
+          sizes:  sorted_sizes
         }
       end
 

@@ -9,13 +9,13 @@ import type { Product } from "@/types/catalog";
 export function Logo({ size = 20 }: { size?: number }) {
   const { tenantName } = useTenant();
   return (
-    <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
+    <div className="sr-logo" style={{ display: "inline-flex", alignItems: "baseline", gap: 8 }}>
       <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
         <circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" strokeWidth="1"/>
         <path d="M7 12 L17 12 M12 7 L12 17" stroke="currentColor" strokeWidth="1"/>
         <circle cx="12" cy="12" r="3" fill="currentColor"/>
       </svg>
-      <span className="display" style={{ fontSize: size * 1.25, letterSpacing: "-0.04em" }}>
+      <span className="display sr-logo-text" style={{ fontSize: size * 1.25, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}>
         {tenantName}
       </span>
     </div>

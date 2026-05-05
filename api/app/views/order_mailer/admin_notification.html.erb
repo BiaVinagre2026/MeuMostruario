@@ -1,0 +1,104 @@
+<%
+  tc       = @tenant_config
+  primary  = tc&.color_primary.presence || "#1E40AF"
+  company  = tc&.company_name.presence  || "Mostruário"
+  brl = ->(v) { "R$ #{format('%.2f', v.to_f).tr('.', ',')}" }
+  subtotal     = @meta["subtotal"].to_f
+  discount     = @meta["discount"].to_f
+  discount_pct = @meta["discount_pct"].to_i
+  total        = @meta["total"].to_f
+  total        = @order.total_value.to_f if total.zero?
+%>
+<content_for :subject>Novo pedido #<%= @order.id %></content_for>
+
+<h2 style="margin:0 0 4px;font-size:22px;color:#0f172a;">Novo pedido recebido</h2>
+<p style="margin:0 0 24px;font-size:14px;color:#64748b;">
+  Pedido <strong>#<%= @order.id %></strong> &middot;
+  <strong><%= @items.sum(&:qty) %> peças</strong> &middot;
+  <%= @order.created_at.strftime("%d/%m/%Y %H:%M") %>
+</p>
+
+<% if @order.notes.present? %>
+  <p style="margin:0 0 20px;padding:12px 16px;background:#f8fafc;border-left:3px solid <%= primary %>;font-size:13px;color:#334155;">
+    <strong>Observações:</strong> <%= @order.notes %>
+  </p>
+<% end %>
+
+<!-- Items table -->
+<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;margin-bottom:24px;">
+  <thead>
+    <tr style="background:#f1f5f9;">
+      <th style="padding:10px 12px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Produto</th>
+      <th style="padding:10px 12px;text-align:center;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Cor</th>
+      <th style="padding:10px 12px;text-align:center;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Tam.</th>
+      <th style="padding:10px 12px;text-align:center;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Qtd</th>
+      <th style="padding:10px 12px;text-align:right;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;">Subtotal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @items.each_with_index do |item, idx| %>
+      <%
+        img_url   = item.metadata&.dig("image_url").presence
+        color_hex = item.metadata&.dig("color_hex").presence || "#e2e8f0"
+        row_bg    = idx.even? ? "#ffffff" : "#f8fafc"
+      %>
+      <tr style="background:<%= row_bg %>;">
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <% if img_url %>
+              <img src="<%= img_url %>" width="36" height="46"
+                   style="object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;flex-shrink:0;" />
+            <% else %>
+              <div style="width:36px;height:46px;border-radius:4px;background:<%= color_hex %>;flex-shrink:0;"></div>
+            <% end %>
+            <div>
+              <div style="font-weight:500;color:#0f172a;"><%= item.product_name %></div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;font-family:monospace;"><%= item.product_sku %></div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle;">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;">
+            <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:<%= color_hex %>;border:1px solid rgba(0,0,0,0.1);"></span>
+            <%= item.color %>
+          </span>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle;font-family:monospace;font-size:12px;">
+          <%= item.size %>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle;font-weight:600;">
+          <%= item.qty %>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:right;vertical-align:middle;font-family:monospace;font-size:12px;">
+          <%= brl.call(item.unit_price.to_f * item.qty) %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<!-- Totals -->
+<table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+  <% if subtotal > 0 && discount > 0 %>
+    <tr>
+      <td style="padding:6px 0;color:#64748b;">Subtotal</td>
+      <td style="padding:6px 0;text-align:right;font-family:monospace;color:#64748b;"><%= brl.call(subtotal) %></td>
+    </tr>
+    <tr>
+      <td style="padding:6px 0;color:<%= primary %>;">Desconto volume (<%= discount_pct %>%)</td>
+      <td style="padding:6px 0;text-align:right;font-family:monospace;color:<%= primary %>;">−<%= brl.call(discount) %></td>
+    </tr>
+    <tr><td colspan="2" style="border-top:1px solid #e2e8f0;padding-top:8px;"></td></tr>
+  <% end %>
+  <tr>
+    <td style="padding:8px 0;font-size:18px;font-weight:700;color:#0f172a;">Total</td>
+    <td style="padding:8px 0;text-align:right;font-size:20px;font-weight:700;color:#0f172a;font-family:monospace;"><%= brl.call(total > 0 ? total : @order.total_value.to_f) %></td>
+  </tr>
+</table>
+
+<div style="text-align:center;">
+  <a href="mailto:<%= tc&.company_email %>"
+     style="display:inline-block;padding:12px 28px;background:<%= primary %>;color:#ffffff;font-weight:600;font-size:14px;border-radius:8px;text-decoration:none;">
+    Responder ao cliente
+  </a>
+</div>

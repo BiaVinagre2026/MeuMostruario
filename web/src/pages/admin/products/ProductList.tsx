@@ -107,22 +107,23 @@ export default function ProductList() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between px-6 py-4 border-b">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Produtos</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-base md:text-lg font-semibold">Produtos</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             {total > 0 ? `${total} produto${total !== 1 ? "s" : ""}` : "Nenhum produto"}
           </p>
         </div>
-        <Button onClick={() => navigate("/admin/products/new")}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Novo Produto
+        <Button size="sm" onClick={() => navigate("/admin/products/new")}>
+          <Plus className="h-4 w-4 md:mr-1.5" />
+          <span className="hidden md:inline">Novo Produto</span>
         </Button>
       </div>
 
-      <div className="px-6 pt-4 pb-2 space-y-3">
-        {/* Search */}
-        <div className="relative max-w-sm">
+      <div className="px-4 md:px-6 pt-3 pb-2 space-y-2">
+        {/* Search — full width no mobile */}
+        <div className="relative w-full md:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             className="pl-9"
@@ -132,14 +133,14 @@ export default function ProductList() {
           />
         </div>
 
-        {/* Status tabs */}
-        <div className="flex gap-1 flex-wrap">
+        {/* Status tabs — scroll horizontal no mobile */}
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => handleStatusChange(tab.value)}
               className={[
-                "px-3 py-1.5 text-sm rounded-md transition-colors font-medium",
+                "px-2.5 py-1 text-xs md:text-sm rounded-md transition-colors font-medium whitespace-nowrap flex-shrink-0",
                 statusFilter === tab.value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -152,24 +153,25 @@ export default function ProductList() {
       </div>
 
       {/* Table */}
-      <div className="px-6 pb-6 flex-1">
+      <div className="px-4 md:px-6 pb-6 flex-1 overflow-x-auto">
         {isLoading ? (
           <ProductTableSkeleton />
         ) : products.length === 0 ? (
           <EmptyState onNew={() => navigate("/admin/products/new")} hasFilters={!!debouncedSearch || !!statusFilter} />
         ) : (
           <>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden min-w-0">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 border-b">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground w-14">Foto</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">SKU</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Coleção</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Preço Atacado</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground w-24">Ações</th>
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-12">Foto</th>
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Nome</th>
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden md:table-cell">SKU</th>
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Coleção</th>
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Estoque</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">Preço</th>
+                    <th className="text-right px-3 py-2.5 font-medium text-muted-foreground w-20">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -178,8 +180,8 @@ export default function ProductList() {
                       key={product.id}
                       className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
                     >
-                      <td className="px-4 py-2.5">
-                        <div className="w-10 h-12 rounded overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                      <td className="px-3 py-2">
+                        <div className="w-9 h-11 rounded overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
                           {product.cover_url ? (
                             <img
                               src={product.cover_url}
@@ -187,72 +189,53 @@ export default function ProductList() {
                               className="w-full h-full object-cover object-top"
                             />
                           ) : (
-                            <ImageOff className="h-4 w-4 text-muted-foreground" />
+                            <ImageOff className="h-3.5 w-3.5 text-muted-foreground" />
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 font-medium max-w-xs truncate">
+                      <td className="px-3 py-2 font-medium max-w-[140px] md:max-w-xs truncate text-xs md:text-sm">
                         {product.name}
                       </td>
-                      <td className="px-4 py-2.5 text-muted-foreground font-mono text-xs">
+                      <td className="px-3 py-2 text-muted-foreground font-mono text-xs hidden md:table-cell">
                         {product.sku}
                       </td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
+                      <td className="px-3 py-2 text-muted-foreground text-xs hidden lg:table-cell">
                         {product.collection?.name ?? <span className="italic text-muted-foreground/60">—</span>}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-2">
                         <span
                           className={[
-                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                            "inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium",
                             STATUS_COLORS[product.status],
                           ].join(" ")}
                         >
                           {STATUS_LABELS[product.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-xs">
+                      <td className="px-3 py-2 hidden lg:table-cell">
+                        <StockBadges stock={product.stock_by_size ?? {}} />
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-xs hidden sm:table-cell">
                         {brl(product.price_wholesale)}
                       </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end gap-0.5">
                           {product.status !== "archived" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              title="Arquivar produto"
+                            <Button variant="ghost" size="sm" title="Arquivar"
                               disabled={statusMutation.isPending}
                               onClick={() => statusMutation.mutate({ id: product.id, status: "archived" })}
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                            >
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hidden sm:inline-flex">
                               <Archive className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          {product.status !== "sold_out" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              title="Marcar como esgotado"
-                              disabled={statusMutation.isPending}
-                              onClick={() => statusMutation.mutate({ id: product.id, status: "sold_out" })}
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                            >
-                              <PackageX className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <Button variant="ghost" size="sm"
                             onClick={() => navigate(`/admin/products/${product.id}/edit`)}
-                            className="h-8 w-8 p-0"
-                          >
+                            className="h-7 w-7 p-0">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <Button variant="ghost" size="sm"
                             onClick={() => setDeleteTarget(product)}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -265,26 +248,22 @@ export default function ProductList() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Página {page} de {totalPages}
+              <div className="flex items-center justify-between mt-3 gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {page}/{totalPages}
                 </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex gap-1.5">
+                  <Button variant="outline" size="sm"
                     disabled={page <= 1 || isFetching}
                     onClick={() => setPage((p) => p - 1)}
-                  >
-                    Anterior
+                    className="text-xs px-2.5">
+                    ← Anterior
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <Button variant="outline" size="sm"
                     disabled={page >= totalPages || isFetching}
                     onClick={() => setPage((p) => p + 1)}
-                  >
-                    Próxima
+                    className="text-xs px-2.5">
+                    Próxima →
                   </Button>
                 </div>
               </div>
@@ -389,6 +368,36 @@ function DeleteDialog({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StockBadges({ stock }: { stock: Record<string, number> }) {
+  const entries = Object.entries(stock);
+  if (entries.length === 0) return <span className="text-xs text-muted-foreground/50">—</span>;
+  const totalStock = entries.reduce((a, [, q]) => a + q, 0);
+  return (
+    <div className="flex flex-wrap gap-1">
+      {entries.map(([size, qty]) => (
+        <span
+          key={size}
+          className={[
+            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-mono",
+            qty === 0
+              ? "bg-red-50 text-red-600"
+              : qty <= 5
+              ? "bg-yellow-50 text-yellow-700"
+              : "bg-muted text-muted-foreground",
+          ].join(" ")}
+        >
+          <span className="font-medium">{size}</span>
+          <span className="opacity-60">·</span>
+          <span>{qty}</span>
+        </span>
+      ))}
+      <span className="text-xs text-muted-foreground self-center ml-0.5">
+        ({totalStock})
+      </span>
     </div>
   );
 }
