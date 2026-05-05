@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Package, BookOpen, ShoppingBag, Settings, LogOut, Menu, X } from "lucide-react";
+import { Package, BookOpen, ShoppingBag, Settings, LogOut, Menu, X, LayoutDashboard, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import { useOperatorLogout } from "@/hooks/useOperatorAuth";
@@ -12,10 +12,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Produtos",      href: "/admin/products",    icon: <Package    className="h-4 w-4" /> },
-  { label: "Coleções",      href: "/admin/collections", icon: <BookOpen   className="h-4 w-4" /> },
-  { label: "Pedidos",       href: "/admin/orders",      icon: <ShoppingBag className="h-4 w-4" /> },
-  { label: "Configurações", href: "/admin/settings",    icon: <Settings   className="h-4 w-4" /> },
+  { label: "Dashboard",     href: "/admin/dashboard",   icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Produtos",      href: "/admin/products",    icon: <Package         className="h-4 w-4" /> },
+  { label: "Coleções",      href: "/admin/collections", icon: <BookOpen        className="h-4 w-4" /> },
+  { label: "Lojistas",      href: "/admin/members",     icon: <Users           className="h-4 w-4" /> },
+  { label: "Pedidos",       href: "/admin/orders",      icon: <ShoppingBag     className="h-4 w-4" /> },
+  { label: "Configurações", href: "/admin/settings",    icon: <Settings        className="h-4 w-4" /> },
 ];
 
 interface AdminLayoutProps {

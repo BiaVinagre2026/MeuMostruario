@@ -38,6 +38,7 @@ module Api
             company_phone: config.company_phone,
             company_website: config.company_website,
             footer_text: config.footer_text,
+            announcement_bar_text: config.announcement_bar_text,
             terms_url: config.terms_url,
             privacy_url: config.privacy_url,
             social: {

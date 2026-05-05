@@ -15,12 +15,14 @@ function normalizeAuthResponse(raw: RailsAuthResponse): AuthResponse {
 }
 
 export function useCurrentUser() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return useQuery<AuthResponse, ApiError>({
     queryKey: authKeys.me,
     queryFn: () =>
       apiClient
         .get<RailsAuthResponse>("/api/v1/auth/me")
         .then(normalizeAuthResponse),
+    enabled: isAuthenticated,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });

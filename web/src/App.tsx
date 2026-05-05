@@ -29,6 +29,7 @@ import ProductList from "@/pages/admin/products/ProductList";
 import ProductForm from "@/pages/admin/products/ProductForm";
 import CollectionList from "@/pages/admin/collections/CollectionList";
 import CollectionForm from "@/pages/admin/collections/CollectionForm";
+import MemberList from "@/pages/admin/members/MemberList";
 import OrderList from "@/pages/admin/orders/OrderList";
 import OrderDetail from "@/pages/admin/orders/OrderDetail";
 import SettingsPage from "@/pages/admin/settings/SettingsPage";
@@ -49,7 +50,7 @@ export default function App() {
         <TooltipProvider>
           <AuthProvider>
             <OperatorAuthProvider>
-              <BrowserRouter>
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
                   {/* ── Showroom (TopBar + Footer) ── */}
                   <Route element={<ShowroomLayout />}>
@@ -67,8 +68,8 @@ export default function App() {
                   {/* ── Admin ── */}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route element={<AdminRoute />}>
-                    <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
-                    <Route path="/admin/dashboard" element={<Navigate to="/admin/products" replace />} />
+                    <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
                     {/* Products */}
                     <Route path="/admin/products" element={<ProductList />} />
@@ -79,6 +80,9 @@ export default function App() {
                     <Route path="/admin/collections" element={<CollectionList />} />
                     <Route path="/admin/collections/new" element={<CollectionForm />} />
                     <Route path="/admin/collections/:id/edit" element={<CollectionForm />} />
+
+                    {/* Members (lojistas) */}
+                    <Route path="/admin/members" element={<MemberList />} />
 
                     {/* Orders */}
                     <Route path="/admin/orders" element={<OrderList />} />

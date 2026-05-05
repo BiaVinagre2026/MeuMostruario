@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,7 +15,6 @@ import {
   Loader2,
   Upload,
   Trash2,
-  Plus,
   Star,
   ImageOff,
 } from "lucide-react";
@@ -667,314 +666,259 @@ function ImageCard({
 // VariantsTab
 // ---------------------------------------------------------------------------
 
-interface NewVariantRow {
-  color: string;
-  color_hex: string;
-  size: string;
-  stock_qty: number;
-  image_url: string;
+// ── Paleta Pantone do mostruário (5 cores) ──────────────────────────────────
+
+const PANTONE_COLORS = [
+  { name: "Preto",       hex: "#1C1C1C" },
+  { name: "Off-White",   hex: "#F2EDE4" },
+  { name: "Bege",        hex: "#C4A882" },
+  { name: "Caramelo",    hex: "#B8732A" },
+  { name: "Terracota",   hex: "#C4623A" },
+  { name: "Bordô",       hex: "#6B1F2E" },
+  { name: "Verde Sage",  hex: "#7A9B7A" },
+  { name: "Azul Marinho",hex: "#1B3055" },
+] as const;
+
+function ColorSwatchPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (hex: string, name: string) => void;
+}) {
+  const selected = PANTONE_COLORS.find((c) => c.hex === value);
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap gap-1.5" style={{ maxWidth: 152 }}>
+        {PANTONE_COLORS.map((c) => (
+          <button
+            key={c.hex}
+            type="button"
+            title={c.name}
+            onClick={() => onChange(c.hex, c.name)}
+            className="w-6 h-6 rounded-full transition-all hover:scale-110 flex-shrink-0"
+            style={{
+              background: c.hex,
+              boxShadow:
+                value === c.hex
+                  ? "0 0 0 2px white, 0 0 0 3.5px #1C1C1C"
+                  : "0 0 0 1px rgba(0,0,0,0.18)",
+            }}
+          />
+        ))}
+      </div>
+      {selected && (
+        <span className="text-xs text-muted-foreground leading-none">{selected.name}</span>
+      )}
+    </div>
+  );
 }
 
-const EMPTY_ROW: NewVariantRow = {
-  color: "",
-  color_hex: "#000000",
-  size: "",
-  stock_qty: 0,
+// ────────────────────────────────────────────────────────────────────────────
+
+const SIZES = ["PP", "P", "M", "G", "GG"] as const;
+type SizeKey = (typeof SIZES)[number];
+
+interface NewColorRow {
+  color: string;
+  color_hex: string;
+  image_url: string;
+  stocks: Record<SizeKey, number>;
+}
+
+const EMPTY_COLOR_ROW: NewColorRow = {
+  color: PANTONE_COLORS[0].name,
+  color_hex: PANTONE_COLORS[0].hex,
   image_url: "",
+  stocks: { PP: 0, P: 0, M: 0, G: 0, GG: 0 },
 };
 
 function VariantsTab({ product, productId }: { product: Product; productId: number }) {
   const queryClient = useQueryClient();
-  const [newRows, setNewRows] = useState<NewVariantRow[]>([]);
+
+  // Pega o primeiro (e único) grupo de variantes
+  const group = useMemo(() => {
+    const map = new Map<string, { color: string; color_hex: string; image_url: string; variants: ProductVariant[] }>();
+    for (const v of product.variants) {
+      const key = v.color_hex ?? v.color ?? "";
+      if (!map.has(key)) {
+        map.set(key, { color: v.color ?? "", color_hex: v.color_hex ?? "", image_url: v.image_url ?? "", variants: [] });
+      }
+      map.get(key)!.variants.push(v);
+    }
+    return map.size > 0 ? Array.from(map.values())[0] : null;
+  }, [product.variants]);
 
   const createVariantMutation = useMutation({
-    mutationFn: (row: NewVariantRow) =>
-      createVariant(productId, {
-        color: row.color,
-        color_hex: row.color_hex,
-        size: row.size,
-        stock_qty: row.stock_qty,
-        image_url: row.image_url || null,
-      }),
-    onSuccess: () => {
-      toast.success("Variante adicionada.");
-      void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
-    },
+    mutationFn: (data: { color: string; color_hex: string; size: string; stock_qty: number; image_url: string | null }) =>
+      createVariant(productId, data),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] }),
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao criar variante."),
   });
 
   const updateVariantMutation = useMutation({
     mutationFn: ({ variantId, data }: { variantId: number; data: Partial<ProductVariant> }) =>
       updateVariant(productId, variantId, data),
-    onSuccess: () => {
-      toast.success("Variante salva.");
-      void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] }),
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao salvar variante."),
   });
 
   const deleteVariantMutation = useMutation({
     mutationFn: (variantId: number) => deleteVariant(productId, variantId),
-    onSuccess: () => {
-      toast.success("Variante removida.");
-      void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] }),
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao remover variante."),
   });
 
-  function addRow() {
-    setNewRows((rows) => [...rows, { ...EMPTY_ROW }]);
-  }
+  return (
+    <div className="max-w-sm">
+      {group ? (
+        <ExistingColorRow
+          group={group}
+          isSaving={updateVariantMutation.isPending || createVariantMutation.isPending}
+          isDeleting={deleteVariantMutation.isPending}
+          onSaveVariant={(variantId, data) => updateVariantMutation.mutate({ variantId, data })}
+          onCreateVariant={(data) => createVariantMutation.mutateAsync(data)}
+          onDeleteGroup={() => group.variants.forEach((v) => deleteVariantMutation.mutate(v.id))}
+        />
+      ) : (
+        <NewVariantCard
+          isSaving={createVariantMutation.isPending}
+          onSave={async (row) => {
+            for (const size of SIZES) {
+              await createVariantMutation.mutateAsync({
+                color: row.color, color_hex: row.color_hex, size,
+                stock_qty: row.stocks[size], image_url: row.image_url || null,
+              });
+            }
+            toast.success("Grade salva.");
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
-  function updateRow(index: number, field: keyof NewVariantRow, value: string | number) {
-    setNewRows((rows) =>
-      rows.map((row, i) => (i === index ? { ...row, [field]: value } : row))
-    );
-  }
-
-  function removeNewRow(index: number) {
-    setNewRows((rows) => rows.filter((_, i) => i !== index));
-  }
-
-  function normalizeHex(hex: string): string {
-    const h = hex.trim();
-    // Expand shorthand #RGB → #RRGGBB
-    if (/^#[0-9A-Fa-f]{3}$/.test(h)) {
-      return `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`;
-    }
-    return h;
-  }
-
-  async function saveRow(index: number) {
-    const row = newRows[index];
-    const normalized = { ...row, color_hex: normalizeHex(row.color_hex) };
-    await createVariantMutation.mutateAsync(normalized);
-    setNewRows((rows) => rows.filter((_, i) => i !== index));
-  }
-
-  const thClass = "text-left px-3 py-2.5 font-medium text-muted-foreground text-xs uppercase tracking-wide";
-  const tdClass = "px-3 py-2";
+function NewVariantCard({ isSaving, onSave }: {
+  isSaving: boolean;
+  onSave: (row: NewColorRow) => Promise<void>;
+}) {
+  const [row, setRow] = useState<NewColorRow>({ ...EMPTY_COLOR_ROW, stocks: { PP: 0, P: 0, M: 0, G: 0, GG: 0 } });
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <div className="border rounded-md overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 border-b">
-            <tr>
-              <th className={thClass}>Cor</th>
-              <th className={thClass}>Hex</th>
-              <th className={thClass}>Tamanho</th>
-              <th className={thClass}>Estoque</th>
-              <th className={thClass}>Imagem da cor</th>
-              <th className={thClass + " w-24"}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {product.variants.map((variant) => (
-              <ExistingVariantRow
-                key={variant.id}
-                variant={variant}
-                isSaving={updateVariantMutation.isPending}
-                isDeleting={deleteVariantMutation.isPending}
-                onSave={(data) => updateVariantMutation.mutate({ variantId: variant.id, data })}
-                onDelete={() => deleteVariantMutation.mutate(variant.id)}
-              />
-            ))}
-
-            {newRows.map((row, idx) => (
-              <tr key={`new-${idx}`} className="bg-blue-50/50">
-                <td className={tdClass}>
-                  <Input
-                    placeholder="Ex: Preto"
-                    value={row.color}
-                    onChange={(e) => updateRow(idx, "color", e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </td>
-                <td className={tdClass}>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="color"
-                      value={row.color_hex}
-                      onChange={(e) => updateRow(idx, "color_hex", e.target.value)}
-                      className="w-8 h-8 rounded border cursor-pointer p-0.5"
-                    />
-                    <Input
-                      value={row.color_hex}
-                      onChange={(e) => updateRow(idx, "color_hex", e.target.value)}
-                      className="h-8 text-xs w-24 font-mono"
-                    />
-                  </div>
-                </td>
-                <td className={tdClass}>
-                  <Input
-                    placeholder="Ex: M"
-                    value={row.size}
-                    onChange={(e) => updateRow(idx, "size", e.target.value)}
-                    className="h-8 text-xs w-20"
-                  />
-                </td>
-                <td className={tdClass}>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={row.stock_qty}
-                    onChange={(e) =>
-                      updateRow(idx, "stock_qty", parseInt(e.target.value || "0", 10))
-                    }
-                    className="h-8 text-xs w-20"
-                  />
-                </td>
-                <td className={tdClass}>
-                  <Input
-                    placeholder="https://..."
-                    value={row.image_url}
-                    onChange={(e) => updateRow(idx, "image_url", e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </td>
-                <td className={tdClass}>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => void saveRow(idx)}
-                      disabled={createVariantMutation.isPending}
-                    >
-                      {createVariantMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        "Salvar"
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => removeNewRow(idx)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {product.variants.length === 0 && newRows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                  Nenhuma variante. Clique em "Adicionar Variante" abaixo.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+    <div className="border rounded-md p-4 space-y-3">
+      <ColorSwatchPicker
+        value={row.color_hex}
+        onChange={(hex, name) => setRow((r) => ({ ...r, color_hex: hex, color: name }))}
+      />
+      <div className="space-y-1.5">
+        {SIZES.map((s) => (
+          <div key={s} className="flex items-center gap-3">
+            <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
+            <Input
+              type="number" min={0}
+              value={row.stocks[s]}
+              onChange={(e) => setRow((r) => ({ ...r, stocks: { ...r.stocks, [s]: parseInt(e.target.value || "0", 10) } }))}
+              className="h-7 text-xs w-24 text-center px-1"
+            />
+          </div>
+        ))}
       </div>
-
-      <Button variant="outline" onClick={addRow} className="gap-1.5">
-        <Plus className="h-4 w-4" />
-        Adicionar Variante
+      <Input
+        placeholder="URL da imagem (opcional)"
+        value={row.image_url}
+        onChange={(e) => setRow((r) => ({ ...r, image_url: e.target.value }))}
+        className="h-8 text-xs"
+      />
+      <Button size="sm" className="w-full h-8 text-xs" disabled={isSaving} onClick={() => void onSave(row)}>
+        {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar grade"}
       </Button>
     </div>
   );
 }
 
-function ExistingVariantRow({
-  variant,
+function ExistingColorRow({
+  group,
   isSaving,
   isDeleting,
-  onSave,
-  onDelete,
+  onSaveVariant,
+  onCreateVariant,
+  onDeleteGroup,
 }: {
-  variant: ProductVariant;
+  group: { color: string; color_hex: string; image_url: string; variants: ProductVariant[] };
   isSaving: boolean;
   isDeleting: boolean;
-  onSave: (data: Partial<ProductVariant>) => void;
-  onDelete: () => void;
+  onSaveVariant: (variantId: number, data: Partial<ProductVariant>) => void;
+  onCreateVariant: (data: { color: string; color_hex: string; size: string; stock_qty: number; image_url: string | null }) => Promise<unknown>;
+  onDeleteGroup: () => void;
 }) {
-  const [color, setColor] = useState(variant.color ?? "");
-  const [colorHex, setColorHex] = useState(variant.color_hex ?? "#000000");
-  const [stockQty, setStockQty] = useState(variant.stock_qty ?? 0);
-  const [imageUrl, setImageUrl] = useState(variant.image_url ?? "");
+  const [colorHex, setColorHex] = useState(group.color_hex);
+  const [color, setColor]       = useState(group.color);
+  const [imageUrl, setImageUrl] = useState(group.image_url);
+  const [stocks, setStocks]     = useState<Record<string, number>>(
+    Object.fromEntries(group.variants.map((v) => [v.size, v.stock_qty ?? 0]))
+  );
 
   const isDirty =
-    color !== (variant.color ?? "") ||
-    colorHex !== (variant.color_hex ?? "#000000") ||
-    stockQty !== (variant.stock_qty ?? 0) ||
-    imageUrl !== (variant.image_url ?? "");
+    color !== group.color ||
+    colorHex !== group.color_hex ||
+    imageUrl !== group.image_url ||
+    SIZES.some((s) => (stocks[s] ?? 0) !== (group.variants.find((v) => v.size === s)?.stock_qty ?? 0));
 
-  const tdClass = "px-3 py-2";
+  async function handleSave() {
+    for (const size of SIZES) {
+      const variant = group.variants.find((v) => v.size === size);
+      const stockVal = stocks[size] ?? 0;
+      if (variant) {
+        onSaveVariant(variant.id, { color, color_hex: colorHex, stock_qty: stockVal, image_url: imageUrl || null });
+      } else if (stockVal > 0) {
+        await onCreateVariant({ color, color_hex: colorHex, size, stock_qty: stockVal, image_url: imageUrl || null });
+      }
+    }
+    toast.success("Variantes salvas.");
+  }
 
   return (
-    <tr className="border-b last:border-0">
-      <td className={tdClass}>
-        <Input
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          className="h-8 text-xs"
-          placeholder="Ex: Preto"
+    <div className="border rounded-md p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <ColorSwatchPicker
+          value={colorHex}
+          onChange={(hex, name) => { setColorHex(hex); setColor(name); }}
         />
-      </td>
-      <td className={tdClass}>
-        <div className="flex items-center gap-1.5">
-          <input
-            type="color"
-            value={colorHex}
-            onChange={(e) => setColorHex(e.target.value)}
-            className="w-8 h-8 rounded border cursor-pointer p-0.5"
-          />
-          <Input
-            value={colorHex}
-            onChange={(e) => setColorHex(e.target.value)}
-            className="h-8 text-xs w-24 font-mono"
-          />
-        </div>
-      </td>
-      <td className="px-3 py-2.5 text-sm text-muted-foreground">{variant.size}</td>
-      <td className={tdClass}>
-        <Input
-          type="number"
-          min={0}
-          value={stockQty}
-          onChange={(e) => setStockQty(parseInt(e.target.value || "0", 10))}
-          className="h-8 text-xs w-20"
-        />
-      </td>
-      <td className={tdClass}>
-        <Input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://..."
-          className="h-8 text-xs"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex items-center gap-1">
-          {isDirty && (
-            <Button
-              size="sm"
-              className="h-7 px-2 text-xs"
-              disabled={isSaving}
-              onClick={() => onSave({ color, color_hex: colorHex, stock_qty: stockQty, image_url: imageUrl || null })}
-            >
-              {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            disabled={isDeleting}
-            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-          >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        </div>
-      </td>
-    </tr>
+        <Button
+          variant="ghost" size="sm"
+          onClick={onDeleteGroup} disabled={isDeleting}
+          className="h-7 w-7 p-0 shrink-0 text-destructive hover:text-destructive"
+        >
+          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
+
+      <div className="space-y-1.5">
+        {SIZES.map((s) => (
+          <div key={s} className="flex items-center gap-3">
+            <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
+            <Input
+              type="number" min={0}
+              value={stocks[s] ?? 0}
+              onChange={(e) => setStocks((prev) => ({ ...prev, [s]: parseInt(e.target.value || "0", 10) }))}
+              className="h-7 text-xs w-24 text-center px-1"
+            />
+          </div>
+        ))}
+      </div>
+
+      <Input
+        value={imageUrl}
+        onChange={(e) => setImageUrl(e.target.value)}
+        placeholder="URL da imagem (opcional)"
+        className="h-8 text-xs"
+      />
+
+      {isDirty && (
+        <Button size="sm" className="w-full h-8 text-xs" disabled={isSaving} onClick={() => void handleSave()}>
+          {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar alterações"}
+        </Button>
+      )}
+    </div>
   );
 }

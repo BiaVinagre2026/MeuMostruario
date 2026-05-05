@@ -43,107 +43,80 @@ export default function CollectionList() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Coleções</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-base md:text-lg font-semibold">Coleções</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
             {collections.length > 0
-              ? `${collections.length} coleção${collections.length !== 1 ? "ções" : ""}`
+              ? `${collections.length} coleç${collections.length !== 1 ? "ões" : "ão"}`
               : "Nenhuma coleção"}
           </p>
         </div>
-        <Button onClick={() => navigate("/admin/collections/new")}>
+        <Button size="sm" className="md:size-auto" onClick={() => navigate("/admin/collections/new")}>
           <Plus className="h-4 w-4 mr-1.5" />
-          Nova Coleção
+          <span className="hidden md:inline">Nova Coleção</span>
+          <span className="md:hidden">Nova</span>
         </Button>
       </div>
 
-      <div className="px-6 py-6 flex-1">
+      <div className="px-4 md:px-6 py-4 md:py-6 flex-1">
         {isLoading ? (
           <CollectionTableSkeleton />
         ) : collections.length === 0 ? (
           <EmptyState onNew={() => navigate("/admin/collections/new")} />
         ) : (
           <div className="border rounded-md overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground w-14">
-                    Capa
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                    Posição
-                  </th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">
-                    Produtos
-                  </th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground w-24">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {collections.map((collection, idx) => (
-                  <tr
-                    key={collection.id}
-                    className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
-                  >
-                    <td className="px-4 py-2.5">
-                      <div className="w-10 h-10 rounded overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
-                        {collection.cover_url ? (
-                          <img
-                            src={collection.cover_url}
-                            alt={collection.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ImageOff className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 font-medium">{collection.name}</td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={[
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                          STATUS_COLORS[collection.status],
-                        ].join(" ")}
-                      >
-                        {STATUS_LABELS[collection.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{collection.position}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {collection.products_count}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/admin/collections/${collection.id}/edit`)
-                          }
-                          className="h-8 w-8 p-0"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteTarget(collection)}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[400px]">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground w-12">Capa</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Pos.</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Produtos</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground w-20">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {collections.map((collection, idx) => (
+                    <tr key={collection.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                      <td className="px-4 py-2.5">
+                        <div className="w-9 h-9 rounded overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                          {collection.cover_url ? (
+                            <img src={collection.cover_url} alt={collection.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageOff className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 font-medium">{collection.name}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={["inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium", STATUS_COLORS[collection.status]].join(" ")}>
+                          {STATUS_LABELS[collection.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground text-xs hidden md:table-cell">{collection.position}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground text-xs hidden sm:table-cell">{collection.products_count}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm"
+                            onClick={() => navigate(`/admin/collections/${collection.id}/edit`)}
+                            className="h-7 w-7 p-0">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm"
+                            onClick={() => setDeleteTarget(collection)}
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

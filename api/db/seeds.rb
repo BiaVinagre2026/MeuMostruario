@@ -65,6 +65,7 @@ tenants_data = [
       company_phone: "+55 21 98153-8334",
       social_whatsapp: "https://wa.me/5521981538334",
       footer_text: "Catálogo digital de moda para lojistas.",
+      announcement_bar_text: "Drop Solar — Verão 26 · Pedidos até 30/05",
       email_provider: "letter_opener",
       favicon_mode: "auto",
       overdue_days: 30,

@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Logo } from "./primitives";
 import { Icons } from "./icons";
 import { useCartStore } from "@/stores/useCartStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useTenant } from "@/providers/TenantProvider";
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
@@ -19,8 +21,10 @@ export function TopBar() {
   const { pathname } = useLocation();
   const cartCount = useCartStore((s) => s.totalUnits());
   const openCart  = useCartStore((s) => s.open);
+  const authUser  = useAuthStore((s) => s.user);
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile  = useIsMobile();
+  const { announcementBarText } = useTenant();
 
   const links = [
     { path: "/",        label: "Início" },
@@ -37,25 +41,19 @@ export function TopBar() {
   return (
     <>
       {/* ── Banner ─────────────────────────────────────────────── */}
-      <div style={{
-        background: "var(--brand-foreground)", color: "white",
-        fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: "0.12em",
-        textTransform: "uppercase", padding: isMobile ? "7px 12px" : "8px 24px",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        gap: 12,
-      }}>
-        {isMobile ? (
-          <span style={{ fontSize: 9.5, textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            Drop Solar — Verão 26 · Pedidos até 30/05
+      {announcementBarText && (
+        <div style={{
+          background: "var(--brand-foreground)", color: "white",
+          fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: "0.12em",
+          textTransform: "uppercase", padding: isMobile ? "7px 12px" : "8px 24px",
+          display: "flex", justifyContent: "center", alignItems: "center",
+          gap: 12,
+        }}>
+          <span style={{ fontSize: isMobile ? 9.5 : 10.5, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {announcementBarText}
           </span>
-        ) : (
-          <>
-            <span style={{ opacity: 0.6 }}>Pedido mínimo 12 peças · R$ 1.500</span>
-            <span>Drop Solar — Verão 26 · Pedidos até 30/05</span>
-            <span style={{ opacity: 0.6 }}>Entregas: SP • RJ • BH • POA</span>
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <header style={{
@@ -87,12 +85,22 @@ export function TopBar() {
 
             {/* Ícones */}
             <div style={{ display: "flex", gap: 4, justifyContent: "flex-end", alignItems: "center" }}>
-              <IconBtn onClick={() => navigate("/login")} label={cartCount ? undefined : "Lojista"}>
+              <IconBtn onClick={() => navigate(authUser ? "/dashboard" : "/login")} label={authUser ? authUser.full_name.split(" ")[0] : "Lojista"}>
                 <Icons.User />
               </IconBtn>
               <IconBtn onClick={openCart} label={cartCount ? String(cartCount) : ""}>
                 <Icons.Bag />
               </IconBtn>
+              <button onClick={() => navigate("/admin/login")} style={{
+                padding: "5px 9px",
+                fontFamily: "var(--font-mono)", fontSize: 8.5,
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                border: "1px solid var(--brand-border)",
+                color: "var(--brand-muted)", cursor: "pointer",
+                background: "transparent", whiteSpace: "nowrap",
+              }}>
+                Admin
+              </button>
             </div>
           </div>
         ) : (
@@ -127,7 +135,7 @@ export function TopBar() {
             {/* Ações */}
             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
               <IconBtn><Icons.Search /></IconBtn>
-              <IconBtn onClick={() => navigate("/login")} label="Lojista"><Icons.User /></IconBtn>
+              <IconBtn onClick={() => navigate(authUser ? "/dashboard" : "/login")} label={authUser ? authUser.full_name.split(" ")[0] : "Lojista"}><Icons.User /></IconBtn>
               <IconBtn onClick={openCart} label={cartCount ? String(cartCount) : ""}>
                 <Icons.Bag />
               </IconBtn>

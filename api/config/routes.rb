@@ -70,9 +70,10 @@ Rails.application.routes.draw do
           resources :images,   only: [:create, :destroy],          controller: "product_images"
         end
 
-        # Catalog – collections & categories
+        # Catalog – collections, categories & looks
         resources :collections, only: [:index, :show, :create, :update, :destroy]
         resources :categories,  only: [:index, :create, :update, :destroy]
+        resources :looks,       only: [:index, :show, :create, :update, :destroy]
 
         # B2B orders management
         resources :orders, only: [:index, :show, :update]

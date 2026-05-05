@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCartStore } from "@/stores/useCartStore";
 import { Icons } from "@/components/showroom/icons";
 import { Btn } from "@/components/showroom/primitives";
@@ -6,6 +6,16 @@ import { TIERS, brl, activeTier, TONE } from "@/data/catalog";
 import { useTenant } from "@/providers/TenantProvider";
 import { apiClient } from "@/lib/api/client";
 import type { CartItem } from "@/types/catalog";
+
+function useIsMobile(bp = 768) {
+  const [v, setV] = useState(() => window.innerWidth < bp);
+  useEffect(() => {
+    const h = () => setV(window.innerWidth < bp);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [bp]);
+  return v;
+}
 
 // Extrai número limpo de uma URL wa.me ou string de telefone
 function extractWhatsappNumber(raw: string | undefined): string {
@@ -18,7 +28,8 @@ function extractWhatsappNumber(raw: string | undefined): string {
 
 export function CartDrawer() {
   const { items, isOpen, close, remove } = useCartStore();
-  const tenant = useTenant();
+  const tenant  = useTenant();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
@@ -98,16 +109,18 @@ export function CartDrawer() {
         display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(0,0,0,0.12)",
       }}>
         {/* Header */}
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--brand-border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
+        <div style={{ padding: isMobile ? "14px 16px" : "20px 24px", borderBottom: "1px solid var(--brand-border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ minWidth: 0 }}>
             <div className="eyebrow" style={{ fontSize: 10, letterSpacing: "0.12em" }}>Pedido em andamento</div>
-            <div className="display" style={{ fontSize: 28, marginTop: 4, lineHeight: 1.1 }}>Carrinho de compras</div>
+            <div className="display" style={{ fontSize: isMobile ? 20 : 28, marginTop: 4, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              Carrinho de compras
+            </div>
           </div>
-          <button onClick={close} style={{ marginTop: 4, color: "var(--brand-muted)", lineHeight: 1 }}><Icons.X/></button>
+          <button onClick={close} style={{ marginTop: 4, color: "var(--brand-muted)", lineHeight: 1, flexShrink: 0 }}><Icons.X/></button>
         </div>
 
         {/* Progresso de desconto por volume */}
-        <div style={{ padding: "12px 24px", background: "var(--brand-surface)", borderBottom: "1px solid var(--brand-border)" }}>
+        <div style={{ padding: isMobile ? "10px 16px" : "12px 24px", background: "var(--brand-surface)", borderBottom: "1px solid var(--brand-border)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, color: "var(--brand-muted)" }}>
             <span>Peças no pedido</span>
             <span style={{ color: "var(--brand-foreground)", fontWeight: 600 }}>{unitsTotal} peças</span>
@@ -150,7 +163,7 @@ export function CartDrawer() {
         )}
 
         {/* Footer com totais e botão */}
-        <div style={{ padding: "20px 24px", borderTop: "1px solid var(--brand-border)" }}>
+        <div style={{ padding: isMobile ? "14px 16px" : "20px 24px", borderTop: "1px solid var(--brand-border)" }}>
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--brand-muted)", marginBottom: 6 }}>
               <span>Subtotal ({unitsTotal} peças)</span>

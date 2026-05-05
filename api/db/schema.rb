@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_05_02_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_05_05_151333) do
   create_schema "tenant_demo"
 
   # These are extensions that must be enabled in order to support this database
@@ -160,6 +160,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_05_02_000001) do
     t.jsonb "enabled_payment_methods", default: []
     t.boolean "allow_money_payment", default: false
     t.jsonb "multiplier_rules", default: {}
+    t.string "announcement_bar_text"
     t.index ["tenant_id"], name: "index_tenant_configs_on_tenant_id", unique: true
   end
 

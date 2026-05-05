@@ -62,9 +62,11 @@ async function deleteOperatorSession(): Promise<void> {
 }
 
 export function useCurrentOperator() {
+  const isAuthenticated = useOperatorStore((s) => s.isAuthenticated);
   return useQuery<Operator, Error>({
     queryKey: operatorAuthKeys.me,
     queryFn: fetchCurrentOperator,
+    enabled: isAuthenticated,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });

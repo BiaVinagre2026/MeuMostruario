@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Photo, Btn } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
@@ -6,6 +6,16 @@ import { TONE, brl, activeTier, TENANT } from "@/data/catalog";
 import { useProduct } from "@/hooks/useCatalog";
 import { useCartStore } from "@/stores/useCartStore";
 import type { Product, Color } from "@/types/catalog";
+
+function useIsMobile(bp = 768) {
+  const [v, setV] = useState(() => window.innerWidth < bp);
+  useEffect(() => {
+    const h = () => setV(window.innerWidth < bp);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, [bp]);
+  return v;
+}
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +45,7 @@ export default function ProductDetail() {
 function ProductDetailInner({ p }: { p: Product }) {
   const navigate  = useNavigate();
   const addToCart = useCartStore((s) => s.add);
+  const isMobile  = useIsMobile();
 
   const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
   const [qty, setQty]         = useState<Record<string, number>>(Object.fromEntries(p.sizes.map((s) => [s, 0])));
@@ -175,10 +186,10 @@ function ProductDetailInner({ p }: { p: Product }) {
           <div className="mono" style={{ fontSize: 11, letterSpacing: "0.12em", color: "var(--brand-muted)", textTransform: "uppercase" }}>
             {p.sku ?? p.id} · {p.collection}
           </div>
-          <h1 className="display sr-product-title" style={{ fontSize: 64, marginTop: 8, marginBottom: 16 }}>{p.name}</h1>
+          <h1 className="display sr-product-title" style={{ fontSize: isMobile ? 36 : 64, marginTop: 8, marginBottom: 16 }}>{p.name}</h1>
 
           <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-            <div className="display" style={{ fontSize: 40 }}>{brl(unitPrice)}</div>
+            <div className="display" style={{ fontSize: isMobile ? 26 : 40 }}>{brl(unitPrice)}</div>
             <div className="mono" style={{ fontSize: 12, color: "var(--brand-muted)" }}>atacado · un</div>
             <div style={{ fontSize: 12, color: "var(--brand-muted)", textDecoration: "line-through" }}>
               Sugerido {brl(p.priceRetail)}
@@ -214,19 +225,25 @@ function ProductDetailInner({ p }: { p: Product }) {
               <span className="eyebrow">Cor · {color.name}</span>
               <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)" }}>{p.colors.length} opções</span>
             </div>
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
-              {p.colors.slice(0, 5).map(c => (
+            <div style={{
+              display: "flex", gap: 6,
+              flexWrap: isMobile ? "wrap" : "nowrap",
+              overflowX: isMobile ? "visible" : "auto",
+              scrollbarWidth: "none", paddingBottom: 4,
+            }}>
+              {p.colors.slice(0, isMobile ? p.colors.length : 5).map(c => (
                 <button key={c.id} onClick={() => handleColorChange(c.id)} style={{
                   flexShrink: 0,
-                  padding: "8px 14px", display: "inline-flex", gap: 8, alignItems: "center",
+                  padding: isMobile ? "6px 10px" : "8px 14px",
+                  display: "inline-flex", gap: 6, alignItems: "center",
                   border: "1px solid " + (colorId === c.id ? "var(--brand-foreground)" : "var(--brand-border)"),
-                  fontSize: 12,
+                  fontSize: isMobile ? 11 : 12,
                 }}>
-                  <span style={{ width: 14, height: 14, background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc", borderRadius: 999, flexShrink: 0 }}/>
+                  <span style={{ width: 12, height: 12, background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc", borderRadius: 999, flexShrink: 0 }}/>
                   {c.name}
                 </button>
               ))}
-              {p.colors.length > 5 && (
+              {!isMobile && p.colors.length > 5 && (
                 <span className="mono" style={{ alignSelf: "center", fontSize: 11, color: "var(--brand-muted)", flexShrink: 0 }}>
                   +{p.colors.length - 5} mais
                 </span>
@@ -240,33 +257,64 @@ function ProductDetailInner({ p }: { p: Product }) {
               <span className="eyebrow">Grade de tamanhos</span>
               <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)" }}>MOQ {p.moq} un</span>
             </div>
-            <div className="sr-product-size-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${p.sizes.length}, 1fr)`, gap: 4 }}>
-              {p.sizes.map(s => {
-                const stock = p.stockBySize?.[s] ?? 60;
-                const low = stock < 30;
-                return (
-                  <div key={s} style={{ border: "1px solid var(--brand-border)", padding: 12, textAlign: "center", background: qty[s] > 0 ? "var(--brand-surface)" : "white" }}>
-                    <div className="mono" style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{s}</div>
-                    <div className="mono" style={{ fontSize: 9, color: low ? "var(--brand-primary)" : "var(--brand-muted)", marginBottom: 8 }}>
-                      {low ? `últimas ${stock}` : `${stock} pç`}
+            {/* Mobile: grid que ocupa 100% da largura, sem scroll horizontal */}
+            {isMobile ? (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${p.sizes.length}, 1fr)`, gap: 3 }}>
+                {p.sizes.map(s => {
+                  const stock = p.stockBySize?.[s] ?? 60;
+                  const low = stock < 30;
+                  return (
+                    <div key={s} style={{ border: "1px solid var(--brand-border)", padding: "8px 4px", textAlign: "center", background: qty[s] > 0 ? "var(--brand-surface)" : "white" }}>
+                      <div className="mono" style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{s}</div>
+                      <div className="mono" style={{ fontSize: 8, color: low ? "var(--brand-primary)" : "var(--brand-muted)", marginBottom: 5 }}>
+                        {low ? `ult.${stock}` : `${stock}pç`}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                        <button onClick={() => setQty({ ...qty, [s]: Math.max(0, qty[s] - 1) })}
+                          style={{ width: 18, height: 18, border: "1px solid var(--brand-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Icons.Minus size={8}/>
+                        </button>
+                        <input value={qty[s]}
+                          onChange={e => setQty({ ...qty, [s]: Math.max(0, parseInt(e.target.value || "0")) })}
+                          style={{ width: 20, textAlign: "center", border: 0, fontFamily: "var(--font-mono)", fontSize: 11, background: "transparent", minWidth: 0 }}/>
+                        <button onClick={() => setQty({ ...qty, [s]: qty[s] + 1 })}
+                          style={{ width: 18, height: 18, border: "1px solid var(--brand-border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Icons.Plus size={8}/>
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                      <button onClick={() => setQty({ ...qty, [s]: Math.max(0, qty[s] - 1) })}
-                        style={{ width: 20, height: 20, border: "1px solid var(--brand-border)" }}>
-                        <Icons.Minus size={10}/>
-                      </button>
-                      <input value={qty[s]}
-                        onChange={e => setQty({ ...qty, [s]: Math.max(0, parseInt(e.target.value || "0")) })}
-                        style={{ width: 30, textAlign: "center", border: 0, fontFamily: "var(--font-mono)", fontSize: 13, background: "transparent" }}/>
-                      <button onClick={() => setQty({ ...qty, [s]: qty[s] + 1 })}
-                        style={{ width: 20, height: 20, border: "1px solid var(--brand-border)" }}>
-                        <Icons.Plus size={10}/>
-                      </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="sr-product-size-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${p.sizes.length}, 1fr)`, gap: 4 }}>
+                {p.sizes.map(s => {
+                  const stock = p.stockBySize?.[s] ?? 60;
+                  const low = stock < 30;
+                  return (
+                    <div key={s} style={{ border: "1px solid var(--brand-border)", padding: 12, textAlign: "center", background: qty[s] > 0 ? "var(--brand-surface)" : "white" }}>
+                      <div className="mono" style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{s}</div>
+                      <div className="mono" style={{ fontSize: 9, color: low ? "var(--brand-primary)" : "var(--brand-muted)", marginBottom: 8 }}>
+                        {low ? `últimas ${stock}` : `${stock} pç`}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        <button onClick={() => setQty({ ...qty, [s]: Math.max(0, qty[s] - 1) })}
+                          style={{ width: 20, height: 20, border: "1px solid var(--brand-border)" }}>
+                          <Icons.Minus size={10}/>
+                        </button>
+                        <input value={qty[s]}
+                          onChange={e => setQty({ ...qty, [s]: Math.max(0, parseInt(e.target.value || "0")) })}
+                          style={{ width: 30, textAlign: "center", border: 0, fontFamily: "var(--font-mono)", fontSize: 13, background: "transparent" }}/>
+                        <button onClick={() => setQty({ ...qty, [s]: qty[s] + 1 })}
+                          style={{ width: 20, height: 20, border: "1px solid var(--brand-border)" }}>
+                          <Icons.Plus size={10}/>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Summary */}

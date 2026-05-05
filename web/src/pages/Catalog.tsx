@@ -27,7 +27,16 @@ export default function Catalog() {
   const { data: collections = [] }         = useCollections();
   const { data: categories = [] }          = useCategories();
 
-  const allCategories = [{ id: "all", label: "Tudo", count: products.length }, ...categories];
+  const allCategories = useMemo(() => {
+    const counts = products.reduce<Record<string, number>>((acc, p) => {
+      if (p.category) acc[p.category] = (acc[p.category] ?? 0) + 1;
+      return acc;
+    }, {});
+    return [
+      { id: "all", label: "Tudo", count: products.length },
+      ...categories.map((c) => ({ ...c, count: counts[c.id] ?? 0 })),
+    ];
+  }, [products, categories]);
 
   const filtered = useMemo(() => {
     let list = products.filter((p) =>
@@ -172,7 +181,7 @@ function ProductCard({ p, onOpen, onQuickAdd }: { p: Product; onOpen: () => void
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ position: "relative" }}>
       {/* Foto / carrossel */}
-      <button onClick={onOpen} style={{ display: "block", width: "100%", textAlign: "left", position: "relative" }}>
+      <div onClick={onOpen} style={{ display: "block", width: "100%", textAlign: "left", position: "relative", cursor: "pointer" }}>
         <div style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden", background: "var(--brand-surface)" }}>
           {currentSrc ? (
             <img
@@ -228,7 +237,7 @@ function ProductCard({ p, onOpen, onQuickAdd }: { p: Product; onOpen: () => void
             </div>
           )}
         </div>
-      </button>
+      </div>
 
       {/* "Adicionar grade" ao hover (escondido no mobile, substituído pelo tap) */}
       {hovered && (
@@ -350,16 +359,15 @@ function WholesaleRow({ p, allSizes, addToCart, onOpen }: { p: Product; allSizes
       </button>
 
       {/* Cores */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
         {p.colors.map((c) => (
-          <button key={c.id} onClick={() => setColorId(c.id)} style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "4px 8px", fontSize: 11,
-            border: "1px solid " + (colorId === c.id ? "var(--brand-foreground)" : "var(--brand-border)"),
-          }}>
-            <span style={{ width: 10, height: 10, background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc", borderRadius: 999 }}/>
-            {c.name}
-          </button>
+          <button key={c.id} onClick={() => setColorId(c.id)} title={c.name} style={{
+            width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+            background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
+            boxShadow: colorId === c.id
+              ? "0 0 0 2px white, 0 0 0 3.5px var(--brand-foreground)"
+              : "0 0 0 1px rgba(0,0,0,0.15)",
+          }}/>
         ))}
       </div>
 
@@ -419,16 +427,16 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
           <div className="mono" style={{ fontSize: 14, marginTop: 4 }}>{brl(p.price)}</div>
         </div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Cor</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Cor · {p.colors.find((c) => c.id === colorId)?.name}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {p.colors.map((c) => (
-              <button key={c.id} onClick={() => setColorId(c.id)} style={{
-                padding: "8px 12px", display: "inline-flex", gap: 8, alignItems: "center",
-                border: "1px solid " + (colorId === c.id ? "var(--brand-foreground)" : "var(--brand-border)"), fontSize: 12,
-              }}>
-                <span style={{ width: 14, height: 14, background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc", borderRadius: 999 }}/>
-                {c.name}
-              </button>
+              <button key={c.id} onClick={() => setColorId(c.id)} title={c.name} style={{
+                width: 28, height: 28, borderRadius: 999, flexShrink: 0,
+                background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
+                boxShadow: colorId === c.id
+                  ? "0 0 0 2px white, 0 0 0 3.5px var(--brand-foreground)"
+                  : "0 0 0 1px rgba(0,0,0,0.15)",
+              }}/>
             ))}
           </div>
         </div>

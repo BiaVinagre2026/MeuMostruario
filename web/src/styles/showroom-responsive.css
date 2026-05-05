@@ -569,6 +569,8 @@
   .sr-filter-chips {
     width: 100%;
     order: 2;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .sr-filter-selects {

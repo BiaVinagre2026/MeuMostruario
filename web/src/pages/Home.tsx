@@ -4,6 +4,7 @@ import { Photo, Btn, Tag } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
 import { TIERS, brl, TONE } from "@/data/catalog";
 import { useProducts, useCollections } from "@/hooks/useCatalog";
+import { PaymentModal } from "@/components/showroom/PaymentModal";
 import { apiClient } from "@/lib/api/client";
 import type { Product } from "@/types/catalog";
 
@@ -12,9 +13,11 @@ export default function Home() {
   const { data: allProducts = [] } = useProducts();
   const { data: collections = [] } = useCollections();
 
+
   const [b2bOpen, setB2bOpen]         = useState(false);
   const [tryOnOpen, setTryOnOpen]     = useState(false);
   const [howOpen, setHowOpen]         = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [isMobile, setIsMobile]       = useState(() => window.innerWidth < 768);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
@@ -60,8 +63,14 @@ export default function Home() {
       <section className="sr-hero" style={{ position: "relative", minHeight: 500 }}>
         {featured[0]?.imageUrl ? (
           <img
-            src={featured[0].imageUrl}
+            src={
+              featured[0].images?.[0]?.urls?.full ??
+              featured[0].images?.[0]?.urls?.regular ??
+              featured[0].imageUrl
+            }
             alt={featured[0]?.name ?? "Hero"}
+            fetchpriority="high"
+            loading="eager"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%" }}
           />
         ) : (
@@ -151,8 +160,8 @@ export default function Home() {
               30/60/90 para novos parceiros · Pix com 3% off.
             </p>
             <button
-              onClick={() => setB2bOpen(true)}
-              style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)", borderBottom: "1px solid var(--brand-muted)", paddingBottom: 2 }}
+              onClick={() => setPaymentOpen(true)}
+              style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-foreground)", borderBottom: "1px solid var(--brand-foreground)", paddingBottom: 2 }}
             >
               Consultar formas de pagamento <Icons.Arrow/>
             </button>
@@ -364,9 +373,10 @@ export default function Home() {
       </section>
 
       {/* Modals */}
-      {b2bOpen    && <B2BModal onClose={() => setB2bOpen(false)} />}
-      {tryOnOpen  && <TryOnModal onClose={() => setTryOnOpen(false)} products={allProducts} />}
-      {howOpen    && <HowItWorksModal onClose={() => setHowOpen(false)} />}
+      {b2bOpen      && <B2BModal onClose={() => setB2bOpen(false)} />}
+      {tryOnOpen    && <TryOnModal onClose={() => setTryOnOpen(false)} products={allProducts} />}
+      {howOpen      && <HowItWorksModal onClose={() => setHowOpen(false)} />}
+      {paymentOpen  && <PaymentModal onClose={() => setPaymentOpen(false)} />}
     </main>
   );
 }

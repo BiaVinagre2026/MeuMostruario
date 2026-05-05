@@ -53,6 +53,7 @@ export interface TenantConfig {
   tenantSlug: string;
   tenantName: string;
   footerText: string | null;
+  announcementBarText: string | null;
   social: Partial<Record<SocialNetwork, string>>;
   coinEvents: Record<string, CoinEventConfig>;
   allowMoneyPayment: boolean;
@@ -84,6 +85,7 @@ const defaultConfig: TenantConfig = {
   tenantSlug: "demo",
   tenantName: "App",
   footerText: null,
+  announcementBarText: null,
   social: {},
   coinEvents: {},
   allowMoneyPayment: false,
@@ -138,6 +140,7 @@ type RawBrandingResponse = {
     terms_url: string | null;
     privacy_url: string | null;
     footer_text: string | null;
+    announcement_bar_text: string | null;
     social: Partial<Record<SocialNetwork, string>>;
     coin_events: Record<string, { coins: number; xp: number }>;
     allow_money_payment: boolean;
@@ -314,6 +317,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       tenantSlug: t.slug,
       tenantName: t.name,
       footerText: c.footer_text,
+      announcementBarText: c.announcement_bar_text,
       social: c.social ?? {},
       coinEvents: c.coin_events ?? {},
       allowMoneyPayment: c.allow_money_payment ?? false,

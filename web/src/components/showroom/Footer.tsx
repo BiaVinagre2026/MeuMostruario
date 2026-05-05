@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo, Btn } from "./primitives";
 import { Icons } from "./icons";
-import { TENANT, COLLECTIONS, TIERS, brl } from "@/data/catalog";
+import { TENANT, TIERS, brl } from "@/data/catalog";
+import { PaymentModal } from "./PaymentModal";
 
 type FooterModal = "how" | "minorder" | "payment" | null;
 
@@ -40,12 +41,10 @@ export function Footer({ compact = false }: { compact?: boolean }) {
     );
   }
 
-  const vendas: Array<{ label: string; onClick?: () => void }> = [
+  const vendas = [
     { label: "Como comprar",        onClick: () => setModal("how") },
     { label: "Pedido mínimo",       onClick: () => setModal("minorder") },
     { label: "Formas de pagamento", onClick: () => setModal("payment") },
-    { label: "Representantes" },
-    { label: "Devoluções" },
   ];
 
   const linkStyle: React.CSSProperties = {
@@ -100,55 +99,26 @@ export function Footer({ compact = false }: { compact?: boolean }) {
             </div>
           </div>
         ) : (
-          /* ── Layout desktop: 4 colunas ── */
+          /* ── Layout desktop: coluna única, links na horizontal ── */
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, maxWidth: 1440, margin: "0 auto" }}>
-              <div>
-                <Logo size={28}/>
-                <p className="display" style={{ fontSize: 40, lineHeight: 1, marginTop: 32, maxWidth: 380 }}>
-                  Moda feita em <em>pequenos lotes</em>, para multimarcas curadas.
-                </p>
-                <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
-                  <Btn variant="accent" icon={<Icons.Whats/>}
-                    onClick={() => alert("Abre WhatsApp: " + TENANT.whatsapp)}>
-                    Falar com o atacado
-                  </Btn>
-                </div>
-              </div>
-
-              <div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.5, marginBottom: 20 }}>
-                  Vendas
-                </div>
-                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+              <Logo size={28}/>
+              <p className="display" style={{ fontSize: 28, lineHeight: 1.15, marginTop: 24, whiteSpace: "nowrap" }}>
+                Moda feita em <em>pequenos lotes</em>, para multimarcas curadas.
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 40, marginTop: 28, flexWrap: "wrap" }}>
+                <Btn variant="accent" icon={<Icons.Whats/>}
+                  onClick={() => alert("Abre WhatsApp: " + TENANT.whatsapp)}>
+                  Falar com o atacado
+                </Btn>
+                <ul style={{ listStyle: "none", display: "flex", gap: 28, alignItems: "center" }}>
                   {vendas.map(v => (
                     <li key={v.label}>
-                      {v.onClick ? (
-                        <button onClick={v.onClick} style={clickableLinkStyle}>{v.label}</button>
-                      ) : (
-                        <span style={{ ...linkStyle, opacity: 0.6 }}>{v.label}</span>
-                      )}
+                      <button onClick={v.onClick} style={clickableLinkStyle}>{v.label}</button>
                     </li>
                   ))}
                 </ul>
               </div>
-
-              {[
-                { title: "Coleções", items: COLLECTIONS.map(c => ({ label: c.name })) },
-                { title: "Atelier",  items: [
-                  { label: "Sobre" }, { label: "Processo" }, { label: "Matérias-primas" },
-                  { label: "Sustentabilidade" }, { label: "Contato" },
-                ]},
-              ].map(c => (
-                <div key={c.title}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.5, marginBottom: 20 }}>
-                    {c.title}
-                  </div>
-                  <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
-                    {c.items.map(i => <li key={i.label} style={{ ...linkStyle, opacity: 0.6 }}>{i.label}</li>)}
-                  </ul>
-                </div>
-              ))}
             </div>
 
             <div style={{
@@ -167,13 +137,13 @@ export function Footer({ compact = false }: { compact?: boolean }) {
       </footer>
 
       {/* Modals */}
-      {modal && (
+      {modal && modal !== "payment" && (
         <FooterOverlay onClose={() => setModal(null)}>
           {modal === "how"      && <HowToBuyContent onB2B={() => { setModal(null); navigate("/"); }} />}
           {modal === "minorder" && <MinOrderContent />}
-          {modal === "payment"  && <PaymentContent />}
         </FooterOverlay>
       )}
+      {modal === "payment" && <PaymentModal onClose={() => setModal(null)} />}
     </>
   );
 }
@@ -279,31 +249,3 @@ function MinOrderContent() {
   );
 }
 
-// ── Formas de Pagamento ──────────────────────────────────────────────────────
-
-function PaymentContent() {
-  const options = [
-    { title: "30/60/90 DDL", desc: "Parcelas em boleto para novos parceiros aprovados. Disponível após análise de crédito." },
-    { title: "Pix — 3% de desconto", desc: "Pagamento à vista com desconto de 3% sobre o total do pedido." },
-    { title: "Cartão de crédito", desc: "Parcelamento em até 6× sem juros. Disponível para pedidos acima de R$ 500." },
-    { title: "Transferência bancária", desc: "TED/DOC para pedidos recorrentes de clientes ativos." },
-  ];
-
-  return (
-    <div>
-      <div className="eyebrow" style={{ marginBottom: 8 }}>Condições financeiras</div>
-      <h2 className="display" style={{ fontSize: 40, marginBottom: 28 }}>Formas de pagamento</h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-        {options.map((o, i) => (
-          <div key={o.title} style={{
-            padding: "20px 0",
-            borderBottom: i < options.length - 1 ? "1px solid var(--brand-border)" : "none",
-          }}>
-            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>{o.title}</div>
-            <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.6 }}>{o.desc}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
