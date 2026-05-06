@@ -23,3 +23,5 @@ api/node_modules/
 
 # Fotos/assets grandes — commitar só se tiver no LFS
 Fotos/
+CREDENCIAIS_DEV.md
+AGENTS.md

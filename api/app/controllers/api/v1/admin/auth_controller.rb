@@ -18,7 +18,8 @@ module Api
           end
 
           if operator.admin?
-            unless current_tenant && operator.tenant_id == current_tenant.id
+            tenant = current_tenant || login_tenant
+            unless tenant && operator.tenant_id == tenant.id
               return render json: { error: "Invalid credentials" }, status: :unauthorized
             end
           end
@@ -50,6 +51,13 @@ module Api
         private
 
         skip_before_action :require_operator_auth!, only: [:login]
+
+        def login_tenant
+          slug = params[:tenant_slug].presence || params[:tenantSlug].presence
+          return nil unless slug
+
+          Tenant.active.find_by(slug: slug.to_s.strip)
+        end
 
         def operator_json(op)
           {

@@ -243,6 +243,10 @@ function loadGoogleFont(fontName: string): void {
 
 function resolveTenantId(): string | undefined {
   const host = window.location.hostname;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) {
+    return undefined;
+  }
+
   const parts = host.split(".");
   if (parts.length >= 2) {
     const slug = parts[0];
@@ -255,7 +259,18 @@ function resolveTenantId(): string | undefined {
 
 function fetchBranding(): Promise<RawBrandingResponse> {
   const tenantId = resolveTenantId() ?? (import.meta.env.VITE_TENANT_SLUG as string | undefined);
-  const apiUrl = (import.meta.env.VITE_API_URL as string) ?? "";
+  const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+  const host = window.location.hostname;
+  const apiUrl =
+    configuredApiUrl ||
+    (
+      import.meta.env.DEV &&
+      window.location.port === "3000" &&
+      host !== "localhost" &&
+      host !== "127.0.0.1"
+        ? `http://${host}:8000`
+        : ""
+    );
 
   const headers: Record<string, string> = { Accept: "application/json" };
   if (tenantId) headers["X-Tenant-ID"] = tenantId;

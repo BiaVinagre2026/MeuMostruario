@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useOperatorStore } from "@/stores/useOperatorStore";
+import { resolveApiBaseUrl } from "@/lib/api/client";
 import type { Operator, OperatorLoginCredentials } from "@/types/operator";
 
 export const operatorAuthKeys = {
@@ -10,7 +11,7 @@ export const operatorAuthKeys = {
 };
 
 async function fetchCurrentOperator(): Promise<Operator> {
-  const response = await fetch("/api/v1/admin/auth/me", {
+  const response = await fetch(`${resolveApiBaseUrl()}/api/v1/admin/auth/me`, {
     credentials: "include",
     headers: { Accept: "application/json" },
   });
@@ -25,17 +26,21 @@ async function fetchCurrentOperator(): Promise<Operator> {
 
 async function postOperatorLogin(credentials: OperatorLoginCredentials): Promise<Operator> {
   const { tenantSlug, ...body } = credentials;
+  const normalizedTenantSlug = tenantSlug?.trim();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
   };
-  if (tenantSlug) headers["X-Tenant-ID"] = tenantSlug;
+  if (normalizedTenantSlug) headers["X-Tenant-ID"] = normalizedTenantSlug;
 
-  const response = await fetch("/api/v1/admin/auth/login", {
+  const response = await fetch(`${resolveApiBaseUrl()}/api/v1/admin/auth/login`, {
     method: "POST",
     credentials: "include",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ...body,
+      ...(normalizedTenantSlug ? { tenant_slug: normalizedTenantSlug } : {}),
+    }),
   });
 
   if (!response.ok) {
@@ -54,7 +59,7 @@ async function postOperatorLogin(credentials: OperatorLoginCredentials): Promise
 }
 
 async function deleteOperatorSession(): Promise<void> {
-  await fetch("/api/v1/admin/auth/logout", {
+  await fetch(`${resolveApiBaseUrl()}/api/v1/admin/auth/logout`, {
     method: "DELETE",
     credentials: "include",
     headers: { Accept: "application/json" },

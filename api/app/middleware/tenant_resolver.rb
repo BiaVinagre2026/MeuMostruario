@@ -53,8 +53,8 @@ class TenantResolver
     tenant = Tenant.active.find_by(custom_domain: host)
     return tenant if tenant
 
-    # Priority 4 (dev only): localhost → DEFAULT_DEV_TENANT (evita editar /etc/hosts)
-    if Rails.env.development? && %w[localhost 127.0.0.1].include?(host)
+    # Priority 4 (dev only): local/LAN hosts -> DEFAULT_DEV_TENANT (evita editar /etc/hosts)
+    if Rails.env.development? && default_dev_host?(host)
       default_slug = ENV.fetch("DEFAULT_DEV_TENANT", "demo")
       return Tenant.active.find_by(slug: default_slug)
     end
@@ -73,5 +73,11 @@ class TenantResolver
 
   def excluded_subdomain?(subdomain)
     %w[www api admin app].include?(subdomain)
+  end
+
+  def default_dev_host?(host)
+    return true if %w[localhost 127.0.0.1 api].include?(host)
+
+    host.match?(/\A(10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|192\.168\.\d+\.\d+)\z/)
   end
 end

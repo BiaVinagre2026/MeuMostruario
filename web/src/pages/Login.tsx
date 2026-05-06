@@ -4,6 +4,7 @@ import { Logo } from "@/components/showroom/primitives";
 import { useLogin } from "@/hooks/useAuth";
 import { useTenant } from "@/providers/TenantProvider";
 import { maskCpf, unmaskCpf } from "@/lib/masks";
+import { isLocalDevHost } from "@/lib/devEnvironment";
 
 export default function Login() {
   const [cpf, setCpf] = useState("");
@@ -11,6 +12,7 @@ export default function Login() {
   const navigate = useNavigate();
   const login = useLogin();
   const tenant = useTenant();
+  const showPasswordAsText = isLocalDevHost();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +65,7 @@ export default function Login() {
                 Senha
               </label>
               <input
-                type="password"
+                type={showPasswordAsText ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

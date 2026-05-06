@@ -27,17 +27,26 @@ export default defineConfig({
     "import.meta.env.VITE_GIT_SHA": JSON.stringify(resolveGitSha()),
   },
   server: {
-    allowedHosts: ["localhost", ".app.local"],
-    host: "::",
+    allowedHosts: true,
+    host: "0.0.0.0",
     port: 3000,
     strictPort: true,
     hmr: {
       overlay: false,
     },
     proxy: {
-      "/api": { target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000" },
-      "/uploads": { target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000" },
-      "/letter_opener": { target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000" },
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/letter_opener": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
     },
   },
   plugins: [react()],

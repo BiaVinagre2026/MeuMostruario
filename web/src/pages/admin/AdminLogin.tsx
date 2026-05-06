@@ -11,9 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOperatorLogin } from "@/hooks/useOperatorAuth";
 import { useOperatorStore } from "@/stores/useOperatorStore";
+import { isLocalDevHost } from "@/lib/devEnvironment";
 
 function detectTenantSlug(): string {
   const host = window.location.hostname;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) {
+    return "";
+  }
+
   const parts = host.split(".");
   if (parts.length >= 2) {
     const slug = parts[0];
@@ -41,6 +46,7 @@ export default function AdminLogin() {
 
   const detectedSlug = detectTenantSlug();
   const showTenantField = !detectedSlug;
+  const showPasswordAsText = isLocalDevHost();
 
   const adminHome = "/admin/dashboard";
 
@@ -61,8 +67,13 @@ export default function AdminLogin() {
   });
 
   function onSubmit(values: AdminLoginValues) {
+    const tenantSlug = (values.tenantSlug || detectedSlug || "").trim();
     login(
-      { ...values, tenantSlug: values.tenantSlug || detectedSlug || undefined },
+      {
+        email: values.email.trim(),
+        password: values.password,
+        tenantSlug: tenantSlug || undefined,
+      },
       {
         onSuccess: () => {
           navigate("/admin/dashboard", { replace: true });
@@ -115,7 +126,7 @@ export default function AdminLogin() {
               <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
-                type="password"
+                type={showPasswordAsText ? "text" : "password"}
                 autoComplete="current-password"
                 disabled={isPending}
                 {...register("password")}

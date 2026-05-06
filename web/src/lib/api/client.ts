@@ -15,6 +15,10 @@ export class ApiError extends Error {
 
 function resolveTenantId(): string | undefined {
   const host = window.location.hostname;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) {
+    return undefined;
+  }
+
   const parts = host.split(".");
   if (parts.length >= 2) {
     const slug = parts[0];
@@ -27,7 +31,24 @@ function resolveTenantId(): string | undefined {
 
 const TENANT_ID = resolveTenantId();
 
-const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? "";
+export function resolveApiBaseUrl(): string {
+  const configuredUrl = import.meta.env.VITE_API_URL as string | undefined;
+  if (configuredUrl) return configuredUrl;
+
+  const host = window.location.hostname;
+  if (
+    import.meta.env.DEV &&
+    window.location.port === "3000" &&
+    host !== "localhost" &&
+    host !== "127.0.0.1"
+  ) {
+    return `http://${host}:8000`;
+  }
+
+  return "";
+}
+
+const BASE_URL = resolveApiBaseUrl();
 
 const ADMIN_SLUG_EXEMPT_PREFIXES = [
   "/api/v1/admin/auth/",
