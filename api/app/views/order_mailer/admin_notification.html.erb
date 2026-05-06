@@ -12,11 +12,26 @@
 <content_for :subject>Novo pedido #<%= @order.id %></content_for>
 
 <h2 style="margin:0 0 4px;font-size:22px;color:#0f172a;">Novo pedido recebido</h2>
-<p style="margin:0 0 24px;font-size:14px;color:#64748b;">
+<p style="margin:0 0 20px;font-size:14px;color:#64748b;">
   Pedido <strong>#<%= @order.id %></strong> &middot;
   <strong><%= @items.sum(&:qty) %> peças</strong> &middot;
   <%= @order.created_at.strftime("%d/%m/%Y %H:%M") %>
 </p>
+
+<% if @order.member %>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+  <tr>
+    <td style="padding:14px 16px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">Lojista</div>
+      <div style="font-size:15px;font-weight:600;color:#0f172a;"><%= @order.member.full_name %></div>
+      <div style="font-size:13px;color:#64748b;margin-top:2px;"><%= @order.member.email %></div>
+      <% if @order.member.phone.present? %>
+        <div style="font-size:13px;color:#64748b;margin-top:2px;"><%= @order.member.phone %></div>
+      <% end %>
+    </td>
+  </tr>
+</table>
+<% end %>
 
 <% if @order.notes.present? %>
   <p style="margin:0 0 20px;padding:12px 16px;background:#f8fafc;border-left:3px solid <%= primary %>;font-size:13px;color:#334155;">
@@ -97,8 +112,9 @@
 </table>
 
 <div style="text-align:center;">
-  <a href="mailto:<%= tc&.company_email %>"
+  <% reply_email = @order.member&.email.presence || tc&.company_email %>
+  <a href="mailto:<%= reply_email %>?subject=Pedido+%23<%= @order.id %>"
      style="display:inline-block;padding:12px 28px;background:<%= primary %>;color:#ffffff;font-weight:600;font-size:14px;border-radius:8px;text-decoration:none;">
-    Responder ao cliente
+    Responder ao lojista
   </a>
 </div>

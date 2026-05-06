@@ -1,0 +1,54 @@
+<% content_for :title, "Lookbook" %>
+<% content_for :description, seo_description("Lookbook B2B com combinacoes publicadas de #{current_tenant&.name || 'Meu Mostruario'}.") %>
+<% content_for :head do %>
+  <%= json_ld_item_list("Lookbook #{current_tenant&.name}", @looks.to_a) %>
+<% end %>
+
+<div class="max-w-7xl mx-auto px-6 py-12">
+  <section style="border-bottom:1px solid var(--brand-border);padding-bottom:36px;margin-bottom:32px;">
+    <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Editorial de venda</div>
+    <h1 style="font-family:var(--font-heading);font-size:clamp(2.25rem,7vw,5rem);font-weight:300;letter-spacing:-0.03em;line-height:1;margin-bottom:16px;">Lookbook</h1>
+    <p style="max-width:620px;font-size:15px;line-height:1.7;color:var(--brand-muted);">
+      Composicoes prontas para vitrines, provadores e compras coordenadas por colecao.
+    </p>
+  </section>
+
+  <% if @collections.any? %>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px;">
+      <%= link_to "Todos", public_looks_path,
+          style: "padding:8px 16px;border:1px solid #{params[:colecao].blank? ? 'var(--brand-foreground)' : 'var(--brand-border)'};background:#{params[:colecao].blank? ? 'var(--brand-foreground)' : '#fff'};color:#{params[:colecao].blank? ? '#fff' : 'var(--brand-foreground)'};text-decoration:none;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);" %>
+      <% @collections.each do |collection| %>
+        <%= link_to collection.name, public_looks_path(colecao: collection.slug),
+            style: "padding:8px 16px;border:1px solid #{params[:colecao] == collection.slug ? 'var(--brand-foreground)' : 'var(--brand-border)'};background:#{params[:colecao] == collection.slug ? 'var(--brand-foreground)' : '#fff'};color:#{params[:colecao] == collection.slug ? '#fff' : 'var(--brand-foreground)'};text-decoration:none;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @looks.any? %>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <% @looks.each do |look| %>
+        <%= link_to public_look_path(look.slug), style: "text-decoration:none;color:inherit;display:block;" do %>
+          <div style="aspect-ratio:3/4;background:var(--brand-surface);overflow:hidden;margin-bottom:14px;">
+            <% if look.cover_url.present? %>
+              <img src="<%= look.cover_url %>" alt="<%= look.name %>" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+            <% elsif (product = look.products.first) && (img = cover_url(product)) %>
+              <img src="<%= img %>" alt="<%= look.name %>" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+            <% end %>
+          </div>
+          <% if look.collection %>
+            <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--brand-muted);margin-bottom:4px;"><%= look.collection.name %></div>
+          <% end %>
+          <div style="font-family:var(--font-heading);font-size:20px;font-weight:500;margin-bottom:6px;"><%= look.name %></div>
+          <% if look.description.present? %>
+            <p style="font-size:13px;color:var(--brand-muted);line-height:1.6;margin:0 0 8px;"><%= truncate(look.description, length: 110) %></p>
+          <% end %>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--brand-muted);"><%= look.products.size %> pecas no look</div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div style="border:1px solid var(--brand-border);padding:48px;text-align:center;color:var(--brand-muted);">
+      Nenhum look publicado para estes filtros.
+    </div>
+  <% end %>
+</div>

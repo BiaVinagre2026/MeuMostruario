@@ -5,8 +5,8 @@ module Api
     class ProductsController < ApplicationController
       def index
         scope = Product.published.includes(:category, :collection, :images, :variants)
-        scope = scope.by_collection(params[:collection_id])   if params[:collection_id].present?
-        scope = scope.where(category_id: params[:category_id]) if params[:category_id].present?
+        scope = filter_by_collection(scope)
+        scope = filter_by_category(scope)
         scope = scope.search(params[:q])                       if params[:q].present?
 
         products = paginate(scope)
@@ -23,6 +23,22 @@ module Api
       private
 
       SIZE_ORDER = %w[PP P M G GG XGG Único].freeze
+
+      def filter_by_collection(scope)
+        return scope unless params[:collection_id].present?
+
+        collection = Collection.find_by(id: params[:collection_id]) || Collection.find_by(slug: params[:collection_id])
+        collection ? scope.where(collection_id: collection.id) : scope.none
+      end
+
+      def filter_by_category(scope)
+        return scope unless params[:category_id].present?
+
+        category = Category.find_by(id: params[:category_id]) || Category.find_by(slug: params[:category_id])
+        return scope.none unless category
+
+        scope.where(category_id: [category.id, *category.subcategories.pluck(:id)])
+      end
 
       def product_summary(p)
         seen_sizes  = p.variants.map(&:size).compact.uniq

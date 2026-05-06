@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useCartStore } from "@/stores/useCartStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { Icons } from "@/components/showroom/icons";
 import { Btn } from "@/components/showroom/primitives";
 import { TIERS, brl, activeTier, TONE } from "@/data/catalog";
+import { pantoneByHex } from "@/data/pantone";
 import { useTenant } from "@/providers/TenantProvider";
 import { apiClient } from "@/lib/api/client";
 import type { CartItem } from "@/types/catalog";
@@ -28,7 +30,8 @@ function extractWhatsappNumber(raw: string | undefined): string {
 
 export function CartDrawer() {
   const { items, isOpen, close, remove } = useCartStore();
-  const tenant  = useTenant();
+  const tenant   = useTenant();
+  const user     = useAuthStore((s) => s.user);
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -46,15 +49,17 @@ export function CartDrawer() {
 
   function buildWhatsappMessage() {
     const lines = items.map(i => {
-      const color = i.colors.find(c => c.id === i.colorId);
+      const colorName = pantoneByHex(i.colorId)?.name ?? i.colors.find(c => c.id === i.colorId)?.name ?? "—";
       const grade = Object.entries(i.qty)
         .filter(([, q]) => q > 0)
         .map(([s, q]) => `${s}×${q}`)
         .join(" ");
-      return `• ${i.name} · ${color?.name ?? "—"} · ${grade} = ${i.total}un · ${brl(i.total * i.price)}`;
+      return `• ${i.name} · ${colorName} · ${grade} = ${i.total}un · ${brl(i.total * i.price)}`;
     }).join("\n");
-    const name = tenant.tenantName || tenant.companyName || "Mostruário";
-    return `Olá ${name}, quero fechar pedido:\n\n${lines}\n\nSubtotal: ${brl(subtotal)}${tier.discount > 0 ? `\nDesconto ${tier.discount}%: -${brl(discount)}` : ""}\n*Total: ${brl(total)}* · ${unitsTotal} peças`;
+    const brandName  = tenant.tenantName || tenant.companyName || "Mostruário";
+    const memberName = user?.full_name ?? "";
+    const greeting   = memberName ? `Olá ${brandName}! Aqui é *${memberName}*.` : `Olá ${brandName}!`;
+    return `${greeting} Quero fechar o seguinte pedido:\n\n${lines}\n\nSubtotal: ${brl(subtotal)}${tier.discount > 0 ? `\nDesconto ${tier.discount}%: -${brl(discount)}` : ""}\n*Total: ${brl(total)}* · ${unitsTotal} peças`;
   }
 
   const handleCheckout = async () => {
@@ -202,9 +207,11 @@ export function CartDrawer() {
 }
 
 function CartItemRow({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
-  const color     = item.colors.find(c => c.id === item.colorId);
-  const tone      = TONE[color?.tone ?? "sand"];
-  const imageUrl  = item.colorImages?.[item.colorId] ?? item.imageUrl;
+  const pantone   = pantoneByHex(item.colorId);
+  const colorName = pantone?.name ?? item.colors.find(c => c.id === item.colorId)?.name;
+  const colorHex  = pantone?.hex ?? item.colors.find(c => c.id === item.colorId)?.hex;
+  const tone      = TONE[item.colors.find(c => c.id === item.colorId)?.tone ?? "sand"];
+  const imageUrl  = item.imageUrl;
   const grade     = Object.entries(item.qty)
     .filter(([, q]) => q > 0)
     .map(([s, q]) => `${s}×${q}`)
@@ -212,14 +219,14 @@ function CartItemRow({ item, onRemove }: { item: CartItem; onRemove: () => void 
 
   return (
     <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--brand-border)", display: "grid", gridTemplateColumns: "56px 1fr auto", gap: 14, alignItems: "center" }}>
-      {/* Foto da cor ou swatch */}
+      {/* Foto do produto ou swatch de cor */}
       <div style={{
         width: 56, height: 72, borderRadius: 6, flexShrink: 0, overflow: "hidden",
-        background: imageUrl ? "transparent" : (color?.hex ?? tone.bg),
+        background: imageUrl ? "transparent" : (colorHex ?? tone?.bg ?? "#e5e0db"),
         border: "1px solid var(--brand-border)",
       }}>
         {imageUrl && (
-          <img src={imageUrl} alt={color?.name ?? item.name}
+          <img src={imageUrl} alt={colorName ?? item.name}
                style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
         )}
       </div>
@@ -234,13 +241,13 @@ function CartItemRow({ item, onRemove }: { item: CartItem; onRemove: () => void 
             {item.sku}
           </div>
         )}
-        {color && (
+        {colorName && (
           <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
             <span style={{
               display: "inline-block", width: 10, height: 10, borderRadius: "50%",
-              background: color.hex ?? tone.bg, border: "1px solid rgba(0,0,0,0.12)",
+              background: colorHex ?? tone?.bg ?? "#ccc", border: "1px solid rgba(0,0,0,0.12)",
             }}/>
-            <span style={{ fontSize: 11, color: "var(--brand-muted)" }}>{color.name}</span>
+            <span style={{ fontSize: 11, color: "var(--brand-muted)" }}>{colorName}</span>
           </div>
         )}
         <div className="mono" style={{ fontSize: 11, marginTop: 5, color: "var(--brand-foreground)", letterSpacing: "0.05em" }}>

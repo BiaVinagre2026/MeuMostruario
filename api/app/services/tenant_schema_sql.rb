@@ -5,6 +5,20 @@
 # Provides the SQL to create all tenant-scoped tables within an isolated
 # PostgreSQL schema. Called by TenantProvisioner when onboarding a new tenant.
 class TenantSchemaSql
+  def self.ensure_pg_trgm!(connection = ActiveRecord::Base.connection)
+    connection.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
+
+    extension_schema = connection.select_value(<<~SQL.squish)
+      SELECT extnamespace::regnamespace::text
+      FROM pg_extension
+      WHERE extname = 'pg_trgm'
+    SQL
+
+    return if extension_schema == "public"
+
+    connection.execute("ALTER EXTENSION pg_trgm SET SCHEMA public")
+  end
+
   def self.tables_sql
     [
       members_sql,
@@ -255,7 +269,7 @@ class TenantSchemaSql
         CONSTRAINT products_status_check CHECK (status IN ('draft','published','archived','sold_out'))
       );
 
-      CREATE EXTENSION IF NOT EXISTS pg_trgm;
+      CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
       CREATE INDEX IF NOT EXISTS idx_products_status ON products (status);
       CREATE INDEX IF NOT EXISTS idx_products_collection ON products (collection_id);

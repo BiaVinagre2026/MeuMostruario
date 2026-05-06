@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Regras de continuidade
+
+- Sempre que concluir uma etapa relevante, atualizar e salvar os arquivos de contexto do projeto (`AGENTS.md`, `CLAUDE.md` e documentos auxiliares como `CREDENCIAIS_DEV.md`, quando afetados).
+- Registrar no contexto o estado real do projeto: o que foi concluído, o que mudou, comandos de validação executados e pendências conhecidas.
+- Não deixar decisões importantes apenas na conversa; transformar em documentação versionável quando elas impactarem desenvolvimento, testes, ambiente ou credenciais de dev.
+
 ## Project Context
 
 **MeuMostruário** — plataforma SaaS multi-tenant white-label para showrooms de moda no Brasil. Permite que boutiques, influencers e marcas fitness publiquem catálogos profissionais sem equipe técnica.
@@ -14,16 +20,22 @@ O repo é um **monorepo** com duas pastas raiz:
 
 | Camada | Stack | Finalidade |
 |--------|-------|-----------|
-| **Showroom B2B (lojista)** | React SPA em `web/` | Catálogo, lookbook, carrinho, login de membro — servido via Vite em dev / build estático em prod |
+| **Showroom B2B (lojista)** | React SPA em `web/` | Catálogo, carrinho, login de membro — servido via Vite em dev / build estático em prod |
 | **Painel Admin** | React SPA em `web/` | Gestão de produtos, coleções, pedidos, membros — mesmo bundle |
 | **Storefront público (SEO)** | Rails ERB + Tailwind em `api/app/controllers/public/` | SSR para buscadores — **esqueleto existe, páginas precisam de conteúdo** |
 
 ---
 
+## Decisões de escopo
+
+- **Lookbook/Looks está fora deste projeto.** Não adicionar rotas, menus, hooks ou telas de Lookbook no showroom ou no admin. Qualquer tabela/controller legado de `looks`/`look_items` deve ser tratado como código inativo até uma decisão explícita de remoção/migração.
+- O admin de Lojistas deve permitir clicar em um lojista da lista para abrir edição dos dados cadastrais.
+- Para demo com cliente, usar o roteiro em `DEMO_CLIENTE.md` e manter o frontend na porta `3002`.
+
 ## Ambiente de desenvolvimento local
 
 ```
-Frontend (Vite):  http://localhost:3000
+Frontend (Vite):  http://localhost:3002
 Backend (Rails):  http://localhost:8000  ← via Docker
 ```
 
@@ -62,7 +74,7 @@ docker compose exec api bin/rails db:seed
 
 ```bash
 npm install
-npm run dev          # dev server porta 3000
+npm run dev          # dev server porta 3002
 npm run build        # build de produção
 npm test             # Vitest
 npm run test:watch
@@ -118,7 +130,6 @@ Auth é opt-in: `before_action :require_auth!` (members) ou concern `OperatorAut
   products          GET /index, /show  → lista e detalhe de produto (por slug)
   collections       GET /index, /show
   categories        GET /index
-  looks             GET /index, /show  → lista e detalhe de look (com produtos)
   leads             POST /create       → captura de interesse / pedido WhatsApp
   waitlists         POST /create
 
@@ -155,14 +166,13 @@ O SPA serve **tanto o showroom B2B quanto o painel admin**, no mesmo bundle.
 | `/` | `pages/Home.tsx` | Hero + coleções + destaques + tiers de desconto |
 | `/catalog` | `pages/Catalog.tsx` | Tabela wholesale com filtros + carrinho |
 | `/product/:id` | `pages/ProductDetail.tsx` | Detalhe de produto + variantes + WhatsApp |
-| `/lookbook` | `pages/Lookbook.tsx` | Grid de looks (API) com fallback editorial estático |
 | `/login` | `pages/Login.tsx` | Login de membro |
 | `/dashboard` | `pages/Dashboard.tsx` | Área do lojista autenticado |
 
 ### Layout do showroom
 
 `ShowroomLayout` (`components/showroom/ShowroomLayout.tsx`) envolve as rotas acima com:
-- `TopBar` — barra de anúncios + header sticky com logo, nav (Início / Catálogo / Lookbook), ícones de busca / usuário / carrinho / admin
+- `TopBar` — barra de anúncios + header sticky com logo, nav (Início / Catálogo), ícones de busca / usuário / carrinho / admin
 - `CartDrawer` — gaveta de carrinho lateral com pedido mínimo, tiers de desconto e envio via WhatsApp
 - Footer
 
@@ -176,16 +186,14 @@ Todos os hooks usam `apiClient` (que injeta `X-Tenant-ID` automaticamente) e `us
 | `useProduct(slug)` | `GET /api/v1/products/:slug` | `Product` |
 | `useCollections()` | `GET /api/v1/collections` | `Collection[]` |
 | `useCategories()` | `GET /api/v1/categories` | `Category[]` |
-| `useLooks()` | `GET /api/v1/looks` | `Look[]` |
-| `useLook(slug)` | `GET /api/v1/looks/:slug` | `Look` (com `products[]`) |
 
 ### Adaptador de catálogo — `web/src/lib/catalog-adapter.ts`
 
-Mapeia os shapes brutos da API (`ApiProduct`, `ApiCollection`, `ApiLook`, etc.) para os tipos tipados do frontend (`Product`, `Collection`, `Look`). Funções exportadas: `adaptProduct`, `adaptCollection`, `adaptCategory`, `adaptLook`.
+Mapeia os shapes brutos da API (`ApiProduct`, `ApiCollection`, etc.) para os tipos tipados do frontend (`Product`, `Collection`, `Category`). Funções exportadas: `adaptProduct`, `adaptCollection`, `adaptCategory`.
 
 ### Tipos de catálogo — `web/src/types/catalog.ts`
 
-`Product`, `Collection`, `Category`, `Look`, `LookProduct`, `CartItem`, `Color`, `ProductImage`, `Tier`, `Tenant`, `ToneEntry`, `LookbookStory`.
+`Product`, `Collection`, `Category`, `CartItem`, `Color`, `ProductImage`, `Tier`, `Tenant`, `ToneEntry`.
 
 ### API Client — `web/src/lib/api/client.ts`
 
@@ -215,7 +223,7 @@ Wrapper sobre `fetch` com:
 
 ### Dados estáticos de fallback — `web/src/data/catalog.ts`
 
-Exporta `TENANT`, `PRODUCTS`, `LOOKBOOK`, `TIERS`, `TONE`, `brl()`, `activeTier()`. Usado como fallback quando a API não retorna dados ou para o lookbook editorial estático. **Não é a fonte de verdade em produção** — os dados reais vêm da API.
+Exporta `TENANT`, `PRODUCTS`, `TIERS`, `TONE`, `brl()`, `activeTier()`. Usado como fallback quando a API não retorna dados. **Não é a fonte de verdade em produção** — os dados reais vêm da API.
 
 ---
 
@@ -242,10 +250,9 @@ Migration aplicada: `20260501000001_add_made_in_and_min_order_qty_to_products.rb
 - `message TEXT` — corpo da mensagem (não `notes`)
 - `metadata JSONB` — campos extras B2B (empresa, CNPJ, endereço) armazenados aqui
 
-### looks / look_items
+### looks / look_items (legado inativo)
 
-- `looks`: `name`, `slug`, `description`, `cover_url`, `status`, `position`, `collection_id`
-- `look_items`: join entre `looks` e `products` com `position`
+- Estruturas legadas de lookbook. Não usar no frontend/admin; a função Lookbook está fora do escopo atual.
 
 ---
 
@@ -287,21 +294,21 @@ Migration aplicada: `20260501000001_add_made_in_and_min_order_qty_to_products.rb
 ### Backend (api/)
 - [x] Base CCNF: multi-tenancy, auth de 3 atores, jobs, config por tenant
 - [x] Catálogo tenant-scoped: `products`, `product_variants`, `product_images`, `categories`, `collections`
-- [x] Looks: `looks`, `look_items` — DDL no `TenantSchemaSql`
-- [x] `GET /api/v1/looks` e `GET /api/v1/looks/:slug` — controller público sem auth
 - [x] `GET /api/v1/products` — inclui `made_in`, `min_order_qty`, `image_url` por variante
 - [x] `POST /api/v1/leads` — suporta formulários B2B (campos extras em `metadata`)
 - [x] Migration `made_in` + `min_order_qty` aplicada em todos os tenants
-- [x] Storefront SSR esqueleto: `public/` controllers existem (home, products, collections, looks, leads, sessions, sitemaps, lojistas, cart, waitlist)
+- [x] Storefront SSR esqueleto: `public/` controllers existem (home, products, collections, leads, sessions, sitemaps, lojistas, cart, waitlist)
 
 ### Frontend (web/)
-- [x] ShowroomLayout com TopBar (Início / Catálogo / Lookbook), CartDrawer, Footer
+- [x] ShowroomLayout com TopBar (Início / Catálogo), CartDrawer, Footer
 - [x] `Home.tsx` — hero dinâmico, coleções, destaques, tiers, modal "Como Funciona" (provador virtual), modal B2B
 - [x] `Catalog.tsx` — tabela wholesale com filtros, `requireAuth` no addToCart/onOpen
 - [x] `ProductDetail.tsx` — imagens, variantes, seletor de cor/tamanho/qtd, WhatsApp com mensagem
-- [x] `Lookbook.tsx` — grid dinâmico (API) com modal de detalhe; fallback editorial estático
-- [x] `useCatalog.ts` — hooks unificados via `apiClient` (useProducts, useProduct, useCollections, useCategories, useLooks, useLook)
-- [x] `catalog-adapter.ts` — adaptadores completos incluindo `adaptLook`
+- [x] `useCatalog.ts` — hooks unificados via `apiClient` (useProducts, useProduct, useCollections, useCategories)
+- [x] `catalog-adapter.ts` — adaptadores completos para produtos, coleções e categorias
+- [x] Contagem de categorias via `product_count` na API e `adaptCategory`.
+- [x] Catálogo usa metadados de paginação da API no hook `useProductsQuery`.
+- [x] Admin de Lojistas permite clicar em uma linha para abrir e editar os dados cadastrais.
 - [x] `TenantProvider` — branding dinâmico, injeção de CSS vars, suporte a `VITE_TENANT_SLUG` em dev
 - [x] `apiClient` — injeção automática de `X-Tenant-ID`, auto-logout 401, métodos get/post/patch/del
 
@@ -311,13 +318,10 @@ Migration aplicada: `20260501000001_add_made_in_and_min_order_qty_to_products.rb
 
 ### Prioridade alta
 - [ ] **SSR controllers públicos** — `api/app/controllers/public/` existe mas as views ERB precisam de conteúdo para SEO real
-- [ ] **Testes de isolamento de tenant** para looks, leads e orders
-- [ ] **TopBar animada** — link Lookbook adicionado mas banner hardcoded ("Drop Solar") ainda usa dados estáticos
+- [ ] **Testes de isolamento de tenant** para leads e orders
+- [ ] **TopBar animada** — banner hardcoded ("Drop Solar") ainda usa dados estáticos
 
 ### Prioridade média
-- [ ] **Admin de Looks** — CRUD no painel admin (só existe no storefront público)
-- [ ] **Contagem de categorias** — `adaptCategory` retorna `count: 0`; a API não retorna product_count por categoria ainda
-- [ ] **Paginação no catálogo** — `useProducts` não lida com `meta.pagination` da API ainda
 - [ ] Mover scripts de `api/script/` para `api/lib/tasks/`
 
 ### Prioridade baixa

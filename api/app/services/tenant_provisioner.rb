@@ -5,6 +5,8 @@ class TenantProvisioner
     schema_name = tenant.schema_name
 
     ActiveRecord::Base.transaction do
+      TenantSchemaSql.ensure_pg_trgm!
+
       ActiveRecord::Base.connection.execute(
         "CREATE SCHEMA IF NOT EXISTS #{ActiveRecord::Base.connection.quote_column_name(schema_name)}"
       )

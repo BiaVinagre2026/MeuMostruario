@@ -30,6 +30,7 @@ function resolveTenantId(): string | undefined {
 }
 
 const TENANT_ID = resolveTenantId();
+const ENV_TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG as string | undefined;
 
 export function resolveApiBaseUrl(): string {
   const configuredUrl = import.meta.env.VITE_API_URL as string | undefined;

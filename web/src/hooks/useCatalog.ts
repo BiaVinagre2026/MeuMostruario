@@ -13,6 +13,15 @@ interface ProductsParams {
   collection_id?: string;
   category_id?:   string;
   q?:             string;
+  page?:          string;
+  per_page?:      string;
+}
+
+interface PaginationMeta {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  per_page: number;
 }
 
 export const catalogKeys = {
@@ -36,15 +45,27 @@ function withParams(base: string, params?: Record<string, string | undefined>): 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 export function useProducts(params?: ProductsParams) {
+  const query = useProductsQuery(params);
+
+  return {
+    ...query,
+    data: query.data?.products,
+  };
+}
+
+export function useProductsQuery(params?: ProductsParams) {
   const { tenantSlug } = useTenant();
 
-  return useQuery<Product[]>({
+  return useQuery<{ products: Product[]; meta: PaginationMeta }>({
     queryKey: catalogKeys.products(params, tenantSlug),
     queryFn: async () => {
-      const data = await apiClient.get<{ products: ApiProduct[] }>(
+      const data = await apiClient.get<{ products: ApiProduct[]; meta: PaginationMeta }>(
         withParams("/api/v1/products", params as Record<string, string | undefined>)
       );
-      return data.products.map(adaptProduct);
+      return {
+        products: data.products.map(adaptProduct),
+        meta: data.meta,
+      };
     },
   });
 }
@@ -87,4 +108,3 @@ export function useCategories() {
     staleTime: 10 * 60 * 1000,
   });
 }
-

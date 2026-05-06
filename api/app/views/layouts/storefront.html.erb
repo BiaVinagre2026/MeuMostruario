@@ -3,8 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><%= content_for?(:title) ? "#{yield(:title)} — " : "" %><%= current_tenant&.name || "Meu Mostruário" %></title>
-    <meta name="description" content="<%= content_for?(:description) ? yield(:description) : "#{current_tenant&.name} — Catálogo de moda" %>" />
+    <% page_title = content_for?(:title) ? "#{yield(:title)} — #{current_tenant&.name || 'Meu Mostruário'}" : (current_tenant&.name || "Meu Mostruário") %>
+    <% page_description = content_for?(:description) ? yield(:description) : seo_description %>
+    <% page_image = content_for?(:image) ? seo_image_url(yield(:image)) : nil %>
+    <title><%= page_title %></title>
+    <meta name="description" content="<%= page_description %>" />
+    <link rel="canonical" href="<%= request.original_url.split('?').first %>" />
+    <meta property="og:title" content="<%= page_title %>" />
+    <meta property="og:description" content="<%= page_description %>" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="<%= request.original_url %>" />
+    <% if page_image.present? %>
+      <meta property="og:image" content="<%= page_image %>" />
+    <% end %>
+    <meta name="twitter:card" content="<%= page_image.present? ? 'summary_large_image' : 'summary' %>" />
+    <%= csrf_meta_tags %>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -34,7 +47,11 @@
 
         <%# Centro — links de navegação %>
         <div class="hidden md:flex items-center gap-8">
-          <%= link_to "Catálogo", root_path,
+          <%= link_to "Catálogo", public_products_path,
+              style: "font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;" %>
+          <%= link_to "Coleções", public_collections_path,
+              style: "font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;" %>
+          <%= link_to "Looks", public_looks_path,
               style: "font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;" %>
           <% if member_logged_in? %>
             <%= link_to "Fazer Pedido", lojistas_path,
@@ -54,7 +71,7 @@
           <% else %>
             <%= link_to "Acesso Lojista", entrar_path,
                 style: "font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-foreground);text-decoration:none;padding:8px 14px;border:1px solid var(--brand-foreground);" %>
-            <% admin_url = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:3000')}/admin/login" %>
+            <% admin_url = "#{ENV.fetch('FRONTEND_URL', 'http://localhost:3002')}/admin/login" %>
             <a href="<%= admin_url %>"
                style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;">
               Admin
@@ -93,7 +110,9 @@
           </div>
           <div>
             <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Navegação</div>
-            <%= link_to "Catálogo", root_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
+            <%= link_to "Catálogo", public_products_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
+            <%= link_to "Coleções", public_collections_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
+            <%= link_to "Looks", public_looks_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
             <%= link_to "Acesso Lojista", entrar_path, style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;margin-bottom:6px;" %>
             <%= link_to "Carrinho", "/carrinho", style: "display:block;font-size:13px;color:var(--brand-foreground);text-decoration:none;" %>
           </div>

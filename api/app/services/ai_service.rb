@@ -35,7 +35,7 @@ class AiService
     request = Net::HTTP::Post.new(uri)
     request["Content-Type"]  = "application/json"
     request["Authorization"] = "Bearer #{api_key}"
-    request["HTTP-Referer"]  = ENV.fetch("APP_URL", "http://localhost:3000")
+    request["HTTP-Referer"]  = ENV.fetch("APP_URL", "http://localhost:3002")
     request["X-Title"]       = ENV.fetch("APP_NAME", "Multitenant App")
 
     body = {

@@ -11,9 +11,14 @@ module Api
       private
 
       def category_json(c)
+        category_ids = [c.id, *c.subcategories.map(&:id)]
+
         {
           id: c.id, slug: c.slug, name: c.name, position: c.position,
-          subcategories: c.subcategories.map { |s| { id: s.id, slug: s.slug, name: s.name } }
+          product_count: Product.published.where(category_id: category_ids).count,
+          subcategories: c.subcategories.map do |s|
+            { id: s.id, slug: s.slug, name: s.name, product_count: Product.published.where(category_id: s.id).count }
+          end
         }
       end
     end

@@ -120,14 +120,26 @@ export default function OrderList() {
                       <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Data</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Status</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground w-16">Ver</th>
+                      <th className="text-right px-4 py-3 font-medium text-muted-foreground w-16">Ação</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((order, idx) => (
                       <tr
                         key={order.id}
-                        className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/admin/orders/${order.id}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            navigate(`/admin/orders/${order.id}`);
+                          }
+                        }}
+                        className={[
+                          idx % 2 === 0 ? "bg-background" : "bg-muted/20",
+                          "cursor-pointer transition-colors hover:bg-muted/50 focus-within:bg-muted/50",
+                        ].join(" ")}
                       >
                         <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
                           #{order.id}
@@ -169,7 +181,10 @@ export default function OrderList() {
                             variant="outline"
                             size="sm"
                             className="h-7 text-xs px-2"
-                            onClick={() => navigate(`/admin/orders/${order.id}`)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/admin/orders/${order.id}`);
+                            }}
                           >
                             Ver
                           </Button>

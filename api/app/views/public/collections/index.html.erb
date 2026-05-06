@@ -1,0 +1,43 @@
+<% content_for :title, "Coleções" %>
+<% content_for :description, seo_description("Colecoes publicadas de #{current_tenant&.name || 'Meu Mostruario'}.") %>
+<% content_for :head do %>
+  <%= json_ld_item_list("Colecoes #{current_tenant&.name}", @collections) %>
+<% end %>
+
+<div class="max-w-7xl mx-auto px-6 py-12">
+  <section style="border-bottom:1px solid var(--brand-border);padding-bottom:36px;margin-bottom:40px;">
+    <div style="font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);margin-bottom:12px;">Curadoria</div>
+    <h1 style="font-family:var(--font-heading);font-size:clamp(2.25rem,7vw,5rem);font-weight:300;letter-spacing:-0.03em;line-height:1;margin-bottom:16px;">Coleções</h1>
+    <p style="max-width:620px;font-size:15px;line-height:1.7;color:var(--brand-muted);">
+      Navegue por drops e linhas comerciais organizadas para compra B2B.
+    </p>
+  </section>
+
+  <% if @collections.any? %>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <% @collections.each do |collection| %>
+        <% product_count = collection.products.count { |product| product.status == "published" } %>
+        <%= link_to public_collection_path(collection.slug), style: "text-decoration:none;color:inherit;display:block;" do %>
+          <div style="aspect-ratio:4/3;background:var(--brand-surface);overflow:hidden;margin-bottom:14px;">
+            <% if (img = collection_cover_url(collection)) %>
+              <img src="<%= img %>" alt="<%= collection.name %>" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />
+            <% end %>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
+            <div>
+              <div style="font-family:var(--font-heading);font-size:20px;font-weight:500;margin-bottom:6px;"><%= collection.name %></div>
+              <% if collection.description.present? %>
+                <p style="font-size:13px;color:var(--brand-muted);line-height:1.6;margin:0;"><%= truncate(collection.description, length: 120) %></p>
+              <% end %>
+            </div>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--brand-muted);white-space:nowrap;"><%= product_count %> itens</span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div style="border:1px solid var(--brand-border);padding:48px;text-align:center;color:var(--brand-muted);">
+      Nenhuma coleção publicada no momento.
+    </div>
+  <% end %>
+</div>

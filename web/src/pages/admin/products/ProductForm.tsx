@@ -666,18 +666,7 @@ function ImageCard({
 // VariantsTab
 // ---------------------------------------------------------------------------
 
-// ── Paleta Pantone do mostruário (5 cores) ──────────────────────────────────
-
-const PANTONE_COLORS = [
-  { name: "Preto",       hex: "#1C1C1C" },
-  { name: "Off-White",   hex: "#F2EDE4" },
-  { name: "Bege",        hex: "#C4A882" },
-  { name: "Caramelo",    hex: "#B8732A" },
-  { name: "Terracota",   hex: "#C4623A" },
-  { name: "Bordô",       hex: "#6B1F2E" },
-  { name: "Verde Sage",  hex: "#7A9B7A" },
-  { name: "Azul Marinho",hex: "#1B3055" },
-] as const;
+import { PANTONE_COLORS } from "@/data/pantone";
 
 function ColorSwatchPicker({
   value,
@@ -806,22 +795,24 @@ function NewVariantCard({ isSaving, onSave }: {
 
   return (
     <div className="border rounded-md p-4 space-y-3">
-      <ColorSwatchPicker
-        value={row.color_hex}
-        onChange={(hex, name) => setRow((r) => ({ ...r, color_hex: hex, color: name }))}
-      />
-      <div className="space-y-1.5">
-        {SIZES.map((s) => (
-          <div key={s} className="flex items-center gap-3">
-            <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
-            <Input
-              type="number" min={0}
-              value={row.stocks[s]}
-              onChange={(e) => setRow((r) => ({ ...r, stocks: { ...r.stocks, [s]: parseInt(e.target.value || "0", 10) } }))}
-              className="h-7 text-xs w-24 text-center px-1"
-            />
-          </div>
-        ))}
+      <div className="flex gap-5 items-start">
+        <ColorSwatchPicker
+          value={row.color_hex}
+          onChange={(hex, name) => setRow((r) => ({ ...r, color_hex: hex, color: name }))}
+        />
+        <div className="flex-1 space-y-1.5">
+          {SIZES.map((s) => (
+            <div key={s} className="flex items-center gap-2">
+              <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
+              <Input
+                type="number" min={0}
+                value={row.stocks[s]}
+                onChange={(e) => setRow((r) => ({ ...r, stocks: { ...r.stocks, [s]: parseInt(e.target.value || "0", 10) } }))}
+                className="h-7 text-xs w-full text-center px-1"
+              />
+            </div>
+          ))}
+        </div>
       </div>
       <Input
         placeholder="URL da imagem (opcional)"
@@ -878,33 +869,33 @@ function ExistingColorRow({
   }
 
   return (
-    <div className="border rounded-md p-4 space-y-3">
-      <div className="flex items-start justify-between gap-2">
+    <div className="border rounded-md p-4 space-y-3 relative">
+      <Button
+        variant="ghost" size="sm"
+        onClick={onDeleteGroup} disabled={isDeleting}
+        className="absolute top-2 right-2 h-7 w-7 p-0 text-destructive hover:text-destructive"
+      >
+        {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      </Button>
+
+      <div className="flex gap-5 items-start">
         <ColorSwatchPicker
           value={colorHex}
           onChange={(hex, name) => { setColorHex(hex); setColor(name); }}
         />
-        <Button
-          variant="ghost" size="sm"
-          onClick={onDeleteGroup} disabled={isDeleting}
-          className="h-7 w-7 p-0 shrink-0 text-destructive hover:text-destructive"
-        >
-          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-        </Button>
-      </div>
-
-      <div className="space-y-1.5">
-        {SIZES.map((s) => (
-          <div key={s} className="flex items-center gap-3">
-            <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
-            <Input
-              type="number" min={0}
-              value={stocks[s] ?? 0}
-              onChange={(e) => setStocks((prev) => ({ ...prev, [s]: parseInt(e.target.value || "0", 10) }))}
-              className="h-7 text-xs w-24 text-center px-1"
-            />
-          </div>
-        ))}
+        <div className="flex-1 space-y-1.5">
+          {SIZES.map((s) => (
+            <div key={s} className="flex items-center gap-2">
+              <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
+              <Input
+                type="number" min={0}
+                value={stocks[s] ?? 0}
+                onChange={(e) => setStocks((prev) => ({ ...prev, [s]: parseInt(e.target.value || "0", 10) }))}
+                className="h-7 text-xs w-full text-center px-1"
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <Input

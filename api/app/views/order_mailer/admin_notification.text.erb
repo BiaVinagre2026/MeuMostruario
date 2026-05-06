@@ -1,6 +1,12 @@
 NOVO PEDIDO #<%= @order.id %>
 <%= @order.created_at.strftime("%d/%m/%Y %H:%M") %> · <%= @items.sum(&:qty) %> peças
 
+<% if @order.member %>
+LOJISTA: <%= @order.member.full_name %>
+Email: <%= @order.member.email %>
+<% if @order.member.phone.present? %>Telefone: <%= @order.member.phone %>
+<% end %>
+<% end %>
 <% if @order.notes.present? %>Observações: <%= @order.notes %>
 <% end %>
 ---

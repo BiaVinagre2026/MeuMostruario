@@ -98,8 +98,11 @@ Rails.application.routes.draw do
   # Storefront público SSR (fora do namespace :api)
   scope module: "public" do
     root to: "home#index"
+    get    "colecoes",       to: "collections#index", as: :public_collections
     get    "colecoes/:slug", to: "collections#show", as: :public_collection
+    get    "produtos",       to: "products#index",    as: :public_products
     get    "produtos/:slug",  to: "products#show",   as: :public_product
+    get    "looks",           to: "looks#index",      as: :public_looks
     get    "looks/:slug",     to: "looks#show",      as: :public_look
     get    "carrinho",        to: "cart#show",       as: :cart
     get    "lojistas",        to: "lojistas#index",  as: :lojistas

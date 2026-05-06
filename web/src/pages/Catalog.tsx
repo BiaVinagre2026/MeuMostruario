@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Photo, Btn } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
 import { TONE, brl } from "@/data/catalog";
-import { useProducts, useCollections, useCategories } from "@/hooks/useCatalog";
+import { useProductsQuery, useCollections, useCategories } from "@/hooks/useCatalog";
 import { useCartStore } from "@/stores/useCartStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { Product, CartItem } from "@/types/catalog";
+import { PANTONE_COLORS } from "@/data/pantone";
 
 export default function Catalog() {
   const navigate      = useNavigate();
@@ -21,32 +22,35 @@ export default function Catalog() {
   const [collection, setCollection] = useState("all");
   const [view, setView]           = useState<"grid" | "wholesale">("grid");
   const [sort, setSort]           = useState("featured");
+  const [page, setPage]           = useState(1);
   const [openQuickAdd, setOpenQuickAdd] = useState<string | null>(null);
 
-  const { data: products = [], isLoading } = useProducts();
+  const productParams = useMemo(() => ({
+    page: String(page),
+    per_page: "24",
+    collection_id: collection === "all" ? undefined : collection,
+    category_id: cat === "all" ? undefined : cat,
+  }), [page, collection, cat]);
+
+  const { data: productPage, isLoading, isFetching } = useProductsQuery(productParams);
+  const products = productPage?.products ?? [];
+  const meta = productPage?.meta;
   const { data: collections = [] }         = useCollections();
   const { data: categories = [] }          = useCategories();
 
   const allCategories = useMemo(() => {
-    const counts = products.reduce<Record<string, number>>((acc, p) => {
-      if (p.category) acc[p.category] = (acc[p.category] ?? 0) + 1;
-      return acc;
-    }, {});
     return [
-      { id: "all", label: "Tudo", count: products.length },
-      ...categories.map((c) => ({ ...c, count: counts[c.id] ?? 0 })),
+      { id: "all", label: "Tudo", count: meta?.total_count ?? categories.reduce((sum, c) => sum + c.count, 0) },
+      ...categories,
     ];
-  }, [products, categories]);
+  }, [meta?.total_count, categories]);
 
   const filtered = useMemo(() => {
-    let list = products.filter((p) =>
-      (cat === "all" || p.category === cat) &&
-      (collection === "all" || p.collection === collection)
-    );
+    let list = products;
     if (sort === "price-asc")  list = [...list].sort((a, b) => a.price - b.price);
     if (sort === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
     return list;
-  }, [products, cat, collection, sort]);
+  }, [products, sort]);
 
   return (
     <main>
@@ -79,13 +83,13 @@ export default function Catalog() {
           <div className="sr-filter-bar">
             <div className="sr-filter-chips">
               {allCategories.map((c) => (
-                <button key={c.id} onClick={() => setCat(c.id)} style={chip(cat === c.id)}>
+                <button key={c.id} onClick={() => { setCat(c.id); setPage(1); }} style={chip(cat === c.id)}>
                   {c.label} <span style={{ opacity: 0.4 }}>{c.count}</span>
                 </button>
               ))}
             </div>
             <div className="sr-filter-selects">
-              <select value={collection} onChange={(e) => setCollection(e.target.value)} style={sel}>
+              <select value={collection} onChange={(e) => { setCollection(e.target.value); setPage(1); }} style={sel}>
                 <option value="all">Todas coleções</option>
                 {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -108,6 +112,11 @@ export default function Catalog() {
                 <div key={i} style={{ aspectRatio: "3/4", background: "var(--brand-surface)", animation: "pulse 1.5s infinite" }}/>
               ))}
             </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: "72px 0", textAlign: "center", color: "var(--brand-muted)" }}>
+              <div className="display" style={{ fontSize: 32, color: "var(--brand-foreground)", marginBottom: 8 }}>Nenhuma peça encontrada</div>
+              <div className="mono" style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Ajuste os filtros para ver mais produtos</div>
+            </div>
           ) : view === "grid" ? (
             <div className="sr-product-grid">
               {filtered.map((p) => (
@@ -120,6 +129,19 @@ export default function Catalog() {
             <WholesaleTable products={filtered}
               addToCart={(item) => requireAuth(() => addToCart(item))}
               onOpen={(id) => requireAuth(() => navigate(`/product/${id}`))}/>
+          )}
+          {meta && meta.total_pages > 1 && (
+            <div style={{ marginTop: 32, display: "flex", justifyContent: "center", alignItems: "center", gap: 12 }}>
+              <Btn variant="outline" disabled={page <= 1 || isFetching} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Anterior
+              </Btn>
+              <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Página {meta.current_page} de {meta.total_pages}
+              </span>
+              <Btn variant="outline" disabled={page >= meta.total_pages || isFetching} onClick={() => setPage((p) => p + 1)}>
+                Próxima
+              </Btn>
+            </div>
           )}
         </div>
       </section>
@@ -331,7 +353,7 @@ function WholesaleTable({ products, addToCart, onOpen }: {
 
 function WholesaleRow({ p, allSizes, addToCart, onOpen }: { p: Product; allSizes: string[]; addToCart: (item: CartItem) => void; onOpen: (id: string) => void }) {
   const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(allSizes.map((s) => [s, 0])));
-  const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
+  const [colorHex, setColorHex] = useState(PANTONE_COLORS[0].hex);
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
   return (
     <div className="sr-wholesale-row" style={{
@@ -347,24 +369,23 @@ function WholesaleRow({ p, allSizes, addToCart, onOpen }: { p: Product; allSizes
         <div style={{ width: 40, height: 52, flexShrink: 0, overflow: "hidden" }}>
           {p.imageUrl
             ? <img src={p.imageUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}/>
-            : <div style={{ width: "100%", height: "100%", background: TONE[p.colors[0]?.tone ?? "sand"]?.bg ?? "#ccc" }}/>
+            : <div style={{ width: "100%", height: "100%", background: "#e5e2dc" }}/>
           }
         </div>
         <div>
           <div style={{ fontWeight: 500 }}>{p.name}</div>
           <div style={{ fontSize: 11, color: "var(--brand-muted)" }}>{p.collection}</div>
-          {/* Preço visível mobile (dentro do card) */}
           <div className="mono sr-hide-desktop" style={{ fontSize: 12, fontWeight: 600, marginTop: 4 }}>{brl(p.price)}</div>
         </div>
       </button>
 
-      {/* Cores */}
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {p.colors.map((c) => (
-          <button key={c.id} onClick={() => setColorId(c.id)} title={c.name} style={{
-            width: 22, height: 22, borderRadius: 999, flexShrink: 0,
-            background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
-            boxShadow: colorId === c.id
+      {/* Cores — 8 Pantone fixos */}
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {PANTONE_COLORS.map((c) => (
+          <button key={c.hex} onClick={() => setColorHex(c.hex)} title={c.name} style={{
+            width: 20, height: 20, borderRadius: 999, flexShrink: 0,
+            background: c.hex,
+            boxShadow: colorHex === c.hex
               ? "0 0 0 2px white, 0 0 0 3.5px var(--brand-foreground)"
               : "0 0 0 1px rgba(0,0,0,0.15)",
           }}/>
@@ -389,7 +410,7 @@ function WholesaleRow({ p, allSizes, addToCart, onOpen }: { p: Product; allSizes
       {/* Ação */}
       <div className="sr-wholesale-actions-row" style={{ display: "flex", justifyContent: "flex-end" }}>
         <Btn size="sm" variant={total > 0 ? "primary" : "subtle"} disabled={total === 0}
-          onClick={() => { addToCart({ ...p, colorId, qty, total }); setQty(Object.fromEntries(allSizes.map((s) => [s, 0]))); }}>
+          onClick={() => { addToCart({ ...p, colorId: colorHex, qty, total }); setQty(Object.fromEntries(allSizes.map((s) => [s, 0]))); }}>
           {total ? `+${total}` : "Adicionar"}
         </Btn>
       </div>
@@ -405,9 +426,10 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
 }) {
   const p = products.find((x) => x.id === productId) ?? products[0];
   if (!p) return null;
-  const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
+  const [colorHex, setColorHex] = useState(PANTONE_COLORS[0].hex);
   const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(p.sizes.map((s) => [s, 0])));
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
+  const selectedColor = PANTONE_COLORS.find((c) => c.hex === colorHex);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.4)", zIndex: 100, display: "flex", justifyContent: "flex-end" }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="sr-quick-add-drawer" style={{ background: "white", height: "100%", padding: 32, overflow: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
@@ -416,7 +438,7 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
           <button onClick={onClose}><Icons.X/></button>
         </div>
         <Photo
-          tone={p.colors.find((c) => c.id === colorId)?.tone ?? "sand"}
+          tone="sand"
           ratio="4/5"
           imageUrl={p.imageUrl}
           alt={p.name}
@@ -427,13 +449,13 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
           <div className="mono" style={{ fontSize: 14, marginTop: 4 }}>{brl(p.price)}</div>
         </div>
         <div>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Cor · {p.colors.find((c) => c.id === colorId)?.name}</div>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>Cor · {selectedColor?.name}</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {p.colors.map((c) => (
-              <button key={c.id} onClick={() => setColorId(c.id)} title={c.name} style={{
+            {PANTONE_COLORS.map((c) => (
+              <button key={c.hex} onClick={() => setColorHex(c.hex)} title={c.name} style={{
                 width: 28, height: 28, borderRadius: 999, flexShrink: 0,
-                background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
-                boxShadow: colorId === c.id
+                background: c.hex,
+                boxShadow: colorHex === c.hex
                   ? "0 0 0 2px white, 0 0 0 3.5px var(--brand-foreground)"
                   : "0 0 0 1px rgba(0,0,0,0.15)",
               }}/>
@@ -442,16 +464,13 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
         </div>
         <div>
           <div className="eyebrow" style={{ marginBottom: 10 }}>Grade de tamanhos</div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(p.sizes.length, 3)}, 1fr)`, gap: 4 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {p.sizes.map((s) => (
-              <div key={s} style={{ border: "1px solid var(--brand-border)", padding: 12, textAlign: "center" }}>
-                <div className="mono" style={{ fontSize: 12, color: "var(--brand-muted)", marginBottom: 8 }}>{s}</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <button onClick={() => setQty({ ...qty, [s]: Math.max(0, qty[s] - 1) })}><Icons.Minus/></button>
-                  <input value={qty[s]} onChange={(e) => setQty({ ...qty, [s]: Math.max(0, parseInt(e.target.value || "0")) })}
-                    style={{ width: 36, textAlign: "center", border: 0, fontFamily: "var(--font-mono)" }}/>
-                  <button onClick={() => setQty({ ...qty, [s]: qty[s] + 1 })}><Icons.Plus/></button>
-                </div>
+              <div key={s} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", width: 28, flexShrink: 0 }}>{s}</span>
+                <input type="number" min={0} value={qty[s]}
+                  onChange={(e) => setQty({ ...qty, [s]: Math.max(0, parseInt(e.target.value || "0")) })}
+                  style={{ width: 80, height: 34, textAlign: "center", border: "1px solid var(--brand-border)", fontFamily: "var(--font-mono)", fontSize: 13 }}/>
               </div>
             ))}
           </div>
@@ -462,7 +481,7 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
             <div style={{ fontSize: 11, color: "var(--brand-muted)", marginTop: 4 }}>{total} peças selecionadas</div>
           </div>
           <Btn variant="primary" disabled={total === 0}
-            onClick={() => { addToCart({ ...p, colorId, qty, total }); onClose(); }}>
+            onClick={() => { addToCart({ ...p, colorId: colorHex, qty, total }); onClose(); }}>
             Adicionar ao pedido
           </Btn>
         </div>

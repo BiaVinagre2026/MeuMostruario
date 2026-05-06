@@ -2,6 +2,12 @@
 
 module Public
   class CollectionsController < BaseController
+    def index
+      @collections = Collection.published
+                               .includes(:products)
+                               .to_a
+    end
+
     def show
       @collection = Collection.published.find_by(slug: params[:slug])
       unless @collection

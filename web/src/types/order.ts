@@ -13,6 +13,8 @@ export interface OrderItem {
   product_name: string;
   product_sku: string | null;
   color: string | null;
+  color_hex: string | null;
+  image_url: string | null;
   size: string | null;
   qty: number;
   unit_price: string;

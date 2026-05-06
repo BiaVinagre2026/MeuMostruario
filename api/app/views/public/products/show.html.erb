@@ -1,5 +1,6 @@
 <% content_for :title, @product.name %>
 <% content_for :description, @product.description %>
+<% content_for :image, cover_url(@product) if cover_url(@product).present? %>
 <% content_for :head do %>
   <%= json_ld_product(@product) %>
 <% end %>

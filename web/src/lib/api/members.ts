@@ -13,6 +13,17 @@ export interface AdminMember {
   created_at: string;
 }
 
+export interface AdminMemberDetail extends AdminMember {
+  birthdate: string | null;
+  gender: string | null;
+  association_date: string | null;
+  last_payment_date: string | null;
+  role: string;
+  import_source: string | null;
+  custom_fields: Record<string, unknown> | null;
+  updated_at: string;
+}
+
 interface MembersResponse {
   members: AdminMember[];
   meta: { total_count: number; total_pages: number; current_page: number };
@@ -32,6 +43,16 @@ export async function getMembers(params: {
   return apiClient.get<MembersResponse>(`/api/v1/admin/members?${qs}`);
 }
 
+export async function getMember(id: number): Promise<AdminMemberDetail> {
+  const res = await apiClient.get<{ member: AdminMemberDetail }>(`/api/v1/admin/members/${id}`);
+  return res.member;
+}
+
+export async function updateMember(id: number, member: Partial<AdminMemberDetail>): Promise<AdminMemberDetail> {
+  const res = await apiClient.patch<{ member: AdminMemberDetail }>(`/api/v1/admin/members/${id}`, { member });
+  return res.member;
+}
+
 export async function updateMemberStatus(id: number, status: string): Promise<void> {
-  await apiClient.patch(`/api/v1/admin/members/${id}`, { member: { status } });
+  await updateMember(id, { status });
 }

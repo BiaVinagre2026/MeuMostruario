@@ -178,7 +178,7 @@ export default function AdminDashboard() {
             {[
               { label: "Novo produto",  href: "/admin/products/new" },
               { label: "Nova coleção",  href: "/admin/collections/new" },
-              { label: "Novo look",     href: "/admin/looks/new" },
+              { label: "Lojistas",      href: "/admin/members" },
               { label: "Configurações", href: "/admin/settings" },
             ].map((a) => (
               <button

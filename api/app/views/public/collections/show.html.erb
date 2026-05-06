@@ -1,5 +1,9 @@
 <% content_for :title, @collection.name %>
 <% content_for :description, @collection.description %>
+<% content_for :image, collection_cover_url(@collection) if collection_cover_url(@collection).present? %>
+<% content_for :head do %>
+  <%= json_ld_item_list(@collection.name, @products.to_a) if @products.any? %>
+<% end %>
 
 <div class="max-w-7xl mx-auto px-6 py-12">
 

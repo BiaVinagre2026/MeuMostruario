@@ -6,9 +6,8 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
       /\Ahttp:\/\/(10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|192\.168\.\d+\.\d+)(:\d+)?\z/
     ] : []
 
-    origins ENV.fetch("FRONTEND_URL", "http://localhost:8080"),
-             "http://localhost:3000",
-             "http://localhost:8080",
+    origins ENV.fetch("FRONTEND_URL", "http://localhost:3002"),
+             "http://localhost:3002",
              # Development: subdomain.app.local:PORT
              /\Ahttp:\/\/[a-z0-9\-]+\.#{Regexp.escape(app_domain)}(:\d+)?\z/,
              # Production: subdomain.yourdomain.com

@@ -46,6 +46,31 @@ module StorefrontHelper
     img.urls[size.to_s] || img.urls["regular"] || img.urls.values.first
   end
 
+  def collection_cover_url(collection)
+    return collection.cover_url if collection.cover_url.present?
+
+    product = collection.products.detect { |p| p.respond_to?(:cover_image) && p.cover_image.present? }
+    product ? cover_url(product) : nil
+  end
+
+  def seo_description(fallback = nil)
+    fallback.presence ||
+      tenant_config&.footer_text.presence ||
+      "#{current_tenant&.name || 'Meu Mostruario'} - catalogo B2B de moda para lojistas."
+  end
+
+  def absolute_storefront_url(path_or_url)
+    return path_or_url if path_or_url.to_s.start_with?("http://", "https://")
+
+    "#{request.base_url}#{path_or_url}"
+  end
+
+  def seo_image_url(image_url)
+    return nil if image_url.blank?
+
+    absolute_storefront_url(image_url)
+  end
+
   def format_brl(amount)
     return "—" if amount.nil?
     "R$ #{"%.2f" % amount}".gsub(".", ",")
@@ -101,6 +126,34 @@ module StorefrontHelper
         "availability"  => "https://schema.org/InStock",
       }
     end
+    tag.script(schema.to_json.html_safe, type: "application/ld+json")
+  end
+
+  def json_ld_item_list(name, items)
+    schema = {
+      "@context" => "https://schema.org",
+      "@type" => "ItemList",
+      "name" => name,
+      "itemListElement" => items.each_with_index.map do |item, index|
+        url =
+          case item
+          when Product
+            public_product_url(item.slug)
+          when Collection
+            public_collection_url(item.slug)
+          when Look
+            public_look_url(item.slug)
+          end
+
+        {
+          "@type" => "ListItem",
+          "position" => index + 1,
+          "name" => item.name,
+          "url" => url
+        }
+      end
+    }
+
     tag.script(schema.to_json.html_safe, type: "application/ld+json")
   end
 end

@@ -55,15 +55,6 @@ export interface Tier {
   label: string;
 }
 
-export interface LookbookStory {
-  id: number;
-  title: string;
-  subtitle: string;
-  shots: number;
-  season: string;
-  tone: string;
-}
-
 export interface Tenant {
   id: string;
   name: string;

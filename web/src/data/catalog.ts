@@ -1,4 +1,4 @@
-import type { Tenant, Collection, Category, Product, Tier, LookbookStory, ToneEntry } from "@/types/catalog";
+import type { Tenant, Collection, Category, Product, Tier, ToneEntry } from "@/types/catalog";
 
 export const TENANT: Tenant = {
   id: "meumostruario",
@@ -129,12 +129,6 @@ export const TIERS: Tier[] = [
   { min: 12,  max: 35,   discount: 5,  label: "Multimarca" },
   { min: 36,  max: 99,   discount: 10, label: "Revenda" },
   { min: 100, max: null, discount: 15, label: "Volume" },
-];
-
-export const LOOKBOOK: LookbookStory[] = [
-  { id: 1, title: "Solar",     subtitle: "O sol como co-autor",       shots: 8,  season: "Verão 26", tone: "sand" },
-  { id: 2, title: "Movimento", subtitle: "Corpo em deslocamento",      shots: 6,  season: "Perene",   tone: "noir" },
-  { id: 3, title: "Off Hours", subtitle: "Entre o banho e o jantar",   shots: 10, season: "Resort 26", tone: "clay" },
 ];
 
 export function brl(n: number): string {

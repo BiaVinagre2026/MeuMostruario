@@ -68,6 +68,8 @@ module Api
             product_name: i.product_name,
             product_sku:  i.product_sku,
             color:        i.color,
+            color_hex:    i.metadata&.dig("color_hex"),
+            image_url:    i.metadata&.dig("image_url"),
             size:         i.size,
             qty:          i.qty,
             unit_price:   i.unit_price,

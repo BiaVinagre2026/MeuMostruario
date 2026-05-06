@@ -48,6 +48,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/up 2>/dev/null || wget -qO- http://localhost:3000/up || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 180s
     command: >
       bash -c "gem install bundler:4.0.6 --no-document &&
                bundle install &&
@@ -64,13 +70,16 @@ services:
       - ./web:/app
       - node_modules_cache:/app/node_modules
     ports:
-      - "3000:3000"
+      - "3002:3002"
     environment:
       VITE_API_PROXY_TARGET: "http://api:3000"
+      VITE_TENANT_SLUG: "demo"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: on-failure
     command: >
-      bash -c "npm install && npm run dev"
+      bash -c "npm install && npm run dev -- --host 0.0.0.0"
 
 volumes:
   postgres_data:

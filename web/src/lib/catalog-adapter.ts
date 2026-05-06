@@ -33,6 +33,7 @@ export interface ApiCollection {
   slug: string;
   description?: string;
   status?: string;
+  product_count?: number;
 }
 
 export interface ApiProduct {
@@ -69,6 +70,7 @@ export interface ApiCategoryWithSubs {
   id: number;
   name: string;
   slug: string;
+  product_count?: number;
   subcategories?: ApiCategoryWithSubs[];
 }
 
@@ -185,7 +187,7 @@ export function adaptCollection(c: ApiCollection): Collection {
     id:     c.slug,
     name:   c.name,
     season: "",
-    pieces: 0,
+    pieces: c.product_count ?? 0,
     status: c.status ?? "published",
   };
 }
@@ -194,7 +196,6 @@ export function adaptCategory(c: ApiCategoryWithSubs): Category {
   return {
     id:    c.slug,
     label: c.name,
-    count: 0,
+    count: c.product_count ?? 0,
   };
 }
-

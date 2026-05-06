@@ -1,4 +1,8 @@
 <% content_for :title, "Catálogo" %>
+<% content_for :description, seo_description("Catalogo B2B de #{current_tenant&.name || 'Meu Mostruario'} para lojistas de moda.") %>
+<% content_for :head do %>
+  <%= json_ld_item_list("Destaques #{current_tenant&.name}", @featured_products.to_a) if @featured_products.any? %>
+<% end %>
 
 <%# ── Hero ── %>
 <section style="border-bottom:1px solid var(--brand-border);padding:80px 0 72px;">
@@ -11,10 +15,10 @@
       <p style="max-width:480px;font-size:15px;line-height:1.7;color:var(--brand-muted);margin-bottom:40px;"><%= tenant_config.footer_text %></p>
     <% end %>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <a href="#catalogo"
-         style="display:inline-block;padding:14px 32px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);background:var(--brand-foreground);color:#fff;text-decoration:none;">
-        Ver catálogo ↓
-      </a>
+      <%= link_to public_products_path,
+          style: "display:inline-block;padding:14px 32px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);background:var(--brand-foreground);color:#fff;text-decoration:none;" do %>
+        Ver catálogo →
+      <% end %>
       <% if member_logged_in? %>
         <%= link_to "Fazer Pedido →", lojistas_path,
             style: "display:inline-block;padding:14px 32px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);border:1px solid var(--brand-foreground);color:var(--brand-foreground);text-decoration:none;" %>
@@ -55,9 +59,11 @@
 <% if @featured_products.any? %>
   <section style="padding:64px 0;border-top:1px solid var(--brand-border);" id="catalogo">
     <div class="max-w-7xl mx-auto px-6">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:16px;flex-wrap:wrap;">
         <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);">Destaques</div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <%= link_to "Ver todos", public_products_path,
+              style: "font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--font-mono);color:var(--brand-muted);text-decoration:none;" %>
           <button onclick="scrollCarousel(-1)" style="width:36px;height:36px;border:1px solid var(--brand-border);background:#fff;cursor:pointer;font-size:16px;">‹</button>
           <button onclick="scrollCarousel(1)"  style="width:36px;height:36px;border:1px solid var(--brand-border);background:#fff;cursor:pointer;font-size:16px;">›</button>
         </div>

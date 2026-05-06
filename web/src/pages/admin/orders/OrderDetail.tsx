@@ -187,11 +187,11 @@ export default function OrderDetail() {
               <thead className="bg-muted/50 border-b">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Produto</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">SKU</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">SKU</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Cor</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Tam.</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qtd</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Preço unit.</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Preço unit.</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Subtotal</th>
                 </tr>
               </thead>
@@ -201,18 +201,42 @@ export default function OrderDetail() {
                     key={item.id}
                     className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}
                   >
-                    <td className="px-4 py-2.5 font-medium">{item.product_name}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.product_name}
+                            className="w-9 h-11 object-cover object-top rounded flex-shrink-0 border"
+                          />
+                        ) : (
+                          <div
+                            className="w-9 h-11 rounded flex-shrink-0 border"
+                            style={{ background: item.color_hex ?? "#e5e2dc" }}
+                          />
+                        )}
+                        <span className="font-medium">{item.product_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground hidden sm:table-cell">
                       {item.product_sku ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {item.color ?? "—"}
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        {item.color_hex && (
+                          <span
+                            className="w-3 h-3 rounded-full border border-black/10 flex-shrink-0"
+                            style={{ background: item.color_hex }}
+                          />
+                        )}
+                        <span className="text-muted-foreground text-xs">{item.color ?? "—"}</span>
+                      </div>
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    <td className="px-4 py-2.5 text-muted-foreground text-xs">
                       {item.size ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{item.qty}</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-xs">
+                    <td className="px-4 py-2.5 text-right font-mono text-xs hidden md:table-cell">
                       {brl(item.unit_price)}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-xs font-medium">

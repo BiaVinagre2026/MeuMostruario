@@ -1,5 +1,9 @@
 <% content_for :title, @look.name %>
 <% content_for :description, @look.description %>
+<% content_for :image, @look.cover_url if @look.cover_url.present? %>
+<% content_for :head do %>
+  <%= json_ld_item_list(@look.name, @look.products.to_a) if @look.products.any? %>
+<% end %>
 
 <div class="max-w-7xl mx-auto px-6 py-12">
 
