@@ -3,11 +3,17 @@ export interface Color {
   name: string;
   tone: string;
   hex?: string;
+  pantone?: string | null;
 }
 
 export interface ProductImage {
   id: number;
-  urls: { thumb?: string; small?: string; regular?: string; full?: string };
+  photo_id?: number | null;
+  urls: { original?: string; thumb?: string; small?: string; regular?: string; full?: string; card?: string };
+  visual_metadata?: Record<string, unknown>;
+  pantone?: string | null;
+  approved_color?: string | null;
+  size_group?: string | null;
   is_cover: boolean;
   alt_text: string | null;
 }
@@ -23,6 +29,9 @@ export interface Product {
   colors: Color[];
   colorImages?: Record<string, string>;
   sizes: string[];
+  pantone?: string | null;
+  approvedColor?: string | null;
+  sizeGroup?: string | null;
   tags?: string[];
   description?: string;
   fabric?: string;
@@ -85,4 +94,6 @@ export interface CartItem extends Product {
   colorId: string;
   qty: Record<string, number>;
   total: number;
+  catalogItemId?: number;
+  photoId?: number | null;
 }

@@ -22,10 +22,10 @@ module Api
 
       private
 
-      SIZE_ORDER = %w[PP P M G GG XGG Único].freeze
+      SIZE_ORDER = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2", "PP", "P", "M", "G", "GG", "XGG"].freeze
 
       def product_summary(p)
-        seen_sizes  = p.variants.map(&:size).compact.uniq
+        seen_sizes  = p.variants.map { |variant| variant.size_group.presence || variant.size }.compact.uniq
         sorted_sizes = SIZE_ORDER.select { |s| seen_sizes.include?(s) } +
                        seen_sizes.reject { |s| SIZE_ORDER.include?(s) }
         {
@@ -35,7 +35,7 @@ module Api
           category:   p.category   && { id: p.category.id,   name: p.category.name,   slug: p.category.slug },
           collection: p.collection && { id: p.collection.id, name: p.collection.name, slug: p.collection.slug },
           cover_image: cover_image_json(p),
-          colors: p.variants.map { |v| v.color ? { name: v.color, hex: v.color_hex } : nil }.compact.uniq { |c| c[:name] },
+          colors: p.variants.map { |v| v.color ? { name: v.color, hex: v.color_hex, pantone: v.pantone } : nil }.compact.uniq { |c| c[:name] },
           sizes:  sorted_sizes
         }
       end
@@ -66,7 +66,7 @@ module Api
       def variant_json(v)
         { id: v.id, size: v.size, color: v.color, color_hex: v.color_hex,
           sku: v.sku, stock_qty: v.stock_qty, price_override: v.price_override,
-          image_url: v.try(:image_url) }
+          image_url: v.try(:image_url), pantone: v.try(:pantone), size_group: v.try(:size_group) }
       end
     end
   end

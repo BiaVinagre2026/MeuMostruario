@@ -2,6 +2,7 @@
 
 class ProductImage < ApplicationRecord
   belongs_to :product
+  belongs_to :photo, optional: true
 
   validates :product, presence: true
   validates :urls, presence: true
@@ -15,6 +16,9 @@ class ProductImage < ApplicationRecord
   def card_url     = urls["card"]
   def zoom_url     = urls["zoom"]
   def og_url       = urls["og"]
+  def pantone      = visual_metadata&.dig("pantone")
+  def approved_color = visual_metadata&.dig("approved_color")
+  def size_group   = visual_metadata&.dig("size_group")
 
   private
 

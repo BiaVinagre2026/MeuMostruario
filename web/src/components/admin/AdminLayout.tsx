@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Package, BookOpen, ShoppingBag, Settings, LogOut, Menu, X, LayoutDashboard, Users } from "lucide-react";
+import { Package, BookOpen, ShoppingBag, Settings, LogOut, Menu, X, LayoutDashboard, Users, Images, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import { useOperatorLogout } from "@/hooks/useOperatorAuth";
@@ -13,9 +13,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard",     href: "/admin/dashboard",   icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Fotos",         href: "/admin/photo-batches", icon: <Images        className="h-4 w-4" /> },
+  { label: "Catálogos",     href: "/admin/catalogs",    icon: <Link2          className="h-4 w-4" /> },
   { label: "Produtos",      href: "/admin/products",    icon: <Package         className="h-4 w-4" /> },
   { label: "Coleções",      href: "/admin/collections", icon: <BookOpen        className="h-4 w-4" /> },
-  { label: "Lojistas",      href: "/admin/members",     icon: <Users           className="h-4 w-4" /> },
+  { label: "Compradores",   href: "/admin/members",     icon: <Users           className="h-4 w-4" /> },
   { label: "Pedidos",       href: "/admin/orders",      icon: <ShoppingBag     className="h-4 w-4" /> },
   { label: "Configurações", href: "/admin/settings",    icon: <Settings        className="h-4 w-4" /> },
 ];
@@ -46,7 +48,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="px-4 py-5 border-b flex items-center justify-between">
         <div>
           <span className="font-semibold text-sm tracking-wide">MeuMostruário</span>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">Admin</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">Admin da fábrica</p>
         </div>
         {/* Fechar drawer no mobile */}
         <button

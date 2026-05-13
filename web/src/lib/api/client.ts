@@ -72,6 +72,12 @@ function buildHeaders(path: string, extra?: HeadersInit): Record<string, string>
   return headers;
 }
 
+function buildFormHeaders(path: string, extra?: HeadersInit): Record<string, string> {
+  const headers = buildHeaders(path, extra);
+  delete headers["Content-Type"];
+  return headers;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (response.ok) {
     if (response.status === 204) {
@@ -128,6 +134,16 @@ export const apiClient = {
       credentials: "include",
       headers: buildHeaders(path, init?.headers),
       body: body !== undefined ? JSON.stringify(body) : undefined,
+    }).then((res) => handleResponse<T>(res));
+  },
+
+  postForm<T>(path: string, body: FormData, init?: RequestInit): Promise<T> {
+    return fetch(`${BASE_URL}${path}`, {
+      ...init,
+      method: "POST",
+      credentials: "include",
+      headers: buildFormHeaders(path, init?.headers),
+      body,
     }).then((res) => handleResponse<T>(res));
   },
 

@@ -716,7 +716,7 @@ function ColorSwatchPicker({
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const SIZES = ["PP", "P", "M", "G", "GG"] as const;
+const SIZES = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2"] as const;
 type SizeKey = (typeof SIZES)[number];
 
 interface NewColorRow {
@@ -730,7 +730,7 @@ const EMPTY_COLOR_ROW: NewColorRow = {
   color: PANTONE_COLORS[0].name,
   color_hex: PANTONE_COLORS[0].hex,
   image_url: "",
-  stocks: { PP: 0, P: 0, M: 0, G: 0, GG: 0 },
+  stocks: { "P/M": 0, "M/G": 0, Unico: 0, "Plus 1": 0, "Plus 2": 0 },
 };
 
 function VariantsTab({ product, productId }: { product: Product; productId: number }) {
@@ -750,7 +750,7 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
   }, [product.variants]);
 
   const createVariantMutation = useMutation({
-    mutationFn: (data: { color: string; color_hex: string; size: string; stock_qty: number; image_url: string | null }) =>
+    mutationFn: (data: { color: string; color_hex: string; size: string; size_group: string; stock_qty: number; image_url: string | null }) =>
       createVariant(productId, data),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] }),
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao criar variante."),
@@ -786,7 +786,7 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
           onSave={async (row) => {
             for (const size of SIZES) {
               await createVariantMutation.mutateAsync({
-                color: row.color, color_hex: row.color_hex, size,
+                color: row.color, color_hex: row.color_hex, size, size_group: size,
                 stock_qty: row.stocks[size], image_url: row.image_url || null,
               });
             }
@@ -802,7 +802,10 @@ function NewVariantCard({ isSaving, onSave }: {
   isSaving: boolean;
   onSave: (row: NewColorRow) => Promise<void>;
 }) {
-  const [row, setRow] = useState<NewColorRow>({ ...EMPTY_COLOR_ROW, stocks: { PP: 0, P: 0, M: 0, G: 0, GG: 0 } });
+  const [row, setRow] = useState<NewColorRow>({
+    ...EMPTY_COLOR_ROW,
+    stocks: { "P/M": 0, "M/G": 0, Unico: 0, "Plus 1": 0, "Plus 2": 0 },
+  });
 
   return (
     <div className="border rounded-md p-4 space-y-3">
@@ -848,30 +851,30 @@ function ExistingColorRow({
   isSaving: boolean;
   isDeleting: boolean;
   onSaveVariant: (variantId: number, data: Partial<ProductVariant>) => void;
-  onCreateVariant: (data: { color: string; color_hex: string; size: string; stock_qty: number; image_url: string | null }) => Promise<unknown>;
+  onCreateVariant: (data: { color: string; color_hex: string; size: string; size_group: string; stock_qty: number; image_url: string | null }) => Promise<unknown>;
   onDeleteGroup: () => void;
 }) {
   const [colorHex, setColorHex] = useState(group.color_hex);
   const [color, setColor]       = useState(group.color);
   const [imageUrl, setImageUrl] = useState(group.image_url);
   const [stocks, setStocks]     = useState<Record<string, number>>(
-    Object.fromEntries(group.variants.map((v) => [v.size, v.stock_qty ?? 0]))
+    Object.fromEntries(group.variants.map((v) => [v.size_group ?? v.size, v.stock_qty ?? 0]))
   );
 
   const isDirty =
     color !== group.color ||
     colorHex !== group.color_hex ||
     imageUrl !== group.image_url ||
-    SIZES.some((s) => (stocks[s] ?? 0) !== (group.variants.find((v) => v.size === s)?.stock_qty ?? 0));
+    SIZES.some((s) => (stocks[s] ?? 0) !== (group.variants.find((v) => (v.size_group ?? v.size) === s)?.stock_qty ?? 0));
 
   async function handleSave() {
     for (const size of SIZES) {
-      const variant = group.variants.find((v) => v.size === size);
+      const variant = group.variants.find((v) => (v.size_group ?? v.size) === size);
       const stockVal = stocks[size] ?? 0;
       if (variant) {
-        onSaveVariant(variant.id, { color, color_hex: colorHex, stock_qty: stockVal, image_url: imageUrl || null });
+        onSaveVariant(variant.id, { color, color_hex: colorHex, size_group: size, size, stock_qty: stockVal, image_url: imageUrl || null });
       } else if (stockVal > 0) {
-        await onCreateVariant({ color, color_hex: colorHex, size, stock_qty: stockVal, image_url: imageUrl || null });
+        await onCreateVariant({ color, color_hex: colorHex, size, size_group: size, stock_qty: stockVal, image_url: imageUrl || null });
       }
     }
     toast.success("Variantes salvas.");

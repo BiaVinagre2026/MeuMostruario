@@ -17,8 +17,13 @@ module Api
           urls = build_urls(image_url)
           is_cover = ActiveRecord::Type::Boolean.new.cast(params[:is_cover])
 
-          image = product.images.build(urls: urls, is_cover: is_cover,
-                                       position: next_position(product))
+          image = product.images.build(
+            urls: urls,
+            is_cover: is_cover,
+            photo_id: params[:photo_id],
+            visual_metadata: params[:visual_metadata] || {},
+            position: next_position(product)
+          )
 
           if image.save
             render json: { image: image_json(image) }, status: :created
@@ -49,7 +54,9 @@ module Api
           {
             id:         img.id,
             product_id: img.product_id,
+            photo_id:   img.photo_id,
             urls:       img.urls,
+            visual_metadata: img.visual_metadata,
             is_cover:   img.is_cover,
             position:   img.position,
             created_at: img.created_at

@@ -73,16 +73,18 @@ module Api
         end
 
         SIZE_ORDER = %w[PP P M G GG XGG Único].freeze
+        SIZE_GROUP_ORDER = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2"].freeze
 
         def product_summary_json(p)
           cover = p.images.find(&:is_cover) || p.images.first
 
           raw_stock = p.variants.each_with_object(Hash.new(0)) do |v, h|
-            h[v.size.to_s] += v.stock_qty.to_i if v.size.present?
+            key = v.size_group.presence || v.size.to_s
+            h[key] += v.stock_qty.to_i if key.present?
           end
-          stock_by_size = SIZE_ORDER
+          stock_by_size = (SIZE_GROUP_ORDER + SIZE_ORDER)
             .filter_map { |s| [s, raw_stock[s]] if raw_stock.key?(s) }
-            .concat(raw_stock.reject { |s, _| SIZE_ORDER.include?(s) }.to_a)
+            .concat(raw_stock.reject { |s, _| (SIZE_GROUP_ORDER + SIZE_ORDER).include?(s) }.to_a)
             .to_h
 
           {
@@ -95,6 +97,9 @@ module Api
             price_retail:    p.price_retail,
             collection:      p.collection ? { id: p.collection.id, name: p.collection.name } : nil,
             cover_url:       cover_url_for(cover),
+            pantone:         cover&.pantone,
+            approved_color:  cover&.approved_color,
+            size_group:      cover&.size_group,
             variants_count:  p.variants.size,
             stock_by_size:   stock_by_size,
             created_at:      p.created_at
@@ -135,7 +140,12 @@ module Api
         def image_json(img)
           {
             id:       img.id,
+            photo_id: img.photo_id,
             urls:     img.urls,
+            visual_metadata: img.visual_metadata,
+            pantone:  img.pantone,
+            approved_color: img.approved_color,
+            size_group: img.size_group,
             is_cover: img.is_cover,
             position: img.position
           }
@@ -146,7 +156,9 @@ module Api
             id:             v.id,
             color:          v.color,
             color_hex:      v.color_hex,
+            pantone:        v.pantone,
             size:           v.size,
+            size_group:     v.size_group,
             stock_qty:      v.stock_qty,
             price_override: v.price_override,
             image_url:      v.image_url,

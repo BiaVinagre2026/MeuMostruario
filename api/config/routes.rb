@@ -21,6 +21,11 @@ Rails.application.routes.draw do
       resources :looks,       only: [:index, :show]
       resources :leads,       only: [:create]
       resources :waitlists,   only: [:create]
+      get  "catalog_links/:token",            to: "catalog_links#show"
+      post "catalog_links/:token/interests",  to: "catalog_links#interests"
+      post "catalog_links/:token/orders",     to: "catalog_links#orders"
+      post "catalog_links/:token/selections", to: "catalog_links#selections"
+      post "payments/webhook",                to: "payments#webhook"
 
       # Member profile (authenticated)
       get   "profile",          to: "members#show"
@@ -74,6 +79,13 @@ Rails.application.routes.draw do
         resources :collections, only: [:index, :show, :create, :update, :destroy]
         resources :categories,  only: [:index, :create, :update, :destroy]
         resources :looks,       only: [:index, :show, :create, :update, :destroy]
+
+        # Photo catalog workflow
+        resources :photo_batches, only: [:index, :show, :create]
+        patch "photos/bulk_update", to: "photos#bulk_update"
+        resources :catalogs, only: [:index, :show, :create, :update] do
+          resources :links, only: [:create], controller: "catalog_links"
+        end
 
         # B2B orders management
         resources :orders, only: [:index, :show, :update]

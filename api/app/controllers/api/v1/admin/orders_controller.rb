@@ -71,7 +71,8 @@ module Api
             size:         i.size,
             qty:          i.qty,
             unit_price:   i.unit_price,
-            subtotal:     i.subtotal
+            subtotal:     i.subtotal,
+            metadata:     i.metadata
           }
         end
 
@@ -79,10 +80,18 @@ module Api
           {
             id:          o.id,
             status:      o.status,
+            payment_status: o.payment_status,
             total_units: o.total_units,
             total_value: o.total_value,
             notes:       o.notes,
             member:      member_json(o.member),
+            buyer:       {
+              name: o.buyer_name,
+              phone: o.buyer_phone,
+              email: o.buyer_email
+            },
+            catalog_link_id: o.catalog_link_id,
+            metadata:    o.metadata,
             created_at:  o.created_at,
             updated_at:  o.updated_at
           }

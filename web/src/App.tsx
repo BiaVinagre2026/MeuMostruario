@@ -16,6 +16,7 @@ import { ShowroomLayout } from "@/components/showroom/ShowroomLayout";
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
 import ProductDetail from "@/pages/ProductDetail";
+import CatalogLinkPage from "@/pages/CatalogLinkPage";
 
 // Auth / member pages
 import Login from "@/pages/Login";
@@ -33,6 +34,9 @@ import MemberList from "@/pages/admin/members/MemberList";
 import OrderList from "@/pages/admin/orders/OrderList";
 import OrderDetail from "@/pages/admin/orders/OrderDetail";
 import SettingsPage from "@/pages/admin/settings/SettingsPage";
+import PhotoBatchList from "@/pages/admin/photos/PhotoBatchList";
+import PhotoBatchReview from "@/pages/admin/photos/PhotoBatchReview";
+import CatalogList from "@/pages/admin/catalogs/CatalogList";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +62,7 @@ export default function App() {
                     <Route path="/catalog" element={<Catalog />} />
                     <Route path="/product/:id" element={<ProductDetail />} />
                   </Route>
+                  <Route path="/link/:token" element={<CatalogLinkPage />} />
 
                   {/* ── Member auth ── */}
                   <Route path="/login" element={<Login />} />
@@ -75,6 +80,11 @@ export default function App() {
                     <Route path="/admin/products" element={<ProductList />} />
                     <Route path="/admin/products/new" element={<ProductForm />} />
                     <Route path="/admin/products/:id/edit" element={<ProductForm />} />
+
+                    {/* Photo catalog workflow */}
+                    <Route path="/admin/photo-batches" element={<PhotoBatchList />} />
+                    <Route path="/admin/photo-batches/:id" element={<PhotoBatchReview />} />
+                    <Route path="/admin/catalogs" element={<CatalogList />} />
 
                     {/* Collections */}
                     <Route path="/admin/collections" element={<CollectionList />} />

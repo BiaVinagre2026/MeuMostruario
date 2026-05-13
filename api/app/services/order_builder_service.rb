@@ -15,7 +15,9 @@
 #
 # The service detects the shape by checking whether `qty` is a Hash.
 class OrderBuilderService
-  # @param member_id    [Integer]         authenticated member ID
+  # @param member_id    [Integer, nil]    authenticated member ID when available
+  # @param catalog_link [CatalogLink, nil] tokenized catalog link for anonymous wholesale orders
+  # @param buyer        [Hash]            anonymous buyer snapshot
   # @param items        [Array<Hash>]     cart line items (see shapes above)
   # @param notes        [String, nil]     optional buyer notes
   # @param subtotal     [Numeric, nil]    pre-discount subtotal from frontend
@@ -23,13 +25,18 @@ class OrderBuilderService
   # @param discount_pct [Integer, nil]    discount percentage (e.g. 5)
   # @param total        [Numeric, nil]    final total after discount
   # @return [Order] persisted order with items loaded
-  def self.build(member_id:, items:, notes: nil, subtotal: nil, discount: nil, discount_pct: nil, total: nil)
+  def self.build(member_id: nil, catalog_link: nil, buyer: {}, items:, notes: nil, subtotal: nil, discount: nil, discount_pct: nil, total: nil, payment_status: nil)
     ActiveRecord::Base.transaction do
       order = Order.create!(
         member_id: member_id,
-        status:    "pending",
-        notes:     notes,
-        metadata:  build_order_metadata(subtotal, discount, discount_pct, total)
+        catalog_link_id: catalog_link&.id,
+        buyer_name: buyer[:name] || buyer["name"],
+        buyer_phone: buyer[:phone] || buyer["phone"],
+        buyer_email: buyer[:email] || buyer["email"],
+        status: "pending",
+        payment_status: payment_status || (catalog_link&.allow_payment? ? "pending" : "not_required"),
+        notes: notes,
+        metadata: build_order_metadata(subtotal, discount, discount_pct, total, catalog_link)
       )
 
       Array(items).each do |raw_item|
@@ -68,7 +75,10 @@ class OrderBuilderService
     sku        = (item[:sku] || item[:product_sku]).to_s.presence
     color      = item[:color].to_s.presence
     color_hex  = item[:color_hex].to_s.presence
+    pantone    = item[:pantone].to_s.presence
     image_url  = item[:image_url].to_s.presence
+    photo_id   = item[:photo_id].presence
+    catalog_item_id = item[:catalog_item_id].presence
 
     qty_hash.each do |size, qty|
       next if qty.to_i <= 0
@@ -81,7 +91,13 @@ class OrderBuilderService
         size:         size.to_s,
         qty:          qty.to_i,
         unit_price:   unit_price,
-        metadata:     compact_metadata(color_hex: color_hex, image_url: image_url)
+        metadata:     compact_metadata(
+          color_hex: color_hex,
+          pantone: pantone,
+          image_url: image_url,
+          photo_id: photo_id,
+          catalog_item_id: catalog_item_id
+        )
       )
     end
   end
@@ -98,16 +114,24 @@ class OrderBuilderService
       size:         item[:size].to_s.presence,
       qty:          item[:qty].to_i,
       unit_price:   item[:unit_price].to_d,
-      metadata:     {}
+      metadata:     compact_metadata(
+        color_hex: item[:color_hex],
+        pantone: item[:pantone],
+        image_url: item[:image_url],
+        photo_id: item[:photo_id],
+        catalog_item_id: item[:catalog_item_id]
+      )
     )
   end
 
-  def self.build_order_metadata(subtotal, discount, discount_pct, total)
+  def self.build_order_metadata(subtotal, discount, discount_pct, total, catalog_link)
     {
       "subtotal"     => subtotal.to_d.to_s,
       "discount"     => discount.to_d.to_s,
       "discount_pct" => discount_pct.to_i,
-      "total"        => total.to_d.to_s
+      "total"        => total.to_d.to_s,
+      "catalog_link_token" => catalog_link&.token,
+      "catalog_link_type" => catalog_link&.link_type
     }.compact
   end
 

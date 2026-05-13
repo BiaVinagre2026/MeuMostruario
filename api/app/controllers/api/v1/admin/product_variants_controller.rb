@@ -41,7 +41,7 @@ module Api
 
         def variant_params
           params.require(:variant).permit(
-            :color, :color_hex, :size,
+            :color, :color_hex, :pantone, :size, :size_group,
             :stock_qty, :price_override,
             :image_url, :position
           )
@@ -53,7 +53,9 @@ module Api
             product_id:     v.product_id,
             color:          v.color,
             color_hex:      v.color_hex,
+            pantone:        v.pantone,
             size:           v.size,
+            size_group:     v.size_group,
             stock_qty:      v.stock_qty,
             price_override: v.price_override,
             image_url:      v.image_url,

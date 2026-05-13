@@ -17,12 +17,21 @@ class TenantSchemaSql
       products_sql,
       product_variants_sql,
       product_images_sql,
+      photo_batches_sql,
+      photos_sql,
+      photo_analyses_sql,
+      catalogs_sql,
+      catalog_items_sql,
+      catalog_links_sql,
+      selections_sql,
+      selection_items_sql,
       looks_sql,
       look_items_sql,
       leads_sql,
       waitlists_sql,
       orders_sql,
-      order_items_sql
+      order_items_sql,
+      payments_sql
     ].join("\n\n")
   end
 
@@ -33,17 +42,40 @@ class TenantSchemaSql
       products_sql,
       product_variants_sql,
       product_images_sql,
+      photo_batches_sql,
+      photos_sql,
+      photo_analyses_sql,
+      catalogs_sql,
+      catalog_items_sql,
+      catalog_links_sql,
+      selections_sql,
+      selection_items_sql,
       looks_sql,
       look_items_sql,
       leads_sql,
       waitlists_sql,
       orders_sql,
-      order_items_sql
+      order_items_sql,
+      payments_sql
     ].join("\n\n")
   end
 
   def self.orders_tables_sql
-    [orders_sql, order_items_sql].join("\n\n")
+    [orders_sql, order_items_sql, payments_sql].join("\n\n")
+  end
+
+  def self.catalog_photo_tables_sql
+    [
+      photo_batches_sql,
+      photos_sql,
+      photo_analyses_sql,
+      catalogs_sql,
+      catalog_items_sql,
+      catalog_links_sql,
+      selections_sql,
+      selection_items_sql,
+      payments_sql
+    ].join("\n\n")
   end
 
   # ---------------------------------------------------------------------------
@@ -278,6 +310,8 @@ class TenantSchemaSql
         size            VARCHAR(30),
         color           VARCHAR(60),
         color_hex       VARCHAR(7),
+        pantone         VARCHAR(40),
+        size_group      VARCHAR(30),
         sku             VARCHAR(100),
         stock_qty       INTEGER        DEFAULT 0,
         price_override  DECIMAL(10,2),
@@ -299,7 +333,9 @@ class TenantSchemaSql
       CREATE TABLE IF NOT EXISTS product_images (
         id              BIGSERIAL PRIMARY KEY,
         product_id      BIGINT         NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        photo_id        BIGINT,
         urls            JSONB          NOT NULL DEFAULT '{}',
+        visual_metadata JSONB          NOT NULL DEFAULT '{}',
         position        INTEGER        NOT NULL DEFAULT 0,
         is_cover        BOOLEAN        NOT NULL DEFAULT false,
         alt_text        VARCHAR(255),
@@ -307,6 +343,208 @@ class TenantSchemaSql
       );
 
       CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images (product_id, position);
+      CREATE INDEX IF NOT EXISTS idx_product_images_photo ON product_images (photo_id);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Photo batches — bulk photo upload sessions for factory catalog triage
+  # ---------------------------------------------------------------------------
+  def self.photo_batches_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS photo_batches (
+        id                BIGSERIAL PRIMARY KEY,
+        name              VARCHAR(255),
+        status            VARCHAR(30)    NOT NULL DEFAULT 'draft',
+        total_count       INTEGER        NOT NULL DEFAULT 0,
+        processed_count   INTEGER        NOT NULL DEFAULT 0,
+        error_count       INTEGER        NOT NULL DEFAULT 0,
+        metadata          JSONB          NOT NULL DEFAULT '{}',
+        created_by_id     BIGINT,
+        started_at        TIMESTAMP,
+        completed_at      TIMESTAMP,
+        created_at        TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT photo_batches_status_check CHECK (status IN ('draft','uploading','processing','review','reviewed','published','error'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_photo_batches_status ON photo_batches (status);
+      CREATE INDEX IF NOT EXISTS idx_photo_batches_created ON photo_batches (created_at DESC);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Photos — uploaded image records that may be linked to products/variants later
+  # ---------------------------------------------------------------------------
+  def self.photos_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS photos (
+        id                    BIGSERIAL PRIMARY KEY,
+        photo_batch_id         BIGINT         REFERENCES photo_batches(id) ON DELETE SET NULL,
+        product_id             BIGINT         REFERENCES products(id) ON DELETE SET NULL,
+        product_variant_id     BIGINT         REFERENCES product_variants(id) ON DELETE SET NULL,
+        original_filename      VARCHAR(255),
+        storage_key            VARCHAR(500),
+        urls                   JSONB          NOT NULL DEFAULT '{}',
+        status                 VARCHAR(30)    NOT NULL DEFAULT 'uploaded',
+        suggested_color        VARCHAR(80),
+        approved_color         VARCHAR(80),
+        suggested_pantone      VARCHAR(40),
+        approved_pantone       VARCHAR(40),
+        suggested_model        VARCHAR(120),
+        approved_model         VARCHAR(120),
+        suggested_size_group   VARCHAR(30),
+        approved_size_group    VARCHAR(30),
+        confidence_score       DECIMAL(5,4),
+        metadata               JSONB          NOT NULL DEFAULT '{}',
+        reviewed_at            TIMESTAMP,
+        created_at             TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at             TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT photos_status_check CHECK (status IN ('uploaded','processing','needs_review','approved','published','error')),
+        CONSTRAINT photos_size_group_check CHECK (
+          approved_size_group IS NULL OR approved_size_group IN ('P/M','M/G','Unico','Plus 1','Plus 2')
+        )
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_photos_batch ON photos (photo_batch_id);
+      CREATE INDEX IF NOT EXISTS idx_photos_product ON photos (product_id);
+      CREATE INDEX IF NOT EXISTS idx_photos_status ON photos (status);
+      CREATE INDEX IF NOT EXISTS idx_photos_color ON photos (approved_color);
+      CREATE INDEX IF NOT EXISTS idx_photos_size_group ON photos (approved_size_group);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Photo analyses — raw and suggested AI metadata for review
+  # ---------------------------------------------------------------------------
+  def self.photo_analyses_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS photo_analyses (
+        id              BIGSERIAL PRIMARY KEY,
+        photo_id        BIGINT         NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+        provider        VARCHAR(60)    NOT NULL DEFAULT 'openrouter',
+        model           VARCHAR(120),
+        status          VARCHAR(30)    NOT NULL DEFAULT 'pending',
+        suggestions     JSONB          NOT NULL DEFAULT '{}',
+        raw_response    JSONB          NOT NULL DEFAULT '{}',
+        confidence      DECIMAL(5,4),
+        error_message   TEXT,
+        cost_cents      INTEGER        DEFAULT 0,
+        created_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT photo_analyses_status_check CHECK (status IN ('pending','completed','error'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_photo_analyses_photo ON photo_analyses (photo_id);
+      CREATE INDEX IF NOT EXISTS idx_photo_analyses_status ON photo_analyses (status);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Catalogs and tokenized links
+  # ---------------------------------------------------------------------------
+  def self.catalogs_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS catalogs (
+        id              BIGSERIAL PRIMARY KEY,
+        name            VARCHAR(255)   NOT NULL,
+        description     TEXT,
+        status          VARCHAR(30)    NOT NULL DEFAULT 'draft',
+        source          VARCHAR(60)    NOT NULL DEFAULT 'admin',
+        metadata        JSONB          NOT NULL DEFAULT '{}',
+        created_by_id   BIGINT,
+        created_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT catalogs_status_check CHECK (status IN ('draft','published','archived'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_catalogs_status ON catalogs (status);
+      CREATE INDEX IF NOT EXISTS idx_catalogs_created ON catalogs (created_at DESC);
+    SQL
+  end
+
+  def self.catalog_items_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS catalog_items (
+        id              BIGSERIAL PRIMARY KEY,
+        catalog_id      BIGINT         NOT NULL REFERENCES catalogs(id) ON DELETE CASCADE,
+        product_id      BIGINT         REFERENCES products(id) ON DELETE SET NULL,
+        photo_id        BIGINT         REFERENCES photos(id) ON DELETE SET NULL,
+        position        INTEGER        NOT NULL DEFAULT 0,
+        visible         BOOLEAN        NOT NULL DEFAULT true,
+        metadata        JSONB          NOT NULL DEFAULT '{}',
+        created_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at      TIMESTAMP      NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_catalog_items_catalog ON catalog_items (catalog_id, position);
+      CREATE INDEX IF NOT EXISTS idx_catalog_items_product ON catalog_items (product_id);
+      CREATE INDEX IF NOT EXISTS idx_catalog_items_photo ON catalog_items (photo_id);
+    SQL
+  end
+
+  def self.catalog_links_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS catalog_links (
+        id                      BIGSERIAL PRIMARY KEY,
+        catalog_id              BIGINT         NOT NULL REFERENCES catalogs(id) ON DELETE CASCADE,
+        parent_catalog_link_id  BIGINT         REFERENCES catalog_links(id) ON DELETE SET NULL,
+        token                   VARCHAR(80)    NOT NULL,
+        slug                    VARCHAR(120),
+        link_type               VARCHAR(30)    NOT NULL DEFAULT 'public_client',
+        show_prices             BOOLEAN        NOT NULL DEFAULT false,
+        allow_order             BOOLEAN        NOT NULL DEFAULT false,
+        allow_payment           BOOLEAN        NOT NULL DEFAULT false,
+        expires_at              TIMESTAMP,
+        created_by_id           BIGINT,
+        metadata                JSONB          NOT NULL DEFAULT '{}',
+        created_at              TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at              TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT catalog_links_token_unique UNIQUE (token),
+        CONSTRAINT catalog_links_type_check CHECK (link_type IN ('public_client','wholesale_buyer','selection'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_catalog_links_catalog ON catalog_links (catalog_id);
+      CREATE INDEX IF NOT EXISTS idx_catalog_links_token ON catalog_links (token);
+    SQL
+  end
+
+  def self.selections_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS selections (
+        id                      BIGSERIAL PRIMARY KEY,
+        catalog_link_id          BIGINT         REFERENCES catalog_links(id) ON DELETE SET NULL,
+        generated_catalog_link_id BIGINT        REFERENCES catalog_links(id) ON DELETE SET NULL,
+        contact_name             VARCHAR(255),
+        contact_phone            VARCHAR(30),
+        contact_email            VARCHAR(255),
+        status                   VARCHAR(30)    NOT NULL DEFAULT 'new',
+        metadata                 JSONB          NOT NULL DEFAULT '{}',
+        created_at               TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at               TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT selections_status_check CHECK (status IN ('new','sent','converted','archived'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_selections_catalog_link ON selections (catalog_link_id);
+      CREATE INDEX IF NOT EXISTS idx_selections_created ON selections (created_at DESC);
+    SQL
+  end
+
+  def self.selection_items_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS selection_items (
+        id              BIGSERIAL PRIMARY KEY,
+        selection_id    BIGINT         NOT NULL REFERENCES selections(id) ON DELETE CASCADE,
+        catalog_item_id BIGINT         REFERENCES catalog_items(id) ON DELETE SET NULL,
+        product_id      BIGINT         REFERENCES products(id) ON DELETE SET NULL,
+        photo_id        BIGINT         REFERENCES photos(id) ON DELETE SET NULL,
+        qty             INTEGER        NOT NULL DEFAULT 1,
+        metadata        JSONB          NOT NULL DEFAULT '{}',
+        created_at      TIMESTAMP      NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_selection_items_selection ON selection_items (selection_id);
+      CREATE INDEX IF NOT EXISTS idx_selection_items_photo ON selection_items (photo_id);
     SQL
   end
 
@@ -412,18 +650,25 @@ class TenantSchemaSql
     <<~SQL
       CREATE TABLE IF NOT EXISTS orders (
         id              BIGSERIAL PRIMARY KEY,
-        member_id       BIGINT         NOT NULL,
+        member_id       BIGINT,
+        catalog_link_id BIGINT         REFERENCES catalog_links(id) ON DELETE SET NULL,
+        buyer_name      VARCHAR(255),
+        buyer_phone     VARCHAR(30),
+        buyer_email     VARCHAR(255),
         status          VARCHAR(20)    NOT NULL DEFAULT 'pending',
+        payment_status  VARCHAR(30)    NOT NULL DEFAULT 'not_required',
         notes           TEXT,
         total_units     INTEGER        NOT NULL DEFAULT 0,
         total_value     DECIMAL(10,2)  NOT NULL DEFAULT 0,
         metadata        JSONB          NOT NULL DEFAULT '{}',
         created_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
         updated_at      TIMESTAMP      NOT NULL DEFAULT NOW(),
-        CONSTRAINT orders_status_check CHECK (status IN ('pending','confirmed','processing','shipped','cancelled'))
+        CONSTRAINT orders_status_check CHECK (status IN ('pending','confirmed','processing','shipped','cancelled')),
+        CONSTRAINT orders_payment_status_check CHECK (payment_status IN ('not_required','pending','paid','failed','cancelled'))
       );
 
       CREATE INDEX IF NOT EXISTS idx_orders_member ON orders (member_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_catalog_link ON orders (catalog_link_id);
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
       CREATE INDEX IF NOT EXISTS idx_orders_created ON orders (created_at DESC);
     SQL
@@ -450,6 +695,33 @@ class TenantSchemaSql
       );
 
       CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items (order_id);
+    SQL
+  end
+
+  # ---------------------------------------------------------------------------
+  # Payments — gateway transaction records for wholesale catalog orders
+  # ---------------------------------------------------------------------------
+  def self.payments_sql
+    <<~SQL
+      CREATE TABLE IF NOT EXISTS payments (
+        id                    BIGSERIAL PRIMARY KEY,
+        order_id              BIGINT         NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        gateway_reference     VARCHAR(120),
+        status                VARCHAR(30)    NOT NULL DEFAULT 'pending',
+        payment_method        VARCHAR(30),
+        amount                DECIMAL(10,2)  NOT NULL DEFAULT 0,
+        checkout_url          VARCHAR(500),
+        pix_qr_code           TEXT,
+        raw_response          JSONB          NOT NULL DEFAULT '{}',
+        webhook_payload       JSONB          NOT NULL DEFAULT '{}',
+        paid_at               TIMESTAMP,
+        created_at            TIMESTAMP      NOT NULL DEFAULT NOW(),
+        updated_at            TIMESTAMP      NOT NULL DEFAULT NOW(),
+        CONSTRAINT payments_status_check CHECK (status IN ('pending','paid','failed','cancelled','expired'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_payments_order ON payments (order_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_gateway_reference ON payments (gateway_reference);
     SQL
   end
 end

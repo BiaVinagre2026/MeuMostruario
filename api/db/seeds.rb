@@ -409,6 +409,98 @@ products_data.each do |pd|
   print "  #{product.sku} — #{product.name}\n"
 end
 
+puts "\n[Photo catalog demo — fabrica]"
+
+size_group_map = {
+  "PP" => "P/M",
+  "P" => "P/M",
+  "M" => "P/M",
+  "G" => "M/G",
+  "GG" => "M/G",
+  "XGG" => "Plus 1",
+  "Único" => "Unico",
+  "Unico" => "Unico"
+}
+
+ProductVariant.find_each do |variant|
+  variant.update_columns(size_group: size_group_map[variant.size] || "Unico") if variant.respond_to?(:size_group)
+end
+
+demo_batch = PhotoBatch.find_or_create_by!(name: "Demo triagem fabrica") do |batch|
+  batch.status = "reviewed"
+end
+
+demo_image_urls = [
+  "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80"
+]
+
+Product.published.limit(5).each_with_index do |product, index|
+  variant = product.variants.first
+  url = demo_image_urls[index % demo_image_urls.length]
+  photo = Photo.find_or_create_by!(
+    photo_batch: demo_batch,
+    product: product,
+    original_filename: "demo-#{product.sku}.jpg"
+  ) do |p|
+    p.urls = { "original" => url, "regular" => url, "card" => url, "thumb" => url }
+    p.status = "approved"
+    p.approved_color = variant&.color
+    p.approved_pantone = "PANTONE #{17 + index}-#{5640 + index}"
+    p.approved_model = product.name
+    p.approved_size_group = variant&.size_group || "Unico"
+    p.confidence_score = 0.9
+  end
+
+  product.images.find_or_create_by!(photo_id: photo.id) do |image|
+    image.urls = photo.urls
+    image.visual_metadata = {
+      "approved_color" => photo.approved_color,
+      "pantone" => photo.approved_pantone,
+      "size_group" => photo.approved_size_group
+    }
+    image.is_cover = product.images.none?
+    image.position = index
+  end
+end
+
+demo_batch.refresh_counts!
+
+demo_catalog = Catalog.find_or_create_by!(name: "Catalogo Demo Fabrica") do |catalog|
+  catalog.description = "Catalogo demo com links publico e atacado."
+  catalog.status = "published"
+  catalog.source = "seed"
+end
+
+if demo_catalog.catalog_items.none?
+  Photo.where(photo_batch: demo_batch).each_with_index do |photo, index|
+    demo_catalog.catalog_items.create!(
+      product: photo.product,
+      photo: photo,
+      position: index,
+      visible: true
+    )
+  end
+end
+
+demo_catalog.catalog_links.find_or_create_by!(link_type: "public_client") do |link|
+  link.show_prices = false
+  link.allow_order = false
+  link.allow_payment = false
+end
+
+demo_catalog.catalog_links.find_or_create_by!(link_type: "wholesale_buyer") do |link|
+  link.show_prices = true
+  link.allow_order = true
+  link.allow_payment = true
+end
+
+puts "  Catalogo demo: #{demo_catalog.name}"
+puts "  Links: #{demo_catalog.catalog_links.map { |link| "/link/#{link.token}" }.join(' | ')}"
+
 TenantSwitcher.reset!
 
 # ---------------------------------------------------------------------------

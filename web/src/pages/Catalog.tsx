@@ -298,7 +298,7 @@ function ProductCard({ p, onOpen, onQuickAdd }: { p: Product; onOpen: () => void
   );
 }
 
-const WHOLESALE_SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XGG", "Único"];
+const WHOLESALE_SIZE_ORDER = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2"];
 
 function WholesaleTable({ products, addToCart, onOpen }: {
   products: Product[];

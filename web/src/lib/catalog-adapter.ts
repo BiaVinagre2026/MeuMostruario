@@ -4,7 +4,12 @@ import type { Product, Collection, Category, Color } from "@/types/catalog";
 
 export interface ApiImage {
   id: number;
-  urls: { thumb?: string; small?: string; regular?: string; full?: string } | null;
+  photo_id?: number | null;
+  urls: { original?: string; thumb?: string; small?: string; regular?: string; full?: string; card?: string } | null;
+  visual_metadata?: Record<string, unknown>;
+  pantone?: string | null;
+  approved_color?: string | null;
+  size_group?: string | null;
   is_cover: boolean;
   alt_text: string | null;
   position: number;
@@ -15,10 +20,12 @@ export interface ApiVariant {
   size: string | null;
   color: string | null;
   color_hex: string | null;
+  pantone?: string | null;
   image_url: string | null;
   sku: string | null;
   stock_qty: number;
   price_override: number | null;
+  size_group?: string | null;
 }
 
 export interface ApiCategory {
@@ -88,6 +95,7 @@ function buildColors(variants: ApiVariant[]): Color[] {
       name: v.color,
       tone: hexToTone(v.color_hex),
       hex:  v.color_hex ?? undefined,
+      pantone: v.pantone ?? null,
     });
   }
   return Array.from(seen.values());
@@ -133,15 +141,16 @@ function buildColorsFromApi(colors: ApiProduct["colors"]): Color[] {
 }
 
 function buildSizes(variants: ApiVariant[]): string[] {
-  const order = ["PP", "P", "M", "G", "GG", "XGG", "Único"];
-  const seen = new Set(variants.map((v) => v.size).filter(Boolean) as string[]);
+  const order = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2", "PP", "P", "M", "G", "GG", "XGG", "Único"];
+  const seen = new Set(variants.map((v) => v.size_group ?? v.size).filter(Boolean) as string[]);
   return order.filter((s) => seen.has(s)).concat([...seen].filter((s) => !order.includes(s)));
 }
 
 function buildStockBySize(variants: ApiVariant[]): Record<string, number> {
   const stock: Record<string, number> = {};
   for (const v of variants) {
-    if (v.size) stock[v.size] = (stock[v.size] ?? 0) + v.stock_qty;
+    const size = v.size_group ?? v.size;
+    if (size) stock[size] = (stock[size] ?? 0) + v.stock_qty;
   }
   return stock;
 }
@@ -163,6 +172,9 @@ export function adaptProduct(p: ApiProduct): Product {
     colors:      variants.length > 0 ? buildColors(variants) : buildColorsFromApi(p.colors),
     colorImages: buildColorImages(variants),
     sizes:       p.sizes ?? buildSizes(variants),
+    pantone:     images.find((i) => i.is_cover)?.pantone ?? images[0]?.pantone ?? variants[0]?.pantone ?? null,
+    approvedColor: images.find((i) => i.is_cover)?.approved_color ?? images[0]?.approved_color ?? null,
+    sizeGroup:   images.find((i) => i.is_cover)?.size_group ?? images[0]?.size_group ?? variants[0]?.size_group ?? null,
     tags:        p.tags             ?? [],
     description: p.description        ?? undefined,
     fabric:      p.fabric_composition ?? undefined,
@@ -173,7 +185,12 @@ export function adaptProduct(p: ApiProduct): Product {
     imageUrl:    imageUrl(p.cover_image) ?? imageUrl(images.find((i) => i.is_cover) ?? images[0]),
     images:      images.map((i) => ({
       id:       i.id,
+      photo_id: i.photo_id,
       urls:     i.urls ?? {},
+      visual_metadata: i.visual_metadata,
+      pantone:  i.pantone,
+      approved_color: i.approved_color,
+      size_group: i.size_group,
       is_cover: i.is_cover,
       alt_text: i.alt_text,
     })),
@@ -197,4 +214,3 @@ export function adaptCategory(c: ApiCategoryWithSubs): Category {
     count: 0,
   };
 }
-

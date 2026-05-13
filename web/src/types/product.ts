@@ -5,18 +5,26 @@ export interface ProductVariant {
   id: number;
   color: string;
   color_hex: string;
+  pantone?: string | null;
   size: string;
+  size_group?: string | null;
   stock_qty: number;
   image_url: string | null;
 }
 
 export interface ProductImage {
   id: number;
+  photo_id?: number | null;
   urls: {
     original: string;
     regular: string;
     thumb: string;
+    card?: string;
   };
+  visual_metadata?: Record<string, unknown>;
+  pantone?: string | null;
+  approved_color?: string | null;
+  size_group?: string | null;
   is_cover: boolean;
   position: number;
 }
@@ -62,6 +70,9 @@ export interface ProductListItem {
   slug: string;
   status: ProductStatus;
   price_wholesale: number;
+  pantone?: string | null;
+  approved_color?: string | null;
+  size_group?: string | null;
   cover_url: string | null;
   collection: ProductRef | null;
   variants_count: number;
