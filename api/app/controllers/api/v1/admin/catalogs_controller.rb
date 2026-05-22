@@ -5,7 +5,7 @@ module Api
     module Admin
       class CatalogsController < BaseController
         def index
-          catalogs = paginate(Catalog.includes(:catalog_items, :catalog_links))
+          catalogs = paginate(Catalog.includes(catalog_items: [:product, :photo], catalog_links: []))
           render json: {
             catalogs: catalogs.map { |catalog| catalog_json(catalog) },
             meta: pagination_meta(catalogs)
@@ -66,6 +66,7 @@ module Api
             status: catalog.status,
             source: catalog.source,
             items_count: catalog.catalog_items.size,
+            summary: summary_json(catalog),
             links: catalog.catalog_links.map { |link| link_json(link) },
             created_at: catalog.created_at,
             updated_at: catalog.updated_at
@@ -82,7 +83,26 @@ module Api
             position: item.position,
             visible: item.visible,
             product_name: item.product&.name,
-            photo_url: item.photo&.display_url
+            product_sku: item.product&.sku,
+            photo_url: item.photo&.display_url,
+            model: item.photo&.approved_model || item.photo&.suggested_model,
+            color: item.photo&.approved_color || item.photo&.suggested_color,
+            size_group: item.photo&.approved_size_group || item.photo&.suggested_size_group
+          }
+        end
+
+        def summary_json(catalog)
+          items = catalog.catalog_items
+          products = items.filter_map(&:product)
+          photos = items.filter_map(&:photo)
+
+          {
+            sku_labels: products.map(&:sku).compact.uniq.first(3),
+            model_labels: photos.map { |photo| photo.approved_model || photo.suggested_model }.compact.uniq.first(3),
+            color_labels: photos.map { |photo| photo.approved_color || photo.suggested_color }.compact.uniq.first(4),
+            size_groups: photos.map { |photo| photo.approved_size_group || photo.suggested_size_group }.compact.uniq.first(4),
+            public_links_count: catalog.catalog_links.count { |link| link.link_type == "public_client" },
+            wholesale_links_count: catalog.catalog_links.count { |link| link.link_type == "wholesale_buyer" }
           }
         end
 
