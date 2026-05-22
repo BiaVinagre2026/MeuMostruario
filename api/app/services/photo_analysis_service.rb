@@ -11,6 +11,11 @@ class PhotoAnalysisService
     photo.update!(status: "processing")
     suggestions = ai_suggestions(photo)
     confidence = normalize_confidence(suggestions["confidence"])
+    suggested_metadata = {
+      "suggested_sku" => suggestions["sku"],
+      "suggestion_source" => suggestions["source"],
+      "suggestion_group" => suggestions["group_key"]
+    }.compact
 
     analysis = photo.photo_analyses.create!(
       provider: "openrouter",
@@ -27,7 +32,8 @@ class PhotoAnalysisService
       suggested_pantone: suggestions["pantone"],
       suggested_model: suggestions["model"],
       suggested_size_group: valid_size_group(suggestions["size_group"]),
-      confidence_score: confidence
+      confidence_score: confidence,
+      metadata: (photo.metadata || {}).merge(suggested_metadata)
     )
 
     analysis
@@ -78,6 +84,9 @@ class PhotoAnalysisService
   end
 
   def fallback_suggestions(photo)
+    heuristic = LocalPhotoGrouping.assignment_for(photo.original_filename)
+    return local_grouping_suggestions(heuristic) if heuristic.present?
+
     name = photo.original_filename.to_s.downcase
     {
       "color" => color_from_filename(name),
@@ -106,6 +115,19 @@ class PhotoAnalysisService
     return "Top" if name.include?("top")
     return "Conjunto" if name.include?("conjunto")
     nil
+  end
+
+  def local_grouping_suggestions(heuristic)
+    {
+      "color" => heuristic[:color],
+      "pantone" => heuristic[:pantone],
+      "model" => heuristic[:model_name],
+      "size_group" => heuristic[:size_group],
+      "sku" => heuristic[:sku],
+      "source" => heuristic[:source],
+      "group_key" => heuristic[:key],
+      "confidence" => heuristic[:confidence]
+    }
   end
 
   def normalize_confidence(value)
