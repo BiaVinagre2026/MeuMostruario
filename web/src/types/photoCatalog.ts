@@ -24,6 +24,9 @@ export interface Photo {
   approved_model?: string | null;
   suggested_size_group?: SizeGroup | null;
   approved_size_group?: SizeGroup | null;
+  suggested_sku?: string | null;
+  suggestion_source?: string | null;
+  suggestion_group?: string | null;
   confidence_score?: number | null;
 }
 
@@ -44,9 +47,22 @@ export interface CatalogItem {
   product_id: number | null;
   photo_id: number | null;
   product_name?: string | null;
+  product_sku?: string | null;
   photo_url?: string | null;
+  model?: string | null;
+  color?: string | null;
+  size_group?: SizeGroup | null;
   position: number;
   visible: boolean;
+}
+
+export interface CatalogSummary {
+  sku_labels: string[];
+  model_labels: string[];
+  color_labels: string[];
+  size_groups: string[];
+  public_links_count: number;
+  wholesale_links_count: number;
 }
 
 export interface CatalogLink {
@@ -69,6 +85,7 @@ export interface Catalog {
   status: "draft" | "published" | "archived";
   source: string;
   items_count: number;
+  summary?: CatalogSummary;
   items?: CatalogItem[];
   links: CatalogLink[];
   created_at: string;

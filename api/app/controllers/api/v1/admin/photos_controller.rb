@@ -22,10 +22,11 @@ module Api
 
         def update_photo!(photo)
           attrs = photo_params.to_h.compact_blank
+          apply_suggestions!(photo, attrs) if truthy_param?(:apply_suggestions)
           attrs[:reviewed_at] = Time.current if attrs.key?(:status) || attrs.key?(:approved_color)
-          attrs[:status] = "approved" if params[:approve] == true || params[:approve] == "true"
+          attrs[:status] = "approved" if truthy_param?(:approve) || truthy_param?(:apply_suggestions)
 
-          if params[:create_product] == true || params[:create_product] == "true"
+          if truthy_param?(:create_product)
             product = create_product_from_photo!(photo)
             attrs[:product_id] = product.id
           end
@@ -87,6 +88,38 @@ module Api
             approved_model: photo.approved_model,
             approved_size_group: photo.approved_size_group
           }
+        end
+
+        def apply_suggestions!(photo, attrs)
+          attrs[:approved_color] ||= photo.suggested_color
+          attrs[:approved_pantone] ||= photo.suggested_pantone
+          attrs[:approved_model] ||= photo.suggested_model
+          attrs[:approved_size_group] ||= photo.suggested_size_group
+
+          suggested_sku = photo.metadata&.dig("suggested_sku")
+          return if suggested_sku.blank?
+
+          product = Product.find_by(sku: suggested_sku)
+          return unless product
+
+          attrs[:product_id] ||= product.id
+          variant = find_variant_for_photo(product, attrs)
+          attrs[:product_variant_id] ||= variant&.id
+        end
+
+        def find_variant_for_photo(product, attrs)
+          color = attrs[:approved_color]
+          size_group = attrs[:approved_size_group]
+
+          product.variants.find_by(color: color, size_group: size_group) ||
+            product.variants.find_by(color: color) ||
+            product.variants.find_by(size_group: size_group) ||
+            product.variants.first
+        end
+
+        def truthy_param?(key)
+          value = params[key]
+          value == true || value == "true"
         end
       end
     end

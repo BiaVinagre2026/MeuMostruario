@@ -33,6 +33,7 @@ export async function bulkUpdatePhotos(payload: {
   product_id?: number;
   status?: string;
   approve?: boolean;
+  apply_suggestions?: boolean;
   create_product?: boolean;
 }) {
   return apiClient.patch<{ photos: unknown[] }>("/api/v1/admin/photos/bulk_update", payload);
@@ -54,6 +55,15 @@ export async function createCatalog(payload: {
   product_ids?: number[];
 }): Promise<Catalog> {
   const res = await apiClient.post<{ catalog: Catalog }>("/api/v1/admin/catalogs", payload);
+  return res.catalog;
+}
+
+export async function updateCatalog(id: number, payload: {
+  catalog: { name?: string; description?: string; status?: string; source?: string };
+  photo_ids?: number[];
+  product_ids?: number[];
+}): Promise<Catalog> {
+  const res = await apiClient.patch<{ catalog: Catalog }>(`/api/v1/admin/catalogs/${id}`, payload);
   return res.catalog;
 }
 
