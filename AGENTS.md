@@ -1,34 +1,33 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 Este arquivo orienta agentes Codex neste repositório. Para contexto completo, leia também `CLAUDE.md`.
 
 ## Produto
 
-MeuMostruário é uma plataforma de catálogo de fotos para uma fábrica vender no atacado. O admin da fábrica faz upload em lote, revisa triagem automática por cor/Pantone/modelo/tamanho, monta catálogos e gera links por público.
+MeuMostruário é uma plataforma white-label multitenant para catálogos de fotos no atacado. Cada tenant representa uma marca, fábrica ou operação comercial com identidade própria, catálogo próprio, compradores próprios e links próprios.
 
 ## O Que Implementar
 
-- Catálogo público sem valores para cliente final.
-- Catálogo de atacado com valores para lojista comprador.
+- Experiência multitenant visível na UX, com tenant branding e gestão de tenants para super-admin.
+- Catálogo público sem valores para cliente final do cliente.
+- Catálogo de atacado com valores para comprador/lojista B2B.
 - Upload de muitas fotos de uma vez.
 - Triagem automática como sugestão revisável.
 - Seleções de fotos e links derivados.
-- Pedidos por WhatsApp e lista no admin.
-- Integração com gateway próprio.
+- Pedidos por WhatsApp e lista no admin do tenant.
+- Integração com gateway próprio por tenant.
 
 ## O Que Não Implementar No MVP
 
-- Produto SaaS multiempresa/multitenant na UX.
-- Gestão comercial de tenants.
-- Planos, billing SaaS ou super-admin multiempresa.
-- Login obrigatório do comprador de atacado.
-- Lookbook.
+- Remoção da arquitetura schema-per-tenant.
+- Login obrigatório para acesso inicial ao catálogo atacado por link tokenizado.
+- Lookbook como fluxo principal.
 - ERP.
 - Migração para Next.js.
 
 ## Arquitetura
 
-Mantenha Rails API-only + React/Vite. A camada schema-per-tenant existente continua por compatibilidade técnica, usando uma fábrica/tenant padrão internamente. Não remova `TenantResolver`, `TenantSwitcher` ou `TenantProvider` nesta fase.
+Mantenha Rails API-only + React/Vite. A arquitetura schema-per-tenant é parte do produto e deve ser aproveitada. `TenantResolver`, `TenantSwitcher` e `TenantProvider` continuam como pilares da solução.
 
 Novas tabelas de domínio devem ser adicionadas a `TenantSchemaSql` e migradas para schemas existentes.
 
@@ -43,6 +42,7 @@ Novas tabelas de domínio devem ser adicionadas a `TenantSchemaSql` e migradas p
 - Tamanhos fixos: `P/M`, `M/G`, `Unico`, `Plus 1`, `Plus 2`.
 - Pantone aparece no admin e para comprador quando disponível.
 - IA nunca publica sozinha; admin aprova.
+- Super-admin gerencia tenants; admin opera dentro do tenant ativo.
 
 ## Base Git
 

@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+﻿import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -9,21 +9,17 @@ import OperatorAuthProvider from "@/components/auth/OperatorAuthProvider";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AdminRoute from "@/components/auth/AdminRoute";
 
-// Showroom layout
 import { ShowroomLayout } from "@/components/showroom/ShowroomLayout";
 
-// Showroom pages
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
 import ProductDetail from "@/pages/ProductDetail";
 import CatalogLinkPage from "@/pages/CatalogLinkPage";
 
-// Auth / member pages
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
 
-// Admin pages
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import ProductList from "@/pages/admin/products/ProductList";
@@ -37,6 +33,9 @@ import SettingsPage from "@/pages/admin/settings/SettingsPage";
 import PhotoBatchList from "@/pages/admin/photos/PhotoBatchList";
 import PhotoBatchReview from "@/pages/admin/photos/PhotoBatchReview";
 import CatalogList from "@/pages/admin/catalogs/CatalogList";
+import GlobalDashboard from "@/pages/admin/global/GlobalDashboard";
+import TenantListPage from "@/pages/admin/global/TenantListPage";
+import { useOperatorStore } from "@/stores/useOperatorStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +46,11 @@ const queryClient = new QueryClient({
   },
 });
 
+function AdminHomeRedirect() {
+  const role = useOperatorStore((state) => state.operator?.role);
+  return <Navigate to={role === "super_admin" ? "/admin/global" : "/admin/dashboard"} replace />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -56,7 +60,6 @@ export default function App() {
             <OperatorAuthProvider>
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Routes>
-                  {/* ── Showroom (TopBar + Footer) ── */}
                   <Route element={<ShowroomLayout />}>
                     <Route path="/" element={<Home />} />
                     <Route path="/catalog" element={<Catalog />} />
@@ -64,41 +67,35 @@ export default function App() {
                   </Route>
                   <Route path="/link/:token" element={<CatalogLinkPage />} />
 
-                  {/* ── Member auth ── */}
                   <Route path="/login" element={<Login />} />
                   <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                   </Route>
 
-                  {/* ── Admin ── */}
                   <Route path="/admin/login" element={<AdminLogin />} />
                   <Route element={<AdminRoute />}>
-                    <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="/admin" element={<AdminHomeRedirect />} />
+                    <Route path="/admin/global" element={<GlobalDashboard />} />
+                    <Route path="/admin/global/tenants" element={<TenantListPage />} />
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
-                    {/* Products */}
                     <Route path="/admin/products" element={<ProductList />} />
                     <Route path="/admin/products/new" element={<ProductForm />} />
                     <Route path="/admin/products/:id/edit" element={<ProductForm />} />
 
-                    {/* Photo catalog workflow */}
                     <Route path="/admin/photo-batches" element={<PhotoBatchList />} />
                     <Route path="/admin/photo-batches/:id" element={<PhotoBatchReview />} />
                     <Route path="/admin/catalogs" element={<CatalogList />} />
 
-                    {/* Collections */}
                     <Route path="/admin/collections" element={<CollectionList />} />
                     <Route path="/admin/collections/new" element={<CollectionForm />} />
                     <Route path="/admin/collections/:id/edit" element={<CollectionForm />} />
 
-                    {/* Members (lojistas) */}
                     <Route path="/admin/members" element={<MemberList />} />
 
-                    {/* Orders */}
                     <Route path="/admin/orders" element={<OrderList />} />
                     <Route path="/admin/orders/:id" element={<OrderDetail />} />
 
-                    {/* Settings */}
                     <Route path="/admin/settings" element={<SettingsPage />} />
                   </Route>
 

@@ -72,9 +72,9 @@ export default function MemberList() {
     <AdminLayout>
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b">
         <div>
-          <h1 className="text-base md:text-lg font-semibold">Lojistas</h1>
+          <h1 className="text-base md:text-lg font-semibold">Compradores atacado</h1>
           <p className="text-xs md:text-sm text-muted-foreground">
-            {total > 0 ? `${total} lojista${total !== 1 ? "s" : ""}` : "Nenhum lojista"}
+            {total > 0 ? `${total} comprador${total !== 1 ? "es" : ""}` : "Nenhum comprador"}
           </p>
         </div>
       </div>
@@ -113,9 +113,9 @@ export default function MemberList() {
           <Skeleton />
         ) : members.length === 0 ? (
           <div className="border rounded-md flex flex-col items-center justify-center py-20 text-center">
-            <p className="font-medium">Nenhum lojista encontrado</p>
+            <p className="font-medium">Nenhum comprador encontrado</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {statusFilter ? "Tente selecionar outro status." : "Os lojistas aparecerão aqui após o cadastro."}
+              {statusFilter ? "Tente selecionar outro status." : "Os compradores aparecerão aqui após o cadastro."}
             </p>
           </div>
         ) : (
@@ -156,18 +156,18 @@ export default function MemberList() {
                         <td className="px-4 py-2.5">
                           <div className="flex items-center justify-end gap-1">
                             {m.status !== "active" && (
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
                                 disabled={statusMutation.isPending}
                                 onClick={() => statusMutation.mutate({ id: m.id, status: "active" })}
-                                title="Aprovar lojista">
+                                title="Aprovar comprador">
                                 <UserCheck className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {m.status !== "inactive" && (
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                                 disabled={statusMutation.isPending}
                                 onClick={() => statusMutation.mutate({ id: m.id, status: "inactive" })}
-                                title="Desativar lojista">
+                                title="Desativar comprador">
                                 <UserX className="h-3.5 w-3.5" />
                               </Button>
                             )}

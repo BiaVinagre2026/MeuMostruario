@@ -1,5 +1,6 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+﻿import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTenant } from "@/providers/TenantProvider";
 import { Photo, Btn, Tag } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
 import { TIERS, brl, TONE } from "@/data/catalog";
@@ -10,6 +11,7 @@ import type { Product } from "@/types/catalog";
 
 export default function Home() {
   const navigate = useNavigate();
+  const tenant = useTenant();
   const { data: allProducts = [] } = useProducts();
   const { data: collections = [] } = useCollections();
 
@@ -84,15 +86,15 @@ export default function Home() {
                 {collections[0]?.name ?? "Drop"} · {allProducts.length > 0 ? `${allProducts.length} peças` : "Mostruário"}
               </div>
               <h1 className="display" style={{ fontSize: "clamp(44px, 9vw, 168px)", fontStyle: "italic", maxWidth: "9ch" }}>
-                {collections[0]?.name ?? "Mostruário"}.
+                {tenant.tenantName ?? collections[0]?.name ?? "Mostruário"}.
               </h1>
               <div className="display" style={{ fontSize: "clamp(22px, 3vw, 44px)", marginTop: -8, opacity: 0.9 }}>
-                Mostruário aberto para multimarca.
+                Catálogo atacado da sua operação white-label.
               </div>
             </div>
             <div className="sr-hero-cta-col">
               <div className="mono" style={{ fontSize: 11, letterSpacing: "0.1em", opacity: 0.75, textAlign: "right" }}>
-                Prazo de produção 30 dias · Envio a partir de 15.06
+                Tenant isolado · Branding próprio · Pedido por link
               </div>
               <div style={{ display: "flex", gap: 10, width: "100%" }}>
                 <Btn
@@ -116,7 +118,7 @@ export default function Home() {
       <section style={{ borderTop: "1px solid var(--brand-border)", borderBottom: "1px solid var(--brand-border)" }}>
         <div className="sr-how-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)" }}>
 
-          {/* 01 — Cadastro Lojista */}
+          {/* 01 — Acesso B2B */}
           <button
             onClick={() => setB2bOpen(true)}
             className="sr-how-item"
@@ -125,12 +127,12 @@ export default function Home() {
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>01</div>
-            <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Cadastro Lojista</h3>
+            <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Acesso B2B</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
-              CNPJ + IE. Aprovação em 24h e área do lojista liberada.
+              Compradores autorizados entram no catálogo do tenant e seguem para pedido no atacado.
             </p>
             <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "1px solid var(--brand-foreground)", paddingBottom: 2 }}>
-              Cadastrar agora <Icons.Arrow/>
+              Ver fluxo <Icons.Arrow/>
             </div>
           </button>
 
@@ -139,7 +141,7 @@ export default function Home() {
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>02</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Pedido mínimo</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
-              12 peças ou R$ 1.500 em qualquer combinação do mostruário.
+              Cada tenant pode operar sua política comercial sem abrir mão do mesmo motor de catálogo.
             </p>
           </div>
 
@@ -148,7 +150,7 @@ export default function Home() {
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>03</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Grade flexível</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
-              Escolha tamanhos por cor na mesma linha. Distribua a grade como quiser entre PP e GG.
+              Selecione tamanhos por cor e monte a grade da operação com rapidez no mobile e no desktop.
             </p>
           </div>
 
@@ -157,7 +159,7 @@ export default function Home() {
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>04</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Pagamento</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
-              30/60/90 para novos parceiros · Pix com 3% off.
+              Gateway próprio integrado ao catálogo atacado, com checkout controlado por tenant.
             </p>
             <button
               onClick={() => setPaymentOpen(true)}

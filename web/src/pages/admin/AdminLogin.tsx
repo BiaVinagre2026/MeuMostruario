@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOperatorLogin } from "@/hooks/useOperatorAuth";
 import { useOperatorStore } from "@/stores/useOperatorStore";
+import type { Operator } from "@/types/operator";
 
 function detectTenantSlug(): string {
   const host = window.location.hostname;
@@ -22,6 +23,10 @@ function detectTenantSlug(): string {
     }
   }
   return "";
+}
+
+export function getAdminHome(role?: Operator["role"]): string {
+  return role === "super_admin" ? "/admin/global" : "/admin/dashboard";
 }
 
 const adminLoginSchema = z.object({
@@ -41,8 +46,7 @@ export default function AdminLogin() {
 
   const detectedSlug = detectTenantSlug();
   const showTenantField = !detectedSlug;
-
-  const adminHome = "/admin/dashboard";
+  const adminHome = getAdminHome(operatorRole);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -64,8 +68,8 @@ export default function AdminLogin() {
     login(
       { ...values, tenantSlug: values.tenantSlug || detectedSlug || undefined },
       {
-        onSuccess: () => {
-          navigate("/admin/dashboard", { replace: true });
+        onSuccess: (operator) => {
+          navigate(getAdminHome(operator.role), { replace: true });
         },
       }
     );
@@ -75,16 +79,17 @@ export default function AdminLogin() {
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Painel Administrativo</CardTitle>
-          <CardDescription>Entre com sua conta de operador</CardDescription>
+          <CardTitle className="text-2xl">Painel White-Label</CardTitle>
+          <CardDescription>
+            Entre como admin do tenant ou super-admin global
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             {showTenantField && (
               <div className="space-y-2">
                 <Label htmlFor="tenantSlug">
-                  Slug do tenant{" "}
-                  <span className="text-muted-foreground text-xs">(ex: demo)</span>
+                  Slug do tenant <span className="text-muted-foreground text-xs">(ex: demo)</span>
                 </Label>
                 <Input
                   id="tenantSlug"
@@ -94,7 +99,7 @@ export default function AdminLogin() {
                   {...register("tenantSlug")}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Deixe em branco para login de super-admin.
+                  Preencha para entrar em uma operação específica ou deixe em branco para o painel global.
                 </p>
               </div>
             )}

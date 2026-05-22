@@ -1,22 +1,22 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 Guia operacional para trabalhar neste repositório.
 
 ## Contexto Atual
 
-**MeuMostruário** agora é uma plataforma de catálogo de fotos para uma fábrica vender no atacado.
+**MeuMostruário** voltou ao trilho de produto **white-label multitenant**. Cada tenant representa uma marca, fábrica ou operação comercial que usa o catálogo para vender no atacado com identidade própria.
 
-O objetivo é permitir que a fábrica:
+O objetivo é permitir que cada tenant:
 
 - faça upload de muitas fotos de uma vez;
 - revise uma triagem automática por cor, Pantone, modelo e tamanho;
 - vincule várias fotos ao mesmo produto;
 - gere links públicos sem preço para o cliente final do cliente;
-- gere links de atacado com preço, pedido e pagamento para lojistas compradores;
-- receba interesses e pedidos no admin;
+- gere links de atacado com preço, pedido e pagamento para compradores/lojistas B2B;
+- receba interesses e pedidos no admin do tenant;
 - envie seleções e pedidos por WhatsApp.
 
-O lojista acessa como **comprador da fábrica no atacado**. O MVP não é multiempresa/multitenant como produto, embora a base técnica schema-per-tenant seja mantida por compatibilidade com a versão anterior.
+Existe também um papel de **super-admin**, responsável por criar, ativar, suspender e acompanhar tenants.
 
 ## Stack
 
@@ -29,11 +29,11 @@ O lojista acessa como **comprador da fábrica no atacado**. O MVP não é multie
 
 - Base correta para esta fase: commit `7be55ba5` (`versão 1 pronta`).
 - Alterações feitas em 12/05/2026 não devem ser reaproveitadas.
-- Não implementar SaaS multiempresa no MVP.
-- Manter um tenant/fábrica padrão internamente para reduzir risco técnico.
-- Não exibir gestão de tenants, billing SaaS, planos, white-label multiempresa ou super-admin como fluxo de produto.
-- Lookbook está fora do MVP.
-- Login do comprador de atacado fica para fase futura; no MVP o acesso é por link com token.
+- Manter o produto como white-label multitenant, aproveitando a base herdada.
+- Cada tenant deve enxergar apenas seu próprio catálogo, branding, compradores, pedidos e links.
+- Super-admin tem visão global e CRUD de tenants.
+- Lookbook continua fora do fluxo principal.
+- Login do comprador atacado pode continuar fase futura; o MVP aceita acesso por link com token.
 - ERP fica para fase futura.
 - Estoque real está previsto, mas não bloqueia o início.
 
@@ -53,16 +53,17 @@ O lojista acessa como **comprador da fábrica no atacado**. O MVP não é multie
 
 ## Arquitetura Mantida
 
-A base antiga usa schema-per-tenant:
+A base usa schema-per-tenant:
 
 - `TenantResolver` resolve tenant por header/subdomínio.
 - `TenantSwitcher` altera `search_path`.
-- `TenantSchemaSql` provisiona tabelas de domínio.
+- `TenantSchemaSql` provisiona tabelas de domínio tenant-scoped.
 
-Nesta fase, tratar isso como detalhe de compatibilidade. Novas tabelas de domínio continuam sendo adicionadas em `TenantSchemaSql` e migradas para schemas existentes, mas a UX deve falar em fábrica, admin e comprador.
+Nesta fase, isso deixa de ser apenas compatibilidade e volta a ser parte do produto. Novas tabelas de domínio continuam sendo adicionadas em `TenantSchemaSql` e migradas para schemas existentes.
 
 ## Principais Áreas
 
+- Admin de tenants: `api/app/controllers/api/v1/admin/tenants_controller.rb`.
 - Admin de produtos: `web/src/pages/admin/products/`.
 - Admin de pedidos: `web/src/pages/admin/orders/`.
 - Admin shell: `web/src/components/admin/AdminLayout.tsx`.
@@ -74,15 +75,17 @@ Nesta fase, tratar isso como detalhe de compatibilidade. Novas tabelas de domín
 
 ## Fluxos do MVP
 
-1. Admin sobe lote de fotos.
-2. Backend cria `photo_batch` e `photos`.
-3. Jobs processam triagem e salvam sugestões.
-4. Admin revisa/corrige fotos em massa.
-5. Admin vincula fotos a produtos ou cria produto a partir de foto.
-6. Admin cria catálogo e links.
-7. Cliente final acessa link público sem valores e registra interesse.
-8. Comprador atacado acessa link com valores e envia pedido.
-9. Pedido aparece no admin e pode iniciar pagamento via gateway próprio.
+1. Super-admin cria ou ativa um tenant.
+2. Tenant recebe branding e operação isolada.
+3. Admin do tenant sobe lote de fotos.
+4. Backend cria `photo_batch` e `photos`.
+5. Jobs processam triagem e salvam sugestões.
+6. Admin revisa/corrige fotos em massa.
+7. Admin vincula fotos a produtos ou cria produto a partir de foto.
+8. Admin cria catálogo e links.
+9. Cliente final acessa link público sem valores e registra interesse.
+10. Comprador atacado acessa link com valores e envia pedido.
+11. Pedido aparece no admin do tenant e pode iniciar pagamento via gateway próprio.
 
 ## Comandos
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/showroom/primitives";
 import { useLogin } from "@/hooks/useAuth";
@@ -12,8 +12,8 @@ export default function Login() {
   const login = useLogin();
   const tenant = useTenant();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     login.mutate(
       { cpf: unmaskCpf(cpf), password },
       { onSuccess: () => navigate("/catalog", { replace: true }) }
@@ -23,18 +23,17 @@ export default function Login() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--brand-background)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: "100%", maxWidth: 400 }}>
-        {/* Logo */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 48 }}>
           <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center" }}>
-            <Logo size={22}/>
+            <Logo size={22} />
           </button>
         </div>
 
         <div style={{ border: "1px solid var(--brand-border)", background: "white", padding: "40px 40px" }}>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>Área do lojista</div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>Área do comprador</div>
           <h1 className="display" style={{ fontSize: 36, marginBottom: 4 }}>{tenant.tenantName}</h1>
           <p style={{ fontSize: 13, color: "var(--brand-muted)", marginBottom: 32 }}>
-            Acesso restrito a parceiros B2B cadastrados.
+            Acesso restrito aos compradores autorizados desta operação.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -47,7 +46,7 @@ export default function Login() {
                 inputMode="numeric"
                 placeholder="000.000.000-00"
                 value={cpf}
-                onChange={(e) => setCpf(maskCpf(e.target.value))}
+                onChange={(event) => setCpf(maskCpf(event.target.value))}
                 required
                 style={{
                   width: "100%", padding: "12px 14px",
@@ -66,7 +65,7 @@ export default function Login() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
                 style={{
                   width: "100%", padding: "12px 14px",
@@ -99,14 +98,10 @@ export default function Login() {
           </form>
 
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--brand-border)", fontSize: 12, color: "var(--brand-muted)" }}>
-            Ainda não é parceiro?{" "}
-            <button style={{ borderBottom: "1px solid var(--brand-muted)", fontSize: 12 }}>
-              Solicite acesso
-            </button>
+            Ainda não tem acesso? <button style={{ borderBottom: "1px solid var(--brand-muted)", fontSize: 12 }}>Solicite liberação</button>
           </div>
         </div>
 
-        {/* Admin link */}
         <div style={{ marginTop: 16, textAlign: "center" }}>
           <button
             onClick={() => navigate("/admin/login")}

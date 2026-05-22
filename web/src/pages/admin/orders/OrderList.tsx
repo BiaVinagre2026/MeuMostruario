@@ -71,7 +71,7 @@ export default function OrderList() {
     <AdminLayout>
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b">
         <div>
-          <h1 className="text-base md:text-lg font-semibold">Pedidos</h1>
+          <h1 className="text-base md:text-lg font-semibold">Pedidos do atacado</h1>
           <p className="text-xs md:text-sm text-muted-foreground">
             {total > 0 ? `${total} pedido${total !== 1 ? "s" : ""}` : "Nenhum pedido"}
           </p>
@@ -115,7 +115,7 @@ export default function OrderList() {
                   <thead className="bg-muted/50 border-b">
                     <tr>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground w-14">#</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Lojista</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Comprador</th>
                       <th className="text-right px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Peças</th>
                       <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Data</th>
@@ -142,7 +142,7 @@ export default function OrderList() {
                               </span>
                             </div>
                           ) : (
-                            <span className="italic text-muted-foreground/60 text-xs">—</span>
+                            <span className="italic text-muted-foreground/60 text-xs">Pedido por link</span>
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-xs hidden sm:table-cell">
