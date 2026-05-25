@@ -4,8 +4,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CatalogLinkPage from "./CatalogLinkPage";
 
 import {
+  createSelectionLink,
   createTokenOrder,
   getPublicCatalogLink,
+  sendCatalogInterest,
 } from "@/lib/api/photoCatalog";
 
 vi.mock("sonner", () => ({
@@ -81,10 +83,31 @@ describe("CatalogLinkPage", () => {
 
     expect(await screen.findByText("Catalogo publico")).toBeInTheDocument();
     expect(screen.getByText("Catalogo Cliente")).toBeInTheDocument();
-    expect(screen.getByText("Interesse")).toBeInTheDocument();
-    expect(screen.getByText("Gerar link")).toBeInTheDocument();
+    expect(screen.getByText("Selecione ao menos uma foto para enviar interesse ou gerar um novo link.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Interesse" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Gerar link" })).toBeDisabled();
     expect(screen.queryByText("Pedido")).not.toBeInTheDocument();
     expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
+
+    vi.mocked(sendCatalogInterest).mockResolvedValue({});
+    vi.mocked(createSelectionLink).mockResolvedValue({
+      catalog_link: {
+        id: 77,
+        token: "selection-token",
+        link_type: "selection",
+        show_prices: false,
+        allow_order: false,
+        allow_payment: false,
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /vestido solar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("1 foto(s) selecionada(s).")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Interesse" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Gerar link" })).toBeEnabled();
+    });
   });
 
   it("shows prices and submits wholesale orders with size quantities", async () => {

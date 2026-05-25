@@ -29,6 +29,7 @@ export default function CatalogLinkPage() {
   });
 
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
+  const selectedCount = selectedIds.length;
   const orderLines = useMemo(() => {
     if (!data) return [];
     return data.items
@@ -40,6 +41,7 @@ export default function CatalogLinkPage() {
       .filter((line) => line.total > 0);
   }, [data, qty]);
 
+  const piecesCount = orderLines.reduce((sum, line) => sum + line.total, 0);
   const total = orderLines.reduce((sum, line) => sum + line.total * Number(line.item.price ?? 0), 0);
 
   const interest = useMutation({
@@ -116,6 +118,12 @@ export default function CatalogLinkPage() {
   }
 
   const publicOnly = !data.show_prices;
+  const interestDisabled = selectedCount === 0 || interest.isPending;
+  const selectionDisabled = selectedCount === 0 || selection.isPending;
+  const orderDisabled = orderLines.length === 0 || order.isPending;
+  const actionHint = publicOnly
+    ? (selectedCount === 0 ? "Selecione ao menos uma foto para enviar interesse ou gerar um novo link." : `${selectedCount} foto(s) selecionada(s).`)
+    : (orderLines.length === 0 ? "Selecione fotos e informe as quantidades por tamanho para registrar o pedido." : `${selectedCount} foto(s) selecionada(s) · ${piecesCount} peca(s) no pedido.`);
 
   return (
     <main style={{ minHeight: "100vh", background: "#faf8f5", color: "#1d1b18" }}>
@@ -159,32 +167,53 @@ export default function CatalogLinkPage() {
         zIndex: 20,
       }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input
-              value={buyerName}
-              onChange={(event) => setBuyerName(event.target.value)}
-              placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
-              style={inputStyle}
-            />
-            <input
-              value={buyerPhone}
-              onChange={(event) => setBuyerPhone(event.target.value)}
-              placeholder="WhatsApp"
-              style={inputStyle}
-            />
+          <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                value={buyerName}
+                onChange={(event) => setBuyerName(event.target.value)}
+                placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
+                style={inputStyle}
+              />
+              <input
+                value={buyerPhone}
+                onChange={(event) => setBuyerPhone(event.target.value)}
+                placeholder="WhatsApp"
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ fontSize: 12, color: "#6f665e" }}>{actionHint}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
             {data.show_prices && <strong>{brl(total)}</strong>}
-            <button disabled={selectedIds.length === 0 || interest.isPending} onClick={() => interest.mutate()} style={buttonStyle("secondary")}>
+            <button
+              type="button"
+              disabled={interestDisabled}
+              aria-disabled={interestDisabled}
+              onClick={() => interest.mutate()}
+              style={buttonStyle("secondary", interestDisabled)}
+            >
               {interest.isPending ? <Loader2 size={16} /> : <MessageCircle size={16} />}
               Interesse
             </button>
-            <button disabled={selectedIds.length === 0 || selection.isPending} onClick={() => selection.mutate()} style={buttonStyle("secondary")}>
+            <button
+              type="button"
+              disabled={selectionDisabled}
+              aria-disabled={selectionDisabled}
+              onClick={() => selection.mutate()}
+              style={buttonStyle("secondary", selectionDisabled)}
+            >
               {selection.isPending ? <Loader2 size={16} /> : <Copy size={16} />}
               Gerar link
             </button>
             {data.allow_order && (
-              <button disabled={orderLines.length === 0 || order.isPending} onClick={() => order.mutate()} style={buttonStyle("primary")}>
+              <button
+                type="button"
+                disabled={orderDisabled}
+                aria-disabled={orderDisabled}
+                onClick={() => order.mutate()}
+                style={buttonStyle("primary", orderDisabled)}
+              >
                 {order.isPending ? <Loader2 size={16} /> : <ShoppingBag size={16} />}
                 Pedido
               </button>
@@ -215,7 +244,12 @@ function CatalogCard({
 }) {
   return (
     <article style={{ background: "white", border: selected ? "2px solid #1d1b18" : "1px solid #e5ded4" }}>
-      <button onClick={onToggle} style={{ display: "block", width: "100%", textAlign: "left", position: "relative" }}>
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={onToggle}
+        style={{ display: "block", width: "100%", textAlign: "left", position: "relative", cursor: "pointer" }}
+      >
         <div style={{ aspectRatio: "3 / 4", background: "#eee8df", overflow: "hidden" }}>
           {item.image_url && <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />}
         </div>
@@ -268,16 +302,17 @@ const inputStyle: React.CSSProperties = {
   background: "white",
 };
 
-function buttonStyle(variant: "primary" | "secondary"): React.CSSProperties {
+function buttonStyle(variant: "primary" | "secondary", disabled = false): React.CSSProperties {
   return {
     height: 38,
     display: "inline-flex",
     alignItems: "center",
     gap: 7,
     border: "1px solid #1d1b18",
-    background: variant === "primary" ? "#1d1b18" : "white",
-    color: variant === "primary" ? "white" : "#1d1b18",
+    background: variant === "primary" ? (disabled ? "#7d756d" : "#1d1b18") : "white",
+    color: variant === "primary" ? "white" : (disabled ? "#8a8178" : "#1d1b18"),
     padding: "0 12px",
-    opacity: 1,
+    opacity: disabled ? 0.6 : 1,
+    cursor: disabled ? "not-allowed" : "pointer",
   };
 }
