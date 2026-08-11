@@ -7,7 +7,6 @@ import { TIERS, brl, TONE } from "@/data/catalog";
 import { useProducts, useCollections } from "@/hooks/useCatalog";
 import { PaymentModal } from "@/components/showroom/PaymentModal";
 import { apiClient } from "@/lib/api/client";
-import type { Product } from "@/types/catalog";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -17,7 +16,6 @@ export default function Home() {
 
 
   const [b2bOpen, setB2bOpen]         = useState(false);
-  const [tryOnOpen, setTryOnOpen]     = useState(false);
   const [howOpen, setHowOpen]         = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [isMobile, setIsMobile]       = useState(() => window.innerWidth < 768);
@@ -159,7 +157,8 @@ export default function Home() {
             <div className="mono" style={{ fontSize: 11, color: "var(--brand-muted)", letterSpacing: "0.14em", marginBottom: 24 }}>04</div>
             <h3 className="display" style={{ fontSize: 28, marginBottom: 12 }}>Pagamento</h3>
             <p style={{ fontSize: 13, color: "var(--brand-muted)", lineHeight: 1.55 }}>
-              Gateway próprio integrado ao catálogo atacado, com checkout controlado por tenant.
+              Cada tenant conecta o próprio gateway. O pedido fecha no link de atacado e o pagamento
+              segue a política da operação.
             </p>
             <button
               onClick={() => setPaymentOpen(true)}
@@ -344,19 +343,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Virtual try-on callout */}
+      {/* Do lote de fotos ao link */}
       <section className="sr-tryon-section" style={{ background: "var(--brand-foreground)", color: "white", padding: "64px 32px" }}>
         <div style={{ maxWidth: 1440, margin: "0 auto" }}>
           <div className="sr-tryon-grid">
             <div>
-              <div className="eyebrow" style={{ color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Experimentação digital</div>
-              <h2 className="display sr-tryon-title">Sua cliente <em>prova antes</em> de pedir.</h2>
+              <div className="eyebrow" style={{ color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Da foto ao pedido</div>
+              <h2 className="display sr-tryon-title">Suba o lote. <em>O catálogo</em> sai pronto.</h2>
               <p style={{ fontSize: 17, lineHeight: 1.55, color: "rgba(255,255,255,0.7)", marginTop: 32, maxWidth: 480 }}>
-                Envie uma foto, escolha cor e tamanho, e veja a peça ajustada no corpo em segundos.
-                Reduz troca, acelera o fechamento do pedido, e transforma a lojista em embaixadora do drop.
+                Centenas de fotos de uma vez. A triagem sugere cor, Pantone, modelo e tamanho, você revisa
+                em massa e gera dois links do mesmo catálogo: um sem preço para a cliente final, outro com
+                preço e pedido para o lojista.
               </p>
               <div className="sr-tryon-actions">
-                <Btn variant="accent" size="lg" onClick={() => setTryOnOpen(true)}>Abrir prova virtual</Btn>
+                <Btn variant="accent" size="lg" onClick={() => navigate("/catalog")} icon={<Icons.Arrow/>}>Ver catálogo</Btn>
                 <Btn variant="ghost" size="lg" style={{ color: "white", borderColor: "rgba(255,255,255,0.3)" }} onClick={() => setHowOpen(true)}>Como funciona</Btn>
               </div>
             </div>
@@ -365,10 +365,14 @@ export default function Home() {
                 tone="sand" ratio="3/4"
                 imageUrl={featured[0]?.imageUrl}
                 alt={featured[0]?.name}
-                caption="Antes · sem peça"
-                style={{ filter: "saturate(0.08) sepia(0.45) brightness(1.06)" }}
+                caption="Chega no lote"
               />
-              <Photo tone="clay" ratio="3/4" imageUrl={featured[0]?.imageUrl} alt={featured[0]?.name} caption={featured[0] ? `Depois · ${featured[0].sku}` : "Depois · prova virtual"}/>
+              <Photo
+                tone="clay" ratio="3/4"
+                imageUrl={featured[1]?.imageUrl ?? featured[0]?.imageUrl}
+                alt={featured[1]?.name ?? featured[0]?.name}
+                caption="Sai classificada e no link"
+              />
             </div>
           </div>
         </div>
@@ -376,7 +380,6 @@ export default function Home() {
 
       {/* Modals */}
       {b2bOpen      && <B2BModal onClose={() => setB2bOpen(false)} />}
-      {tryOnOpen    && <TryOnModal onClose={() => setTryOnOpen(false)} products={allProducts} />}
       {howOpen      && <HowItWorksModal onClose={() => setHowOpen(false)} />}
       {paymentOpen  && <PaymentModal onClose={() => setPaymentOpen(false)} />}
     </main>
@@ -515,191 +518,39 @@ function B2BModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Virtual Try-On Modal ─────────────────────────────────────────────────────
-
-function TryOnModal({ onClose, products }: { onClose: () => void; products: Product[] }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview]     = useState<string | null>(null);
-  const [productId, setProductId] = useState(products[0]?.id ?? "");
-  const [colorIdx, setColorIdx]   = useState(0);
-  const [size, setSize]           = useState("M");
-  const [loading, setLoading]     = useState(false);
-  const [result, setResult]       = useState<string | null>(null);
-
-  const product = products.find((p) => p.id === productId) ?? products[0];
-
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
-    setResult(null);
-  }
-
-  function handleGenerate() {
-    if (!preview) return;
-    setLoading(true);
-    // Simulate AI processing — in production this calls the backend AI service
-    setTimeout(() => {
-      setLoading(false);
-      setResult(product?.imageUrl ?? null);
-    }, 2500);
-  }
-
-  return (
-    <Overlay onClose={onClose} wide>
-      <div style={{ width: "100%", maxWidth: 760 }}>
-        <div style={{ marginBottom: 24 }}>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>Provador virtual</div>
-          <h2 className="display" style={{ fontSize: 36 }}>Experimente antes de pedir</h2>
-        </div>
-        <div className="sr-tryon-modal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          {/* Left: upload + result */}
-          <div>
-            <div style={{ marginBottom: 12, fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
-              01 · Sua foto
-            </div>
-            <div
-              onClick={() => fileRef.current?.click()}
-              style={{
-                aspectRatio: "3/4", background: "var(--brand-surface)", border: "2px dashed var(--brand-border)",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", overflow: "hidden", position: "relative",
-              }}
-            >
-              {preview ? (
-                <img src={loading ? preview : (result ?? preview)} alt="Prova virtual"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}/>
-              ) : (
-                <>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
-                    Anexar foto de corpo
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--brand-muted)", marginTop: 6 }}>JPG, PNG · máx. 10 MB</div>
-                </>
-              )}
-              {loading && (
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-                  <div style={{ color: "white", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.12em" }}>GERANDO…</div>
-                  <div style={{ width: 120, height: 2, background: "rgba(255,255,255,0.2)", borderRadius: 1, overflow: "hidden" }}>
-                    <div style={{ height: "100%", background: "white", animation: "progress-bar 2.5s linear", borderRadius: 1 }}/>
-                  </div>
-                </div>
-              )}
-            </div>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile}/>
-            {preview && !loading && (
-              <button onClick={() => { setPreview(null); setResult(null); }} style={{ marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)", textDecoration: "underline" }}>
-                Trocar foto
-              </button>
-            )}
-          </div>
-
-          {/* Right: product selector */}
-          <div>
-            <div style={{ marginBottom: 12, fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)" }}>
-              02 · Peça
-            </div>
-            <div style={{ aspectRatio: "3/4", background: "var(--brand-surface)", overflow: "hidden", marginBottom: 16 }}>
-              {product?.imageUrl
-                ? <img src={product.imageUrl} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}/>
-                : <div style={{ width: "100%", height: "100%", background: TONE[product?.colors[0]?.tone ?? "sand"]?.bg ?? "#e5e0db" }}/>
-              }
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)", display: "block", marginBottom: 6 }}>Peça</label>
-              <select value={productId} onChange={(e) => { setProductId(e.target.value); setColorIdx(0); setResult(null); }} style={{ ...inputStyle, width: "100%" }}>
-                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-
-            {product && product.colors.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)", marginBottom: 8 }}>Cor</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {product.colors.map((c, i) => (
-                    <button key={c.id} onClick={() => setColorIdx(i)} title={c.name}
-                      style={{
-                        width: 24, height: 24, borderRadius: 999,
-                        background: c.hex ?? TONE[c.tone]?.bg ?? "#ccc",
-                        border: i === colorIdx ? "2px solid var(--brand-foreground)" : "1px solid var(--brand-border)",
-                        outline: i === colorIdx ? "2px solid white" : "none",
-                        outlineOffset: -3,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--brand-muted)", marginBottom: 8 }}>Tamanho</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {["PP", "P", "M", "G", "GG"].map((s) => {
-                  const avail = !product || product.sizes.length === 0 || product.sizes.includes(s);
-                  return (
-                    <button key={s} onClick={() => avail && setSize(s)} disabled={!avail}
-                      className="mono"
-                      style={{
-                        padding: "6px 10px", fontSize: 11, letterSpacing: "0.06em",
-                        border: "1px solid " + (size === s ? "var(--brand-foreground)" : "var(--brand-border)"),
-                        background: size === s ? "var(--brand-foreground)" : "transparent",
-                        color: size === s ? "white" : avail ? "var(--brand-foreground)" : "var(--brand-muted)",
-                        opacity: avail ? 1 : 0.35,
-                      }}
-                    >{s}</button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <Btn variant="primary" disabled={!preview || loading} onClick={handleGenerate} style={{ width: "100%", justifyContent: "center" }}>
-              {loading ? "Gerando prova…" : "Gerar prova virtual"}
-            </Btn>
-            {!preview && <p style={{ fontSize: 11, color: "var(--brand-muted)", marginTop: 8, textAlign: "center" }}>Anexe uma foto de corpo para continuar</p>}
-          </div>
-        </div>
-      </div>
-    </Overlay>
-  );
-}
-
-// ── How It Works Modal ───────────────────────────────────────────────────────
+// ── Como funciona ────────────────────────────────────────────────────────────
 
 function HowItWorksModal({ onClose }: { onClose: () => void }) {
   const steps = [
     {
       n: "01",
-      title: "Abra qualquer peça do catálogo",
-      desc: "Navegue pelo catálogo e clique na peça que deseja mostrar para sua cliente. Você precisa estar logada como lojista para acessar o detalhe do produto.",
+      title: "Suba o lote de fotos",
+      desc: "No admin, em Fotos, arraste até 100 imagens de uma vez. Não precisa nomear nem organizar antes: o lote entra inteiro e o processamento começa sozinho.",
     },
     {
       n: "02",
-      title: "Clique em \"Provar no corpo\"",
-      desc: "No detalhe da peça, o botão de provador virtual abre o painel de experimentação. Selecione a cor e o tamanho desejados antes de gerar a prova.",
+      title: "A triagem sugere a classificação",
+      desc: "Cada foto recebe uma sugestão de cor, Pantone, modelo e tamanho, com um índice de confiança. A sugestão é sempre um ponto de partida — nada é publicado sem alguém aprovar.",
     },
     {
       n: "03",
-      title: "Envie uma foto de corpo inteiro",
-      desc: "Use o botão \"Anexar foto de corpo\" e selecione uma imagem da sua cliente (ou manequim). Aceita JPG ou PNG de até 10 MB. A foto deve mostrar o corpo inteiro, de frente, em boa iluminação, de preferência com roupa de cor sólida clara.",
+      title: "Revise em massa",
+      desc: "As fotos vêm agrupadas por SKU e por modelo. Dá para selecionar um grupo inteiro, aplicar as sugestões de uma vez e filtrar pelas de baixa confiança, que são as que realmente pedem seu olho.",
     },
     {
       n: "04",
-      title: "Gere a prova virtual",
-      desc: "Clique em \"Gerar prova virtual\". A IA renderiza a peça no corpo em segundos, ajustando cor, caimento e proporção ao tamanho selecionado. O resultado aparece ao lado da foto original.",
+      title: "Vincule ao produto",
+      desc: "Uma foto pode virar produto novo ou entrar em um que já existe. Várias fotos da mesma peça em cores diferentes ficam sob o mesmo produto, cada uma com sua cor e Pantone.",
     },
     {
       n: "05",
-      title: "Troque cor ou tamanho sem refazer",
-      desc: "Não precisa fazer nova foto. Mude a cor ou o tamanho no painel e gere uma nova prova — a foto de corpo é reutilizada. Compare diferentes opções antes de fechar o pedido.",
+      title: "Monte o catálogo e gere os links",
+      desc: "Escolha as fotos que entram e gere dois links do mesmo catálogo: o público, sem preço, que só registra interesse; e o de atacado, com preço, quantidade por tamanho e pedido.",
     },
     {
       n: "06",
-      title: "Compartilhe com sua cliente",
-      desc: "Baixe o resultado ou envie direto pelo WhatsApp. A cliente vê como a peça fica no corpo dela antes de confirmar a compra, reduzindo devoluções e acelerando o fechamento.",
+      title: "Receba os pedidos",
+      desc: "Interesses e pedidos chegam no admin do seu tenant. Cada pedido guarda o preço praticado no momento da compra, então mudar a tabela depois não altera o histórico.",
     },
   ];
 
@@ -707,10 +558,10 @@ function HowItWorksModal({ onClose }: { onClose: () => void }) {
     <Overlay onClose={onClose} wide>
       <div style={{ width: "100%", maxWidth: 640 }}>
         <div style={{ marginBottom: 32 }}>
-          <div className="eyebrow" style={{ marginBottom: 8 }}>Provador Virtual · Passo a passo</div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>Do lote ao pedido · Passo a passo</div>
           <h2 className="display" style={{ fontSize: 44 }}>Como funciona</h2>
           <p style={{ fontSize: 14, color: "var(--brand-muted)", marginTop: 12, lineHeight: 1.6 }}>
-            Mostre para sua cliente como a peça fica no corpo dela — antes de fazer o pedido.
+            Da foto sem nome no celular até o pedido do lojista, sem planilha no meio.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
