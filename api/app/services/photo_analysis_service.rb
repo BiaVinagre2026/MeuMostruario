@@ -26,8 +26,10 @@ class PhotoAnalysisService
       confidence: confidence
     )
 
+    # A triagem nunca aprova sozinha: toda foto analisada volta para revisao do
+    # admin, independente da confianca. O score serve para priorizar a fila.
     photo.update!(
-      status: confidence >= 0.65 ? "needs_review" : "needs_review",
+      status: "needs_review",
       suggested_color: suggestions["color"],
       suggested_pantone: suggestions["pantone"],
       suggested_model: suggestions["model"],

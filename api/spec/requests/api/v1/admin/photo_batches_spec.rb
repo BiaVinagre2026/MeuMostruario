@@ -48,4 +48,32 @@ RSpec.describe "Api::V1::Admin::PhotoBatches", type: :request do
       expect(batch.created_by_id).to eq(77)
     end
   end
+
+  it "flags photos below the confidence threshold so the admin can prioritize them" do
+    batch = within_tenant(tenant) do
+      created = PhotoBatch.create!(name: "Lote triado", status: "review")
+      created.photos.create!(
+        original_filename: "confiavel.jpg",
+        status: "needs_review",
+        confidence_score: Photo::CONFIDENCE_THRESHOLD,
+        urls: { "original" => "https://cdn.example.com/confiavel.jpg" }
+      )
+      created.photos.create!(
+        original_filename: "duvidosa.jpg",
+        status: "needs_review",
+        confidence_score: 0.25,
+        urls: { "original" => "https://cdn.example.com/duvidosa.jpg" }
+      )
+      created
+    end
+
+    get "/api/v1/admin/photo_batches/#{batch.id}", headers: headers
+
+    expect(response).to have_http_status(:ok)
+    flags = json_response.dig("photo_batch", "photos").to_h do |photo|
+      [photo["original_filename"], photo["low_confidence"]]
+    end
+
+    expect(flags).to eq("confiavel.jpg" => false, "duvidosa.jpg" => true)
+  end
 end

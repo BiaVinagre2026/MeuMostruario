@@ -4,6 +4,11 @@ class Photo < ApplicationRecord
   STATUS_VALUES = %w[uploaded processing needs_review approved published error].freeze
   SIZE_GROUPS = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2"].freeze
 
+  # Abaixo disso a triagem entra na fila de revisao manual prioritaria. Fica
+  # logo abaixo de LocalPhotoGrouping::HIGH_CONFIDENCE para que apenas as fotos
+  # reconhecidas pela heuristica de agrupamento passem sem destaque.
+  CONFIDENCE_THRESHOLD = 0.9
+
   belongs_to :photo_batch, optional: true
   belongs_to :product, optional: true
   belongs_to :product_variant, optional: true
@@ -28,5 +33,9 @@ class Photo < ApplicationRecord
 
   def approved?
     status.in?(%w[approved published])
+  end
+
+  def low_confidence?
+    confidence_score.to_d < CONFIDENCE_THRESHOLD
   end
 end

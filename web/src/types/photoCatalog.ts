@@ -28,6 +28,7 @@ export interface Photo {
   suggestion_source?: string | null;
   suggestion_group?: string | null;
   confidence_score?: number | null;
+  low_confidence?: boolean;
 }
 
 export interface PhotoBatch {

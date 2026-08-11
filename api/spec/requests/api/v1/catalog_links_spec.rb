@@ -44,6 +44,21 @@ RSpec.describe "Api::V1::CatalogLinks", type: :request do
       expect(item["pantone"]).to eq("19-4052 TPX")
       expect(item["size_group"]).to eq("M/G")
     end
+
+    it "does not repeat a size that the product variant and the photo share" do
+      fixture = create_catalog_fixture(
+        tenant: tenant,
+        link_type: "wholesale_buyer",
+        show_prices: true,
+        allow_order: true,
+        allow_payment: false
+      )
+
+      get "/api/v1/catalog_links/#{fixture[:link].token}", headers: headers
+
+      item = json_response.dig("catalog_link", "items", 0)
+      expect(item["sizes"]).to eq(["M/G"])
+    end
   end
 
   describe "POST /api/v1/catalog_links/:token/interests" do

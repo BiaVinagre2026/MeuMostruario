@@ -201,9 +201,9 @@ module Api
       end
 
       def size_groups_for(product, photo)
-        groups = product&.variants&.map(&:size_group)&.compact&.uniq || []
+        groups = product&.variants&.map(&:size_group)&.compact || []
         groups << photo.approved_size_group if photo&.approved_size_group.present?
-        groups.presence || Photo::SIZE_GROUPS
+        groups.uniq.presence || Photo::SIZE_GROUPS
       end
 
       def item_snapshot(item)

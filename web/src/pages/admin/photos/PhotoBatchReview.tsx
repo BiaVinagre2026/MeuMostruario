@@ -52,7 +52,7 @@ export default function PhotoBatchReview() {
         if (filterSku !== "all" && photo.suggested_sku !== filterSku) return false;
         if (filterGroup !== "all" && photo.suggestion_group !== filterGroup) return false;
         if (filterStatus !== "all" && photo.status !== filterStatus) return false;
-        if (filterPriority === "low_confidence" && (photo.confidence_score ?? 0) >= 0.9) return false;
+        if (filterPriority === "low_confidence" && !isLowConfidence(photo)) return false;
         return true;
       }),
     [filterGroup, filterPriority, filterSku, filterStatus, photos]
@@ -453,7 +453,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 
 function PhotoCard({ photo, selected, onToggle }: { photo: Photo; selected: boolean; onToggle: () => void }) {
   const confidence = photo.confidence_score ? Math.round(photo.confidence_score * 100) : null;
-  const lowConfidence = (photo.confidence_score ?? 0) < 0.9;
+  const lowConfidence = isLowConfidence(photo);
 
   return (
     <button
@@ -508,6 +508,12 @@ function buildCatalogName(baseName: string, photos: Photo[]) {
   });
 
   return parts.join(" | ");
+}
+
+// O limiar vive no backend (Photo::CONFIDENCE_THRESHOLD). O fallback so cobre
+// respostas antigas que ainda nao trazem a flag.
+function isLowConfidence(photo: Photo) {
+  return photo.low_confidence ?? (photo.confidence_score ?? 0) < 0.9;
 }
 
 function humanizePhotoStatus(status: Photo["status"]) {

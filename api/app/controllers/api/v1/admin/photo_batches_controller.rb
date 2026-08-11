@@ -107,6 +107,7 @@ module Api
             suggestion_source: photo.metadata&.dig("suggestion_source"),
             suggestion_group: photo.metadata&.dig("suggestion_group"),
             confidence_score: photo.confidence_score,
+            low_confidence: photo.low_confidence?,
             latest_analysis: photo.photo_analyses.max_by(&:created_at)&.slice(:id, :status, :confidence, :error_message),
             created_at: photo.created_at,
             updated_at: photo.updated_at
