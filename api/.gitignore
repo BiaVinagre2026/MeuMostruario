@@ -46,4 +46,7 @@ yarn-debug.log*
 
 /storage/*
 !/storage/.keep
-/public/uploads
+# Uploads gerados em runtime ficam de fora, mas seed_source/ e a fonte das fotos
+# de demonstracao e precisa estar versionada para o db:seed funcionar num clone novo.
+/public/uploads/*
+!/public/uploads/seed_source/
