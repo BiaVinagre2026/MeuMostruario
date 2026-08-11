@@ -67,6 +67,23 @@ export async function updateCatalog(id: number, payload: {
   return res.catalog;
 }
 
+export async function deleteCatalog(id: number): Promise<void> {
+  await apiClient.del<void>(`/api/v1/admin/catalogs/${id}`);
+}
+
+/** Revoga o link expirando agora, sem apagar — pedidos ja recebidos continuam ligados a ele. */
+export async function revokeCatalogLink(catalogId: number, linkId: number): Promise<CatalogLink> {
+  const res = await apiClient.patch<{ catalog_link: CatalogLink }>(
+    `/api/v1/admin/catalogs/${catalogId}/links/${linkId}`,
+    { catalog_link: { expires_at: new Date().toISOString() } }
+  );
+  return res.catalog_link;
+}
+
+export async function deleteCatalogLink(catalogId: number, linkId: number): Promise<void> {
+  await apiClient.del<void>(`/api/v1/admin/catalogs/${catalogId}/links/${linkId}`);
+}
+
 export async function createCatalogLink(catalogId: number, payload: {
   link_type: "public_client" | "wholesale_buyer" | "selection";
   slug?: string;

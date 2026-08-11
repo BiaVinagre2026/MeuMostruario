@@ -98,4 +98,82 @@ RSpec.describe "Api::V1::Admin::Catalogs", type: :request do
       expect(Catalog.find(catalog_id).status).to eq("published")
     end
   end
+
+  describe "exclusao e gestao de links" do
+    before do
+      allow_any_instance_of(Api::V1::Admin::CatalogLinksController)
+        .to receive(:require_operator_auth!)
+        .and_return(true)
+    end
+
+    it "exclui o catalogo e seus links, preservando os pedidos ja recebidos" do
+      fixture = create_catalog_fixture(
+        tenant: tenant,
+        link_type: "wholesale_buyer",
+        show_prices: true,
+        allow_order: true,
+        allow_payment: false
+      )
+
+      post "/api/v1/catalog_links/#{fixture[:link].token}/orders",
+           params: {
+             order: {
+               buyer_name: "Loja Mar",
+               buyer_phone: "11999990000",
+               items: [{ catalog_item_id: fixture[:item].id, qty: 1 }]
+             }
+           },
+           headers: tenant_headers(tenant)
+      expect(response).to have_http_status(:created)
+
+      delete "/api/v1/admin/catalogs/#{fixture[:catalog].id}", headers: headers
+      expect(response).to have_http_status(:no_content)
+
+      within_tenant(tenant) do
+        expect(Catalog.count).to eq(0)
+        expect(CatalogLink.count).to eq(0)
+        expect(Order.count).to eq(1)
+        expect(Order.first.catalog_link_id).to be_nil
+      end
+    end
+
+    it "revoga o link expirando agora, e o publico deixa de abrir" do
+      fixture = create_catalog_fixture(
+        tenant: tenant,
+        link_type: "wholesale_buyer",
+        show_prices: true,
+        allow_order: true,
+        allow_payment: false
+      )
+
+      get "/api/v1/catalog_links/#{fixture[:link].token}", headers: tenant_headers(tenant)
+      expect(response).to have_http_status(:ok)
+
+      patch "/api/v1/admin/catalogs/#{fixture[:catalog].id}/links/#{fixture[:link].id}",
+            params: { catalog_link: { expires_at: 1.minute.ago.iso8601 } },
+            headers: headers
+      expect(response).to have_http_status(:ok)
+
+      get "/api/v1/catalog_links/#{fixture[:link].token}", headers: tenant_headers(tenant)
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "exclui um link sem apagar o catalogo" do
+      fixture = create_catalog_fixture(
+        tenant: tenant,
+        link_type: "public_client",
+        show_prices: false,
+        allow_order: false,
+        allow_payment: false
+      )
+
+      delete "/api/v1/admin/catalogs/#{fixture[:catalog].id}/links/#{fixture[:link].id}", headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      within_tenant(tenant) do
+        expect(CatalogLink.count).to eq(0)
+        expect(Catalog.count).to eq(1)
+      end
+    end
+  end
 end

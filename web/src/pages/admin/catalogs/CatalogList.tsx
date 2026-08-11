@@ -1,13 +1,20 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Link2, Loader2 } from "lucide-react";
+import { Copy, Link2, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createCatalogLink, getCatalogs, updateCatalog } from "@/lib/api/photoCatalog";
-import type { Catalog } from "@/types/photoCatalog";
+import {
+  createCatalogLink,
+  deleteCatalog,
+  deleteCatalogLink,
+  getCatalogs,
+  revokeCatalogLink,
+  updateCatalog,
+} from "@/lib/api/photoCatalog";
+import type { Catalog, CatalogLink } from "@/types/photoCatalog";
 
 export default function CatalogList() {
   const queryClient = useQueryClient();
@@ -16,6 +23,8 @@ export default function CatalogList() {
   const [filterLinkType, setFilterLinkType] = useState("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("updated_desc");
+  const [editing, setEditing] = useState<{ id: number; name: string; description: string } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const { data: catalogs = [], isLoading } = useQuery({
     queryKey: ["admin", "catalogs"],
     queryFn: getCatalogs,
@@ -119,6 +128,47 @@ export default function CatalogList() {
       void queryClient.invalidateQueries({ queryKey: ["admin", "catalogs"] });
     },
     onError: () => toast.error("Nao foi possivel atualizar o status do catalogo."),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, name, description }: { id: number; name: string; description: string }) =>
+      updateCatalog(id, { catalog: { name: name.trim(), description: description.trim() } }),
+    onSuccess: () => {
+      toast.success("Catalogo atualizado.");
+      setEditing(null);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "catalogs"] });
+    },
+    onError: () => toast.error("Nao foi possivel atualizar o catalogo."),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (catalog: Catalog) => deleteCatalog(catalog.id),
+    onSuccess: () => {
+      toast.success("Catalogo excluido. Os pedidos ja recebidos foram mantidos.");
+      setConfirmingDelete(null);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "catalogs"] });
+    },
+    onError: () => toast.error("Nao foi possivel excluir o catalogo."),
+  });
+
+  const revokeLinkMutation = useMutation({
+    mutationFn: ({ catalogId, link }: { catalogId: number; link: CatalogLink }) =>
+      revokeCatalogLink(catalogId, link.id),
+    onSuccess: () => {
+      toast.success("Link revogado. Quem tiver o endereco nao consegue mais abrir.");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "catalogs"] });
+    },
+    onError: () => toast.error("Nao foi possivel revogar o link."),
+  });
+
+  const deleteLinkMutation = useMutation({
+    mutationFn: ({ catalogId, link }: { catalogId: number; link: CatalogLink }) =>
+      deleteCatalogLink(catalogId, link.id),
+    onSuccess: () => {
+      toast.success("Link excluido.");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "catalogs"] });
+    },
+    onError: () => toast.error("Nao foi possivel excluir o link."),
   });
 
   function renderStatusActions(catalog: Catalog) {
@@ -277,14 +327,44 @@ export default function CatalogList() {
               <section key={catalog.id} className="border rounded-lg p-5 bg-background">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h2 className="font-semibold">{catalog.name}</h2>
+                    {editing?.id === catalog.id ? (
+                      <div className="grid gap-2 max-w-md">
+                        <Input
+                          value={editing.name}
+                          aria-label="Nome do catalogo"
+                          onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+                          placeholder="Nome do catalogo"
+                        />
+                        <Input
+                          value={editing.description}
+                          aria-label="Descricao do catalogo"
+                          onChange={(event) => setEditing({ ...editing, description: event.target.value })}
+                          placeholder="Descricao"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={editing.name.trim().length === 0 || editMutation.isPending}
+                            onClick={() => editMutation.mutate(editing)}
+                          >
+                            {editMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                            Salvar
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <h2 className="font-semibold">{catalog.name}</h2>
+                    )}
                     <p className="text-sm text-muted-foreground mt-1">
                       {catalog.items_count} itens · {statusLabel[catalog.status]} · {catalog.source}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Atualizado em {formatCatalogDate(catalog.updated_at)}
                     </p>
-                    {catalog.description && (
+                    {catalog.description && editing?.id !== catalog.id && (
                       <p className="text-sm text-muted-foreground mt-1">{catalog.description}</p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -307,6 +387,40 @@ export default function CatalogList() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {renderStatusActions(catalog)}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditing({
+                        id: catalog.id,
+                        name: catalog.name,
+                        description: catalog.description ?? "",
+                      })}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    {confirmingDelete === catalog.id ? (
+                      <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+                        <span className="text-xs text-muted-foreground">Excluir mesmo?</span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={deleteMutation.isPending}
+                          onClick={() => deleteMutation.mutate(catalog)}
+                        >
+                          {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                          Confirmar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmingDelete(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setConfirmingDelete(catalog.id)}>
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Excluir
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => linkMutation.mutate({ catalog, wholesale: false })}>
                       {linkMutation.isPending && linkMutation.variables?.catalog.id === catalog.id && !linkMutation.variables?.wholesale ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
                       Link publico
@@ -322,15 +436,20 @@ export default function CatalogList() {
                   <div className="mt-4 grid gap-2">
                     {catalog.links.map((link) => {
                       const url = `${window.location.origin}/link/${link.token}`;
+                      const expired = isExpired(link);
                       return (
                         <div
                           key={link.id}
-                          className="flex flex-wrap items-center justify-between gap-3 border rounded-md px-3 py-2 text-sm"
+                          className={[
+                            "flex flex-wrap items-center justify-between gap-3 border rounded-md px-3 py-2 text-sm",
+                            expired ? "opacity-60" : "",
+                          ].join(" ")}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-medium">{url}</div>
                             <div className="mt-1 text-xs text-muted-foreground">
                               {linkTypeLabel[link.link_type]} · {describeLink(link)}
+                              {expired && <span className="ml-1 text-destructive">· revogado</span>}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -345,6 +464,27 @@ export default function CatalogList() {
                             <Button type="button" variant="outline" size="sm" onClick={() => copyLink(url)}>
                               <Copy className="h-4 w-4 mr-1" />
                               Copiar
+                            </Button>
+                            {!expired && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={revokeLinkMutation.isPending}
+                                onClick={() => revokeLinkMutation.mutate({ catalogId: catalog.id, link })}
+                              >
+                                Revogar
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Excluir link ${link.token}`}
+                              disabled={deleteLinkMutation.isPending}
+                              onClick={() => deleteLinkMutation.mutate({ catalogId: catalog.id, link })}
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
@@ -373,6 +513,10 @@ function OverviewCard({ label, value, helper }: { label: string; value: string; 
 
 function formatCatalogDate(value: string) {
   return new Date(value).toLocaleString("pt-BR");
+}
+
+function isExpired(link: CatalogLink) {
+  return link.expires_at != null && new Date(link.expires_at) <= new Date();
 }
 
 function describeLink(link: Catalog["links"][number]) {

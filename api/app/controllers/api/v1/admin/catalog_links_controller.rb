@@ -10,7 +10,25 @@ module Api
           render json: { catalog_link: link_json(link) }, status: :created
         end
 
+        # Revogar um link significa expirar agora, nao apagar: pedidos e
+        # selecoes ja recebidos continuam apontando para ele.
+        def update
+          link = CatalogLink.find(params[:id])
+          link.update!(update_params)
+          render json: { catalog_link: link_json(link) }
+        end
+
+        def destroy
+          link = CatalogLink.find(params[:id])
+          link.destroy!
+          head :no_content
+        end
+
         private
+
+        def update_params
+          params.require(:catalog_link).permit(:expires_at, :slug, :show_prices, :allow_order, :allow_payment)
+        end
 
         def link_params_with_defaults
           permitted = params.require(:catalog_link).permit(

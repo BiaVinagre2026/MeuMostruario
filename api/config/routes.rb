@@ -83,8 +83,8 @@ Rails.application.routes.draw do
         # Photo catalog workflow
         resources :photo_batches, only: [:index, :show, :create]
         patch "photos/bulk_update", to: "photos#bulk_update"
-        resources :catalogs, only: [:index, :show, :create, :update] do
-          resources :links, only: [:create], controller: "catalog_links"
+        resources :catalogs, only: [:index, :show, :create, :update, :destroy] do
+          resources :links, only: [:create, :update, :destroy], controller: "catalog_links"
         end
 
         # B2B orders management

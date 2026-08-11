@@ -3,7 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import CatalogList from "./CatalogList";
-import { getCatalogs, updateCatalog } from "@/lib/api/photoCatalog";
+import {
+  deleteCatalog,
+  deleteCatalogLink,
+  getCatalogs,
+  revokeCatalogLink,
+  updateCatalog,
+} from "@/lib/api/photoCatalog";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -20,6 +26,9 @@ vi.mock("@/lib/api/photoCatalog", () => ({
   createCatalogLink: vi.fn(),
   getCatalogs: vi.fn(),
   updateCatalog: vi.fn(),
+  deleteCatalog: vi.fn(),
+  revokeCatalogLink: vi.fn(),
+  deleteCatalogLink: vi.fn(),
 }));
 
 function renderPage() {
@@ -202,5 +211,103 @@ describe("CatalogList", () => {
         },
       });
     });
+  });
+
+  it("edita nome e descricao pelo formulario inline", async () => {
+    renderPage();
+
+    const title = await screen.findByText("Catalogo FIT-101 | Conjunto Shape Short | Preto | P/M");
+    const scope = within(title.closest("section") as HTMLElement);
+
+    fireEvent.click(scope.getByRole("button", { name: /Editar/ }));
+
+    const nameInput = scope.getByLabelText("Nome do catalogo");
+    expect((nameInput as HTMLInputElement).value).toBe("Catalogo FIT-101 | Conjunto Shape Short | Preto | P/M");
+
+    fireEvent.change(nameInput, { target: { value: "Verao 26 | Atacado" } });
+    fireEvent.change(scope.getByLabelText("Descricao do catalogo"), { target: { value: "Selecao da fabrica" } });
+    fireEvent.click(scope.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => {
+      expect(updateCatalog).toHaveBeenCalledWith(1, {
+        catalog: { name: "Verao 26 | Atacado", description: "Selecao da fabrica" },
+      });
+    });
+  });
+
+  it("exige confirmacao antes de excluir o catalogo", async () => {
+    vi.mocked(deleteCatalog).mockResolvedValue();
+    renderPage();
+
+    const title = await screen.findByText("Catalogo FIT-101 | Conjunto Shape Short | Preto | P/M");
+    const scope = within(title.closest("section") as HTMLElement);
+
+    fireEvent.click(scope.getByRole("button", { name: /Excluir/ }));
+    expect(deleteCatalog).not.toHaveBeenCalled();
+    expect(scope.getByText("Excluir mesmo?")).toBeInTheDocument();
+
+    fireEvent.click(scope.getByRole("button", { name: "Confirmar" }));
+    await waitFor(() => expect(deleteCatalog).toHaveBeenCalledWith(1));
+  });
+
+  it("revoga e exclui link, passando o catalogo dono", async () => {
+    vi.mocked(revokeCatalogLink).mockResolvedValue({
+      id: 9,
+      token: "wholesale-9",
+      link_type: "wholesale_buyer",
+      show_prices: true,
+      allow_order: true,
+      allow_payment: true,
+      expires_at: "2026-01-01T00:00:00Z",
+    });
+    vi.mocked(deleteCatalogLink).mockResolvedValue();
+    renderPage();
+
+    const title = await screen.findByText("Catalogo FIT-103 | Conjunto Pulse Legging Plus | Vinho Intenso | Plus 1");
+    const scope = within(title.closest("section") as HTMLElement);
+
+    fireEvent.click(scope.getByRole("button", { name: "Revogar" }));
+    await waitFor(() => {
+      expect(revokeCatalogLink).toHaveBeenCalledWith(2, 9);
+    });
+
+    fireEvent.click(scope.getByRole("button", { name: "Excluir link wholesale-9" }));
+    await waitFor(() => {
+      expect(deleteCatalogLink).toHaveBeenCalledWith(2, 9);
+    });
+  });
+
+  it("marca como revogado o link ja expirado e esconde a acao de revogar", async () => {
+    vi.mocked(getCatalogs).mockResolvedValue([
+      {
+        id: 3,
+        name: "Catalogo Encerrado",
+        description: null,
+        status: "archived",
+        source: "admin",
+        items_count: 2,
+        links: [
+          {
+            id: 11,
+            token: "expirado-11",
+            link_type: "public_client",
+            show_prices: false,
+            allow_order: false,
+            allow_payment: false,
+            expires_at: "2020-01-01T00:00:00Z",
+          },
+        ],
+        created_at: "2026-05-22T11:00:00Z",
+        updated_at: "2026-05-22T11:05:00Z",
+      },
+    ]);
+
+    renderPage();
+
+    const title = await screen.findByText("Catalogo Encerrado");
+    const scope = within(title.closest("section") as HTMLElement);
+
+    expect(scope.getByText(/revogado/)).toBeInTheDocument();
+    expect(scope.queryByRole("button", { name: "Revogar" })).not.toBeInTheDocument();
   });
 });

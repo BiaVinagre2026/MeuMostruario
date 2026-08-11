@@ -30,6 +30,12 @@ module Api
           render json: { catalog: catalog_json(catalog.reload, include_items: true) }
         end
 
+        def destroy
+          catalog = Catalog.find(params[:id])
+          catalog.destroy!
+          head :no_content
+        end
+
         private
 
         def catalog_params
