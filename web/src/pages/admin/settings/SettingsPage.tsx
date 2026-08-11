@@ -9,8 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getAdminConfig, updateAdminConfig, type AdminConfig } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
+import BrandingSettings from "./BrandingSettings";
 
 type EmailProvider = "letter_opener" | "smtp" | "gmail" | "ses";
+type Tab = "identidade" | "email";
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "identidade", label: "Identidade visual" },
+  { id: "email", label: "E-mail" },
+];
 
 const PROVIDER_LABELS: Record<EmailProvider, string> = {
   letter_opener: "Desativado (dev local)",
@@ -77,6 +84,7 @@ function PasswordInput({ value, onChange, placeholder, isSet }: {
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<Tab>("identidade");
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["admin", "config"],
@@ -161,21 +169,45 @@ export default function SettingsPage() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b gap-3">
-        <div>
-          <h1 className="text-base md:text-lg font-semibold">Configurações</h1>
-          <p className="text-xs md:text-sm text-muted-foreground">E-mail transacional e integrações</p>
+      <div className="px-4 md:px-6 pt-3 md:pt-4 border-b">
+        <h1 className="text-base md:text-lg font-semibold">Configurações</h1>
+        <p className="text-xs md:text-sm text-muted-foreground">Identidade da marca e integrações do tenant</p>
+        <div className="flex gap-1 mt-3" role="tablist">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              role="tab"
+              aria-selected={tab === item.id}
+              onClick={() => setTab(item.id)}
+              className={[
+                "px-3 py-2 text-sm border-b-2 -mb-px transition-colors",
+                tab === item.id
+                  ? "border-primary text-foreground font-medium"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
-        <Button onClick={handleSave} disabled={saveMutation.isPending}>
-          {saveMutation.isPending
-            ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-            : <Save className="h-4 w-4 mr-1.5" />}
-          Salvar
-        </Button>
       </div>
 
       <div className="flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
         <div className="max-w-2xl space-y-4 md:space-y-6">
+
+          {tab === "identidade" && <BrandingSettings config={config} />}
+
+          {tab === "email" && (
+          <>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Como os e-mails do tenant são enviados.</p>
+            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              {saveMutation.isPending
+                ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                : <Save className="h-4 w-4 mr-1.5" />}
+              Salvar
+            </Button>
+          </div>
 
           {/* Email provider */}
           <Section title="E-mail transacional" icon={<Mail className="h-4 w-4 text-muted-foreground" />}>
@@ -328,6 +360,8 @@ export default function SettingsPage() {
               O armazenamento local (uploads em disco) está ativo por padrão.
             </p>
           </Section>
+          </>
+          )}
 
         </div>
       </div>

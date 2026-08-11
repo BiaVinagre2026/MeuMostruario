@@ -103,7 +103,9 @@ enxerga o catálogo, os compradores nem os pedidos do outro.
    atacado mostra preço, aceita quantidade por tamanho e fecha pedido.
 4. Envie um pedido pelo link de atacado e veja ele aparecer em **Pedidos** no admin.
 5. Em **Fotos**, suba um lote e acompanhe a triagem sugerir cor, Pantone, modelo e tamanho.
-6. Entre como `super@admin.com` para ver o painel global e o CRUD de tenants.
+6. Em **Configurações → Identidade visual**, troque a cor primária e envie um logo. A
+   prévia responde na hora e a mudança vale para o admin e para os links públicos.
+7. Entre como `super@admin.com` para ver o painel global e o CRUD de tenants.
 
 ## Comandos
 
@@ -140,9 +142,6 @@ docker compose restart api
   nenhum PSP. O webhook de confirmação já funciona.
 - **WhatsApp**: integrado apenas no carrinho do showroom legado; o catálogo por link
   ainda não envia.
-- **Identidade visual do tenant**: a API aceita logo, cores, fontes, redes e dados da
-  empresa em `PATCH /api/v1/admin/tenant/config`, mas a tela de Configurações ainda só
-  expõe e-mail transacional.
 - **Storefront SSR** (`api/app/views/public/`): conteúdo ainda é o do showroom de moda
   anterior, não o de fábrica.
 

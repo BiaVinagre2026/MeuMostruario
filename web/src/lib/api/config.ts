@@ -2,10 +2,44 @@ import { apiClient } from "./client";
 
 export interface AdminConfig {
   tenant_name: string;
+  // Marca
+  logo_url: string | null;
+  logo_compact_url: string | null;
+  favicon_url: string | null;
+  favicon_mode: string | null;
+  // Cores
+  color_primary: string | null;
+  color_secondary: string | null;
+  color_accent: string | null;
+  color_header_bg: string | null;
+  color_header_text: string | null;
+  color_header_text_hover: string | null;
+  color_footer_text: string | null;
+  color_footer_text_hover: string | null;
+  // Tipografia
+  font_primary: string | null;
+  font_heading: string | null;
+  // Empresa
   company_name: string | null;
+  company_cnpj: string | null;
+  company_address: string | null;
   company_email: string | null;
   company_phone: string | null;
+  company_website: string | null;
+  // Textos publicos
+  footer_text: string | null;
+  announcement_bar_text: string | null;
+  terms_url: string | null;
+  privacy_url: string | null;
+  // Redes sociais
+  social_instagram: string | null;
+  social_facebook: string | null;
   social_whatsapp: string | null;
+  social_tiktok: string | null;
+  social_youtube: string | null;
+  social_linkedin: string | null;
+  social_twitter: string | null;
+  social_telegram: string | null;
   // Email
   email_provider: string | null;
   smtp_host: string | null;
