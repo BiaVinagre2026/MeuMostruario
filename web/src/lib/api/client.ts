@@ -1,5 +1,7 @@
 import type { ApiError as ApiErrorType } from "@/types/auth";
 import { getActiveTenantSlug } from "@/lib/tenantContext";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useOperatorStore } from "@/stores/useOperatorStore";
 
 export class ApiError extends Error {
   public readonly status: number;
@@ -39,17 +41,6 @@ function isAdminTenantScopedPath(path: string): boolean {
   return !ADMIN_SLUG_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-let _getOperatorActiveTenantSlug: (() => string | null) | null = null;
-
-async function initOperatorStoreAccessor() {
-  if (_getOperatorActiveTenantSlug) return;
-  const { useOperatorStore } = await import("@/stores/useOperatorStore");
-  _getOperatorActiveTenantSlug = () =>
-    useOperatorStore.getState().activeTenantSlug;
-}
-
-void initOperatorStoreAccessor();
-
 function buildHeaders(path: string, extra?: HeadersInit): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -62,8 +53,8 @@ function buildHeaders(path: string, extra?: HeadersInit): Record<string, string>
     if (tenantId) headers["X-Tenant-ID"] = tenantId;
   }
 
-  if (isAdminTenantScopedPath(path) && _getOperatorActiveTenantSlug) {
-    const slug = _getOperatorActiveTenantSlug();
+  if (isAdminTenantScopedPath(path)) {
+    const slug = useOperatorStore.getState().activeTenantSlug;
     if (slug) {
       headers["X-Admin-Tenant-Slug"] = slug;
     }
@@ -88,17 +79,13 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (response.status === 401) {
     if (response.url.includes("/api/v1/admin/")) {
-      import("@/stores/useOperatorStore").then(({ useOperatorStore }) => {
-        useOperatorStore.getState().logout();
-      });
+      useOperatorStore.getState().logout();
     } else if (response.url.includes("/api/v1/partner/")) {
       import("@/stores/usePartnerStore").then(({ usePartnerStore }) => {
         usePartnerStore.getState().logout();
       });
     } else {
-      import("@/stores/useAuthStore").then(({ useAuthStore }) => {
-        useAuthStore.getState().logout();
-      });
+      useAuthStore.getState().logout();
     }
   }
 

@@ -14,6 +14,9 @@ web/.env
 # Build output
 web/dist/
 
+# Logs de execução local
+*.log
+
 # Dependencies
 web/node_modules/
 api/node_modules/

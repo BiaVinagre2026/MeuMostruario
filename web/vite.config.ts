@@ -26,6 +26,21 @@ export default defineConfig({
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(resolveVersion()),
     "import.meta.env.VITE_GIT_SHA": JSON.stringify(resolveGitSha()),
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+
+          if (id.includes("react-router") || id.includes("@remix-run")) return "router";
+          if (id.includes("@tanstack/react-query")) return "query";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("@radix-ui")) return "radix-ui";
+          if (id.includes("react") || id.includes("scheduler")) return "react-vendor";
+        },
+      },
+    },
+  },
   server: {
     allowedHosts: ["localhost", ".app.local"],
     host: "::",
