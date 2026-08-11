@@ -138,10 +138,13 @@ docker compose restart api
 
 ## O que ainda não está pronto
 
+> Pagamento e WhatsApp têm guia próprio, com os pontos exatos de integração:
+> **[docs/INTEGRACOES.md](docs/INTEGRACOES.md)**.
+
 - **Pagamento**: `GatewayPaymentService` cria a cobrança em modo placeholder, sem chamar
   nenhum PSP. O webhook de confirmação já funciona.
 - **WhatsApp**: integrado apenas no carrinho do showroom legado; o catálogo por link
-  ainda não envia.
+  ainda não envia. O número já é editável em Configurações.
 - **Storefront SSR** (`api/app/views/public/`): conteúdo ainda é o do showroom de moda
   anterior, não o de fábrica.
 
