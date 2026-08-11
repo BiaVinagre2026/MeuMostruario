@@ -83,9 +83,10 @@ describe("CatalogLinkPage", () => {
 
     expect(await screen.findByText("Catalogo publico")).toBeInTheDocument();
     expect(screen.getByText("Catalogo Cliente")).toBeInTheDocument();
-    expect(screen.getByText("Selecione ao menos uma foto para enviar interesse ou gerar um novo link.")).toBeInTheDocument();
+    expect(screen.getByText("Preencha seu nome e WhatsApp para enviar interesse. O link da selecao pode ser gerado mesmo sem contato.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Interesse" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Gerar link" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Selecionar todas" })).toBeInTheDocument();
     expect(screen.queryByText("Pedido")).not.toBeInTheDocument();
     expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
 
@@ -101,12 +102,29 @@ describe("CatalogLinkPage", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /vestido solar/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Selecionar todas" }));
 
     await waitFor(() => {
-      expect(screen.getByText("1 foto(s) selecionada(s).")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Interesse" })).toBeEnabled();
+      expect(screen.getByText("Selecionada")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Gerar link" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Desmarcar todas" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "Interesse" })).toBeDisabled();
+    expect(screen.getByText("Informe o nome. Use um WhatsApp com DDD para continuar.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Seu nome"), { target: { value: "Cliente Final" } });
+    fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "(11) 99999-0000" } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Interesse" })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Desmarcar todas" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Selecione ao menos uma foto para enviar interesse ou gerar um novo link.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Desmarcar todas" })).not.toBeInTheDocument();
     });
   });
 
@@ -142,18 +160,26 @@ describe("CatalogLinkPage", () => {
     expect(await screen.findByText("Catalogo atacado")).toBeInTheDocument();
     expect(screen.getByText("Catalogo Atacado")).toBeInTheDocument();
     expect(screen.getByText((content) => content.includes("149,90"))).toBeInTheDocument();
+    expect(screen.getByText("Preencha nome e WhatsApp do comprador para liberar o pedido.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: /biquini aurora/i }));
 
     const buyerName = screen.getByPlaceholderText("Nome do comprador");
     const buyerPhone = screen.getByPlaceholderText("WhatsApp");
     fireEvent.change(buyerName, { target: { value: "Loja Mar" } });
+    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
     fireEvent.change(buyerPhone, { target: { value: "11999990000" } });
 
     const sizeInputs = screen.getAllByRole("spinbutton");
     fireEvent.change(sizeInputs[0], { target: { value: "2" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /pedido/i }));
+    expect(screen.getByRole("button", { name: "Desmarcar todas" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeEnabled();
+    expect(screen.getByText("Total estimado:")).toBeInTheDocument();
+    expect(screen.getByText("2 peca(s) neste item")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Pedido$/i }));
 
     await waitFor(() => {
       expect(createTokenOrder).toHaveBeenCalledWith("demo-token", {

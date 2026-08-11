@@ -159,6 +159,14 @@ describe("PhotoBatchReview", () => {
 
     expect(await screen.findByRole("heading", { name: "FIT-101" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "FIT-102" })).toBeInTheDocument();
+    expect(screen.getByText("Total do lote")).toBeInTheDocument();
+    expect(screen.getAllByText("Em revisao").length).toBeGreaterThan(0);
+    expect(screen.getByText("Aprovadas")).toBeInTheDocument();
+    expect(screen.getByText("Com erro")).toBeInTheDocument();
+    expect(screen.getByText("Confianca media")).toBeInTheDocument();
+    expect(screen.getByText("Visiveis")).toBeInTheDocument();
+    expect(screen.getByText("Status do lote: Em revisao")).toBeInTheDocument();
+    expect(screen.getByText("4 de 4 fotos processadas · 0 com erro")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Filtrar grupo"), { target: { value: "pulse_rosa" } });
 
@@ -168,14 +176,29 @@ describe("PhotoBatchReview", () => {
     });
 
     expect(screen.getByText("1 foto(s) visiveis")).toBeInTheDocument();
+    expect(screen.getByText("Limpar filtros")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Limpar filtros"));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "FIT-101" })).toBeInTheDocument();
+      expect(screen.queryByText("Limpar filtros")).not.toBeInTheDocument();
+    });
   });
 
   it("selects a whole group and applies suggestions in bulk", async () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "FIT-101" })).toBeInTheDocument();
+    expect(screen.getByText("0 foto(s) selecionada(s)")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "Selecionar visiveis" }));
+
+    expect(screen.getByText("4 foto(s) selecionada(s)")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Desmarcar visiveis" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Selecionar grupo" })[0]);
+    expect(screen.getByRole("button", { name: "Limpar selecao" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Aplicar sugestoes/i }));
 
     await waitFor(() => {
@@ -184,6 +207,20 @@ describe("PhotoBatchReview", () => {
         apply_suggestions: true,
         approve: true,
       });
+    });
+  });
+
+  it("prioritizes low-confidence photos for manual review", async () => {
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Baixa confianca" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Baixa confianca" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Revisao manual recomendada")).toBeInTheDocument();
+      expect(screen.getByText("1 foto(s) visiveis")).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "FIT-101" })).not.toBeInTheDocument();
     });
   });
 

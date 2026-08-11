@@ -21,6 +21,16 @@ export default function CatalogList() {
     queryFn: getCatalogs,
   });
   const hasActiveFilters = filterSku !== "all" || filterStatus !== "all" || filterLinkType !== "all" || search.trim().length > 0 || sortBy !== "updated_desc";
+  const statusLabel: Record<Catalog["status"], string> = {
+    draft: "Draft",
+    published: "Publicado",
+    archived: "Arquivado",
+  };
+  const linkTypeLabel = {
+    public_client: "Publico",
+    wholesale_buyer: "Atacado",
+    selection: "Selecao",
+  } as const;
 
   const skuOptions = useMemo(
     () => Array.from(new Set(catalogs.flatMap((catalog) => catalog.summary?.sku_labels ?? []))).sort(),
@@ -67,6 +77,12 @@ export default function CatalogList() {
 
     return result;
   }, [catalogs, filterLinkType, filterSku, filterStatus, search, sortBy]);
+  const overview = useMemo(() => ({
+    total: catalogs.length,
+    published: catalogs.filter((catalog) => catalog.status === "published").length,
+    draft: catalogs.filter((catalog) => catalog.status === "draft").length,
+    wholesaleLinks: catalogs.reduce((sum, catalog) => sum + (catalog.summary?.wholesale_links_count ?? 0), 0),
+  }), [catalogs]);
 
   function resetFilters() {
     setFilterSku("all");
@@ -149,6 +165,11 @@ export default function CatalogList() {
     );
   }
 
+  function copyLink(url: string) {
+    void navigator.clipboard.writeText(url);
+    toast.success("Link copiado.");
+  }
+
   return (
     <AdminLayout>
       <div className="px-6 py-5 border-b">
@@ -159,6 +180,13 @@ export default function CatalogList() {
       </div>
 
       <div className="p-6 space-y-6">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <OverviewCard label="Catalogos" value={String(overview.total)} helper="Total disponivel no tenant" />
+          <OverviewCard label="Publicados" value={String(overview.published)} helper="Prontos para compartilhar" />
+          <OverviewCard label="Rascunhos" value={String(overview.draft)} helper="Ainda em preparacao" />
+          <OverviewCard label="Links atacado" value={String(overview.wholesaleLinks)} helper="Com pedido e pagamento" />
+        </section>
+
         <section className="border rounded-lg p-4 bg-background">
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-48">
@@ -251,7 +279,10 @@ export default function CatalogList() {
                   <div>
                     <h2 className="font-semibold">{catalog.name}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {catalog.items_count} itens · {catalog.status} · {catalog.source}
+                      {catalog.items_count} itens · {statusLabel[catalog.status]} · {catalog.source}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Atualizado em {formatCatalogDate(catalog.updated_at)}
                     </p>
                     {catalog.description && (
                       <p className="text-sm text-muted-foreground mt-1">{catalog.description}</p>
@@ -277,11 +308,11 @@ export default function CatalogList() {
                   <div className="flex flex-wrap gap-2">
                     {renderStatusActions(catalog)}
                     <Button size="sm" variant="outline" onClick={() => linkMutation.mutate({ catalog, wholesale: false })}>
-                      {linkMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
+                      {linkMutation.isPending && linkMutation.variables?.catalog.id === catalog.id && !linkMutation.variables?.wholesale ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
                       Link publico
                     </Button>
                     <Button size="sm" onClick={() => linkMutation.mutate({ catalog, wholesale: true })}>
-                      <Link2 className="h-4 w-4 mr-1" />
+                      {linkMutation.isPending && linkMutation.variables?.catalog.id === catalog.id && linkMutation.variables?.wholesale ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
                       Link atacado
                     </Button>
                   </div>
@@ -292,17 +323,31 @@ export default function CatalogList() {
                     {catalog.links.map((link) => {
                       const url = `${window.location.origin}/link/${link.token}`;
                       return (
-                        <button
+                        <div
                           key={link.id}
-                          className="flex items-center justify-between gap-3 border rounded-md px-3 py-2 text-sm hover:bg-muted"
-                          onClick={() => void navigator.clipboard.writeText(url)}
+                          className="flex flex-wrap items-center justify-between gap-3 border rounded-md px-3 py-2 text-sm"
                         >
-                          <span className="truncate">{url}</span>
-                          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {link.link_type}
-                            <Copy className="h-4 w-4" />
-                          </span>
-                        </button>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{url}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {linkTypeLabel[link.link_type]} · {describeLink(link)}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted"
+                            >
+                              Abrir
+                            </a>
+                            <Button type="button" variant="outline" size="sm" onClick={() => copyLink(url)}>
+                              <Copy className="h-4 w-4 mr-1" />
+                              Copiar
+                            </Button>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -314,4 +359,28 @@ export default function CatalogList() {
       </div>
     </AdminLayout>
   );
+}
+
+function OverviewCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className="border rounded-lg bg-background p-4">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-2 text-2xl font-semibold">{value}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{helper}</div>
+    </div>
+  );
+}
+
+function formatCatalogDate(value: string) {
+  return new Date(value).toLocaleString("pt-BR");
+}
+
+function describeLink(link: Catalog["links"][number]) {
+  const parts = [];
+
+  parts.push(link.show_prices ? "com preco" : "sem preco");
+  if (link.allow_order) parts.push("pedido");
+  if (link.allow_payment) parts.push("pagamento");
+
+  return parts.join(" · ");
 }

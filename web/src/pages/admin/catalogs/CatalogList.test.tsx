@@ -113,6 +113,11 @@ describe("CatalogList", () => {
   it("shows operational summary chips for each catalog", async () => {
     renderPage();
 
+    expect(await screen.findByText("Catalogos")).toBeInTheDocument();
+    expect(screen.getByText("Publicados")).toBeInTheDocument();
+    expect(screen.getByText("Rascunhos")).toBeInTheDocument();
+    expect(screen.getByText("Links atacado")).toBeInTheDocument();
+
     const title = await screen.findByText("Catalogo FIT-101 | Conjunto Shape Short | Preto | P/M");
     const card = title.closest("section");
     expect(card).not.toBeNull();
@@ -123,6 +128,19 @@ describe("CatalogList", () => {
     expect(scope.getByText("Preto")).toBeInTheDocument();
     expect(scope.getByText("P/M")).toBeInTheDocument();
     expect(scope.getByText("1 link(s) publico(s) · 1 link(s) atacado")).toBeInTheDocument();
+  });
+
+  it("renders richer metadata and actions for existing links", async () => {
+    renderPage();
+
+    const title = await screen.findByText("Catalogo FIT-103 | Conjunto Pulse Legging Plus | Vinho Intenso | Plus 1");
+    const card = title.closest("section");
+    expect(card).not.toBeNull();
+    const scope = within(card as HTMLElement);
+
+    expect(scope.getByText("Atacado · com preco · pedido · pagamento")).toBeInTheDocument();
+    expect(scope.getByRole("link", { name: "Abrir" })).toHaveAttribute("href", `${window.location.origin}/link/wholesale-9`);
+    expect(scope.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
   });
 
   it("filters catalogs by sku, status and link type", async () => {
