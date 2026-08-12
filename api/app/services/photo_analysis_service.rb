@@ -10,12 +10,6 @@ class PhotoAnalysisService
   def analyze!(photo)
     photo.update!(status: "processing")
     suggestions = ai_suggestions(photo)
-    confidence = normalize_confidence(suggestions["confidence"])
-    suggested_metadata = {
-      "suggested_sku" => suggestions["sku"],
-      "suggestion_source" => suggestions["source"],
-      "suggestion_group" => suggestions["group_key"]
-    }.compact
 
     analysis = photo.photo_analyses.create!(
       provider: "openrouter",
@@ -23,42 +17,54 @@ class PhotoAnalysisService
       status: "completed",
       suggestions: suggestions,
       raw_response: { "suggestions" => suggestions },
-      confidence: confidence
+      confidence: normalize_confidence(suggestions["confidence"])
     )
 
-    # A triagem nunca aprova sozinha: toda foto analisada volta para revisao do
-    # admin, independente da confianca. O score serve para priorizar a fila.
+    apply_suggestions!(photo, suggestions)
+
+    analysis
+  rescue => e
+    # A chamada de IA falhou, mas a heuristica local por nome de arquivo continua
+    # valendo: e melhor entregar a sugestao dela do que devolver a foto em branco
+    # para o admin classificar do zero.
+    suggestions = fallback_suggestions(photo)
+
+    photo.photo_analyses.create!(
+      provider: "openrouter",
+      model: ENV["OPENROUTER_MODEL"],
+      status: "error",
+      suggestions: suggestions,
+      raw_response: {},
+      confidence: normalize_confidence(suggestions["confidence"]),
+      error_message: e.message
+    )
+
+    apply_suggestions!(photo, suggestions, extra_metadata: { "analysis_error" => e.message })
+  ensure
+    photo.photo_batch&.refresh_counts!
+  end
+
+  private
+
+  # A triagem nunca aprova sozinha: toda foto analisada volta para revisao do
+  # admin, independente da confianca. O score serve para priorizar a fila.
+  def apply_suggestions!(photo, suggestions, extra_metadata: {})
+    metadata = {
+      "suggested_sku" => suggestions["sku"],
+      "suggestion_source" => suggestions["source"],
+      "suggestion_group" => suggestions["group_key"]
+    }.compact.merge(extra_metadata)
+
     photo.update!(
       status: "needs_review",
       suggested_color: suggestions["color"],
       suggested_pantone: suggestions["pantone"],
       suggested_model: suggestions["model"],
       suggested_size_group: valid_size_group(suggestions["size_group"]),
-      confidence_score: confidence,
-      metadata: (photo.metadata || {}).merge(suggested_metadata)
+      confidence_score: normalize_confidence(suggestions["confidence"]),
+      metadata: (photo.metadata || {}).merge(metadata)
     )
-
-    analysis
-  rescue => e
-    photo.photo_analyses.create!(
-      provider: "openrouter",
-      model: ENV["OPENROUTER_MODEL"],
-      status: "error",
-      suggestions: fallback_suggestions(photo),
-      raw_response: {},
-      confidence: DEFAULT_CONFIDENCE,
-      error_message: e.message
-    )
-    photo.update!(
-      status: "needs_review",
-      confidence_score: DEFAULT_CONFIDENCE,
-      metadata: (photo.metadata || {}).merge("analysis_error" => e.message)
-    )
-  ensure
-    photo.photo_batch&.refresh_counts!
   end
-
-  private
 
   def ai_suggestions(photo)
     return fallback_suggestions(photo) if ENV["OPENROUTER_API_KEY"].blank?
