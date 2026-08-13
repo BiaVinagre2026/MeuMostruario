@@ -53,6 +53,13 @@ export interface AdminConfig {
   ses_access_key_id: string | null;
   ses_region: string | null;
   ses_secret_key_set: boolean;
+  // Gateway de pagamento (Orbe PSP)
+  psp_api_url: string | null;
+  psp_merchant_id: string | null;
+  psp_api_key_set: boolean;
+  psp_callback_secret_set: boolean;
+  psp_signature_header: string | null;
+  psp_configured: boolean;
 }
 
 export async function getAdminConfig(): Promise<AdminConfig> {

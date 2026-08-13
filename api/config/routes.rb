@@ -25,7 +25,10 @@ Rails.application.routes.draw do
       post "catalog_links/:token/interests",  to: "catalog_links#interests"
       post "catalog_links/:token/orders",     to: "catalog_links#orders"
       post "catalog_links/:token/selections", to: "catalog_links#selections"
-      post "payments/webhook",                to: "payments#webhook"
+      # O tenant vai na URL porque o PSP nao envia o cabecalho X-Tenant-ID:
+      # e esse trecho que diz em qual schema procurar o pagamento e qual
+      # segredo usar para conferir a assinatura.
+      post "payments/webhook/:tenant_slug",    to: "payments#webhook"
 
       # Member profile (authenticated)
       get   "profile",          to: "members#show"

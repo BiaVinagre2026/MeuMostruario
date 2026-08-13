@@ -295,7 +295,11 @@ module Api
           amount: payment.amount,
           checkout_url: payment.checkout_url,
           pix_qr_code: payment.pix_qr_code,
-          gateway_reference: payment.gateway_reference
+          pix_expiration: payment.raw_response["pix_expiration"],
+          gateway_reference: payment.gateway_reference,
+          # Sem isso o comprador ve "pedido registrado" e nenhuma cobranca,
+          # sem saber que a emissao falhou.
+          error_message: payment.status == "failed" ? payment.raw_response["message"] : nil
         }
       end
     end

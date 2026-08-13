@@ -15,7 +15,7 @@ module Api
 
           ActiveRecord::Base.transaction do
             current_tenant.update!(name: params[:tenant_name]) if params[:tenant_name].present?
-            config.update!(config_params)
+            config.update!(preserving_blank_secrets(config_params))
           end
 
           render json: { config: full_config_json(config.reload) }
@@ -24,6 +24,18 @@ module Api
         end
 
         private
+
+        # A tela mostra os segredos mascarados e envia campo vazio quando o
+        # operador nao redigita. Sem isso, salvar qualquer outra configuracao
+        # apagaria a chave do gateway em silencio.
+        SECRET_FIELDS = %w[
+          smtp_password_enc ses_secret_key_enc s3_secret_access_key_enc
+          psp_api_key_enc psp_callback_secret_enc
+        ].freeze
+
+        def preserving_blank_secrets(attributes)
+          attributes.except(*SECRET_FIELDS.select { |field| attributes[field].blank? })
+        end
 
         def config_params
           params.permit(
@@ -50,7 +62,10 @@ module Api
             :storage_provider, :s3_bucket, :s3_region,
             :s3_access_key_id, :s3_secret_access_key_enc, :s3_public_url,
             # AI config
-            :openrouter_model
+            :openrouter_model,
+            # Gateway de pagamento (Orbe PSP)
+            :psp_api_url, :psp_merchant_id, :psp_api_key_enc,
+            :psp_callback_secret_enc, :psp_signature_header
           )
         end
 
@@ -117,7 +132,14 @@ module Api
             s3_secret_access_key_set:   config.s3_secret_access_key_enc.present?,
             s3_public_url:              config.s3_public_url,
             # AI config
-            openrouter_model:           config.openrouter_model
+            openrouter_model:           config.openrouter_model,
+            # Gateway de pagamento — segredos viram booleano, como no e-mail
+            psp_api_url:                config.psp_api_url,
+            psp_merchant_id:            config.psp_merchant_id,
+            psp_api_key_set:            config.psp_api_key_enc.present?,
+            psp_callback_secret_set:    config.psp_callback_secret_enc.present?,
+            psp_signature_header:       config.psp_signature_header,
+            psp_configured:             config.psp_configured?
           }
         end
       end

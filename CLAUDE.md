@@ -50,6 +50,8 @@ Existe também um papel de **super-admin**, responsável por criar, ativar, susp
 - Triagem por IA é sempre sugestão; admin precisa revisar/aprovar.
 - Pedidos guardam snapshot dos dados comerciais no momento da compra.
 - Dados sensíveis de cartão nunca são armazenados.
+- Link que cobra exige CPF ou CNPJ do comprador: o gateway recusa cobrança sem documento.
+- Falha ao emitir cobrança não invalida o pedido — o pedido vale mais que a cobrança.
 
 ## Arquitetura Mantida
 
@@ -72,6 +74,7 @@ Nesta fase, isso deixa de ser apenas compatibilidade e volta a ser parte do prod
 - API admin: `api/app/controllers/api/v1/admin/`.
 - Modelos tenant-scoped: `api/app/models/`.
 - DDL tenant-scoped: `api/app/services/tenant_schema_sql.rb`.
+- Gateway de pagamento: `api/app/services/gateway_payment_service.rb` e `docs/INTEGRACOES.md`.
 
 ## Fluxos do MVP
 
@@ -84,8 +87,10 @@ Nesta fase, isso deixa de ser apenas compatibilidade e volta a ser parte do prod
 7. Admin vincula fotos a produtos ou cria produto a partir de foto.
 8. Admin cria catálogo e links.
 9. Cliente final acessa link público sem valores e registra interesse.
-10. Comprador atacado acessa link com valores e envia pedido.
-11. Pedido aparece no admin do tenant e pode iniciar pagamento via gateway próprio.
+10. Comprador atacado acessa link com valores, informa CPF/CNPJ e envia pedido.
+11. Pedido aparece no admin do tenant e gera cobrança Pix na Orbe PSP, quando o tenant tem
+    gateway configurado. O comprador recebe QR Code e copia-e-cola na própria tela.
+12. A Orbe avisa `POST /api/v1/payments/webhook/:tenant_slug` a cada mudança de status.
 
 ## Comandos
 

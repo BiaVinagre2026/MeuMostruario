@@ -11,6 +11,7 @@ import {
   getPublicCatalogLink,
   sendCatalogInterest,
 } from "@/lib/api/photoCatalog";
+import type { TokenOrderResponse } from "@/lib/api/photoCatalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
 
@@ -24,6 +25,7 @@ export default function CatalogLinkPage() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerDocument, setBuyerDocument] = useState("");
+  const [placedOrder, setPlacedOrder] = useState<TokenOrderResponse | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["catalog-link", token],
@@ -105,8 +107,9 @@ export default function CatalogLinkPage() {
         payment_method: "pix",
       },
     }),
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast.success("Pedido registrado.");
+      setPlacedOrder(response);
       clearOrder();
     },
     onError: () => toast.error("Nao foi possivel registrar o pedido."),
@@ -206,6 +209,10 @@ export default function CatalogLinkPage() {
           </div>
         </div>
       </header>
+
+      {placedOrder && (
+        <PaymentPanel response={placedOrder} onClose={() => setPlacedOrder(null)} />
+      )}
 
       <section style={{ maxWidth: 1180, margin: "0 auto", padding: "22px 18px 140px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
@@ -389,6 +396,95 @@ function CatalogCard({
         )}
       </div>
     </article>
+  );
+}
+
+/**
+ * Painel mostrado depois que o pedido e registrado.
+ *
+ * Cobre os tres desfechos possiveis: cobranca emitida com Pix para pagar,
+ * falha na emissao (o pedido existe, a cobranca nao) e pedido sem cobranca,
+ * quando o link nao cobra.
+ */
+function PaymentPanel({ response, onClose }: { response: TokenOrderResponse; onClose: () => void }) {
+  const payment = response.payment;
+  const pixCode = payment?.pix_qr_code;
+  const failed = payment?.status === "failed";
+
+  function copyPix() {
+    if (!pixCode) return;
+    void navigator.clipboard.writeText(pixCode);
+    toast.success("Codigo Pix copiado.");
+  }
+
+  return (
+    <section style={{ maxWidth: 1180, margin: "18px auto 0", padding: "0 18px" }}>
+      <div style={{ border: "1px solid #d8d0c6", background: "white", padding: 18, display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start" }}>
+          <div>
+            <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "#6f665e" }}>
+              Pedido #{response.order.id}
+            </div>
+            <h2 style={{ margin: "4px 0 0", fontSize: 20 }}>
+              {failed ? "Pedido registrado, cobranca pendente" : pixCode ? "Pague com Pix" : "Pedido registrado"}
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} style={buttonStyle("ghost")} aria-label="Fechar aviso do pedido">
+            <X size={16} />
+          </button>
+        </div>
+
+        {failed && (
+          <p style={{ margin: 0, fontSize: 13, color: "#b04848" }}>
+            Seu pedido foi salvo e a fabrica ja consegue ve-lo. So a cobranca nao pode ser emitida agora
+            {payment?.error_message ? ` (${payment.error_message})` : ""}. Entre em contato para combinar o pagamento.
+          </p>
+        )}
+
+        {!failed && pixCode && (
+          <>
+            {payment?.checkout_url && (
+              <img
+                src={payment.checkout_url}
+                alt="QR Code do Pix"
+                style={{ width: 190, height: 190, objectFit: "contain", border: "1px solid #eee6dc", background: "white" }}
+              />
+            )}
+            <div>
+              <div style={{ fontSize: 12, color: "#6f665e", marginBottom: 4 }}>Pix copia e cola</div>
+              <div
+                style={{
+                  fontFamily: "monospace", fontSize: 12, wordBreak: "break-all",
+                  background: "#faf8f5", border: "1px solid #eee6dc", padding: "8px 10px",
+                }}
+              >
+                {pixCode}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <button type="button" onClick={copyPix} style={buttonStyle("primary")}>
+                <Copy size={16} />
+                Copiar codigo
+              </button>
+              {payment?.pix_expiration && (
+                <span style={{ fontSize: 12, color: "#6f665e" }}>
+                  Vence em {new Date(payment.pix_expiration).toLocaleString("pt-BR")}
+                </span>
+              )}
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "#6f665e" }}>
+              A confirmacao chega automaticamente para a fabrica assim que o banco liquidar o Pix.
+            </p>
+          </>
+        )}
+
+        {!failed && !pixCode && (
+          <p style={{ margin: 0, fontSize: 13, color: "#6f665e" }}>
+            A fabrica ja recebeu seu pedido e vai combinar o pagamento com voce.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 

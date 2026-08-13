@@ -128,32 +128,33 @@ describe("CatalogLinkPage", () => {
     });
   });
 
+  const wholesaleLink = {
+    id: 2,
+    token: "demo-token",
+    link_type: "wholesale_buyer" as const,
+    show_prices: true,
+    allow_order: true,
+    allow_payment: true,
+    catalog: { id: 11, name: "Catalogo Atacado", description: "Com pedido" },
+    items: [
+      {
+        id: 202,
+        product_id: 88,
+        photo_id: 99,
+        name: "Biquini Aurora",
+        image_url: "https://cdn.example.com/biquini.jpg",
+        color: "Verde",
+        pantone: "17-5641 TPX",
+        size_group: "P/M" as const,
+        sizes: ["P/M", "M/G"] as const,
+        price: 149.9,
+        price_retail: 219.9,
+      },
+    ],
+  };
+
   it("shows prices and submits wholesale orders with size quantities", async () => {
-    vi.mocked(getPublicCatalogLink).mockResolvedValue({
-      id: 2,
-      token: "demo-token",
-      link_type: "wholesale_buyer",
-      show_prices: true,
-      allow_order: true,
-      allow_payment: true,
-      catalog: { id: 11, name: "Catalogo Atacado", description: "Com pedido" },
-      items: [
-        {
-          id: 202,
-          product_id: 88,
-          photo_id: 99,
-          name: "Biquini Aurora",
-          image_url: "https://cdn.example.com/biquini.jpg",
-          color: "Verde",
-          pantone: "17-5641 TPX",
-          size_group: "P/M",
-          sizes: ["P/M", "M/G"],
-          price: 149.9,
-          price_retail: 219.9,
-        },
-      ],
-    });
-    vi.mocked(createTokenOrder).mockResolvedValue({});
+    vi.mocked(getPublicCatalogLink).mockResolvedValue(wholesaleLink);
 
     renderPage();
 
@@ -185,6 +186,19 @@ describe("CatalogLinkPage", () => {
     expect(screen.getByText("Total estimado:")).toBeInTheDocument();
     expect(screen.getByText("2 peca(s) neste item")).toBeInTheDocument();
 
+    vi.mocked(createTokenOrder).mockResolvedValue({
+      order: { id: 42, status: "pending", payment_status: "pending", total_value: 299.8 },
+      payment: {
+        id: 7,
+        status: "pending",
+        payment_method: "pix",
+        amount: 299.8,
+        pix_qr_code: "00020126BR.GOV.BCB.PIX.CODIGO",
+        checkout_url: "https://psp.exemplo/qr/7.png",
+        pix_expiration: "2026-08-13T23:59:59Z",
+      },
+    });
+
     fireEvent.click(screen.getByRole("button", { name: /^Pedido$/i }));
 
     await waitFor(() => {
@@ -212,5 +226,40 @@ describe("CatalogLinkPage", () => {
         },
       });
     });
+
+    // Depois do pedido o comprador precisa ver como pagar, nao so um toast.
+    expect(await screen.findByText("Pague com Pix")).toBeInTheDocument();
+    expect(screen.getByText("00020126BR.GOV.BCB.PIX.CODIGO")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copiar codigo/ })).toBeInTheDocument();
+    expect(screen.getByAltText("QR Code do Pix")).toHaveAttribute("src", "https://psp.exemplo/qr/7.png");
+  });
+
+  it("avisa que a cobranca falhou sem esconder que o pedido foi salvo", async () => {
+    vi.mocked(getPublicCatalogLink).mockResolvedValue(wholesaleLink);
+    vi.mocked(createTokenOrder).mockResolvedValue({
+      order: { id: 43, status: "pending", payment_status: "failed", total_value: 149.9 },
+      payment: {
+        id: 8,
+        status: "failed",
+        payment_method: "pix",
+        amount: 149.9,
+        error_message: "gateway respondeu 422: customer_document invalido",
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("Catalogo atacado")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Nome do comprador"), { target: { value: "Loja Mar" } });
+    fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "11999990000" } });
+    fireEvent.change(screen.getByPlaceholderText("CPF ou CNPJ"), { target: { value: "11222333000181" } });
+    fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "1" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Pedido$/i }));
+
+    expect(await screen.findByText("Pedido registrado, cobranca pendente")).toBeInTheDocument();
+    expect(screen.getByText(/Seu pedido foi salvo/)).toBeInTheDocument();
+    expect(screen.getByText(/customer_document invalido/)).toBeInTheDocument();
+    expect(screen.queryByText("Pague com Pix")).not.toBeInTheDocument();
   });
 });

@@ -105,7 +105,8 @@ enxerga o catálogo, os compradores nem os pedidos do outro.
 5. Em **Fotos**, suba um lote e acompanhe a triagem sugerir cor, Pantone, modelo e tamanho.
 6. Em **Configurações → Identidade visual**, troque a cor primária e envie um logo. A
    prévia responde na hora e a mudança vale para o admin e para os links públicos.
-7. Entre como `super@admin.com` para ver o painel global e o CRUD de tenants.
+7. Em **Configurações → Pagamento**, veja onde o tenant conecta o próprio gateway.
+8. Entre como `super@admin.com` para ver o painel global e o CRUD de tenants.
 
 ## Comandos
 
@@ -138,11 +139,10 @@ docker compose restart api
 
 ## O que ainda não está pronto
 
-> Pagamento e WhatsApp têm guia próprio, com os pontos exatos de integração:
-> **[docs/INTEGRACOES.md](docs/INTEGRACOES.md)**.
+> Pagamento e WhatsApp têm guia próprio: **[docs/INTEGRACOES.md](docs/INTEGRACOES.md)**.
 
-- **Pagamento**: `GatewayPaymentService` cria a cobrança em modo placeholder, sem chamar
-  nenhum PSP. O webhook de confirmação já funciona.
+- **Pagamento**: integrado com a Orbe PSP (Pix), mas ainda **não validado contra o gateway
+  real** — falta credencial de merchant e um endereço público para o callback.
 - **WhatsApp**: integrado apenas no carrinho do showroom legado; o catálogo por link
   ainda não envia. O número já é editável em Configurações.
 - **Storefront SSR** (`api/app/views/public/`): conteúdo ainda é o do showroom de moda

@@ -1,60 +1,65 @@
-# Integrações pendentes
+# Integrações
 
-Guia para quem vai plugar **pagamento** e **WhatsApp**. As duas foram deixadas por
-último de propósito: o resto do fluxo já funciona sem elas.
+Estado do **pagamento** (Orbe PSP) e do **WhatsApp**.
 
 ---
 
-## 1. Pagamento
+## 1. Pagamento — Orbe PSP
 
-### O que já existe
+Gateway: **Orbe PSP**, da Casetec. Documentação em <https://psp.casetec.com.br/api-docs>,
+spec em `/psp/v1/docs/spec`. Produção em `https://api.casetec.com.br`.
 
-| Peça | Onde | Estado |
-|---|---|---|
-| Modelo `Payment` | `api/app/models/payment.rb` | Pronto |
-| Criação da cobrança | `GatewayPaymentService#create_intent!` | **Placeholder** |
-| Confirmação por webhook | `GatewayPaymentService#apply_webhook!` | Pronto |
-| Endpoint do webhook | `POST /api/v1/payments/webhook` | Pronto, com HMAC |
-| Credenciais por tenant | `tenant_configs.psp_api_url` e `psp_api_key_enc` | Colunas já existem |
+Cada tenant é um **merchant próprio** no gateway: chave, merchant e segredo do callback
+vivem em `tenant_configs`, configuráveis em **Configurações → Pagamento** no admin. Sem
+credencial, o pedido fecha e o pagamento fica em modo local, sem cobrar ninguém.
 
-O pedido criado por um link de atacado com `allow_payment` chama o serviço em
-[`catalog_links_controller.rb:61`](../api/app/controllers/api/v1/catalog_links_controller.rb).
+### Fluxo implementado
 
-### O que falta
+1. Pedido criado por link de atacado com `allow_payment` chama `GatewayPaymentService#create_intent!`.
+2. O serviço cria o `Payment` com uma `idempotency_key` **antes** de chamar o gateway.
+3. `POST /psp/v1/pix` com `Authorization: Bearer <psp_api_key_enc>` e `Idempotency-Key`.
+4. Resposta 201 grava `gateway_reference` (id da cobrança), `pix_qr_code`, `checkout_url`.
+5. O gateway avisa `POST /api/v1/payments/webhook/:tenant_slug` a cada mudança de status.
+6. O comprador vê QR Code e copia-e-cola na própria tela do link.
 
-`create_intent!` hoje **não chama PSP nenhum**. Ele grava um `Payment` com
-`gateway_reference: "local-<hex>"` e `raw_response.mode = "local_placeholder"`, e devolve
-sucesso. Ou seja: o pedido fecha, mas ninguém paga.
+### Detalhes que não são óbvios
 
-O ponto de entrada é só esse método. O contrato que o resto do sistema espera:
+**O tenant vai na URL do callback.** O PSP não conhece o header `X-Tenant-ID`, e sem saber
+o tenant não há como escolher o schema nem o segredo. Por isso o `callback_url` enviado em
+cada cobrança termina com o slug. A base vem de `PSP_CALLBACK_BASE_URL` ou, na falta, de
+`APP_URL`.
 
-1. Chamar o PSP e criar a cobrança.
-2. Persistir um `Payment` com `status: "pending"` e **`gateway_reference` igual ao id que
-   o PSP devolveu** — é por esse campo que o webhook reencontra o pagamento.
-3. Guardar a resposta crua em `raw_response` (útil para QR code do Pix, URL de checkout).
-4. Deixar `order.payment_status` como `"pending"`.
+**A Idempotency-Key é persistida, não gerada na hora.** Se a chamada cair no meio e alguém
+repetir, o gateway reconhece a mesma operação em vez de abrir uma segunda cobrança.
 
-O serviço já recebe o `TenantConfig` do tenant e tem `config.psp_configured?`, que checa
-se `psp_api_url` e `psp_api_key_enc` estão preenchidos. Use isso para decidir entre
-chamar o PSP e cair no placeholder.
+**Falha na emissão não derruba o pedido.** O pedido vale mais que a cobrança: o `Payment`
+fica `failed` com a mensagem do gateway, o pedido continua no admin, e o comprador vê um
+aviso explicando que precisa combinar o pagamento.
 
-### Webhook
+**`captured` conta como pago.** A Orbe usa `pending`, `processing`, `authorized`,
+`captured`, `paid`, `failed`, `cancelled` e `expired`. `captured` significa dinheiro
+capturado; antes caía no ramo genérico e virava pendente.
 
-Já funciona ponta a ponta e não precisa mudar, desde que o `gateway_reference` bata.
+**O header da assinatura é configurável.** A documentação diz que o callback é assinado com
+HMAC-SHA256 mas não diz em qual header. O valor fica em `psp_signature_header`, com
+`X-Gateway-Signature` como padrão. **Confirme o nome real com a Casetec** — se estiver
+errado, toda confirmação de pagamento é recusada com 401.
 
-- Assinatura: HMAC-SHA256 do corpo cru, com o segredo em `GATEWAY_WEBHOOK_SECRET`,
-  comparada contra o header `X-Gateway-Signature`. Sem a variável, o endpoint responde 503.
-- Status aceitos e como são traduzidos: `paid`/`approved`/`confirmed` → `paid`;
-  `failed`/`rejected`/`denied` → `failed`; `cancelled`/`canceled` → `cancelled`;
-  `expired` → `expired`; qualquer outro → `pending`.
-- Ao virar `paid`, grava `paid_at` e atualiza `order.payment_status`.
+### O que ainda não foi validado
 
-Testes em `api/spec/requests/api/v1/payments_spec.rb`, incluindo assinatura inválida.
+A integração tem testes com resposta simulada do gateway (`gateway_payment_service_spec.rb`
+e `payments_spec.rb`), mas **nunca falou com a Orbe de verdade**. Falta:
+
+- Credenciais reais de um merchant.
+- Um endereço público para o callback: `localhost` não recebe. Use túnel (ngrok,
+  cloudflared) ou um ambiente publicado, e aponte `PSP_CALLBACK_BASE_URL` para ele.
+- Confirmar o nome do header da assinatura.
 
 ### Dado sensível
 
 Regra do produto: **dados de cartão nunca são armazenados**. O pedido guarda snapshot dos
-valores comerciais, não do meio de pagamento. Mantenha o cartão no PSP.
+valores comerciais, não do meio de pagamento. O CPF/CNPJ do comprador é guardado só com
+dígitos e não volta na resposta da API.
 
 ---
 

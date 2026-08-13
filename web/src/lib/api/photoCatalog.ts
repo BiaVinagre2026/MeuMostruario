@@ -120,6 +120,21 @@ export async function createSelectionLink(token: string, catalog_item_ids: numbe
   });
 }
 
-export async function createTokenOrder(token: string, payload: unknown) {
-  return apiClient.post(`/api/v1/catalog_links/${token}/orders`, payload);
+export interface TokenOrderResponse {
+  order: { id: number; status: string; payment_status: string; total_value: string | number };
+  payment?: {
+    id: number;
+    status: string;
+    payment_method: string | null;
+    amount: string | number;
+    checkout_url?: string | null;
+    pix_qr_code?: string | null;
+    pix_expiration?: string | null;
+    gateway_reference?: string | null;
+    error_message?: string | null;
+  } | null;
+}
+
+export async function createTokenOrder(token: string, payload: unknown): Promise<TokenOrderResponse> {
+  return apiClient.post<TokenOrderResponse>(`/api/v1/catalog_links/${token}/orders`, payload);
 }

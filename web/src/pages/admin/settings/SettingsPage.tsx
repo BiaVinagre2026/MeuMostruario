@@ -10,12 +10,14 @@ import { Label } from "@/components/ui/label";
 import { getAdminConfig, updateAdminConfig, type AdminConfig } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
 import BrandingSettings from "./BrandingSettings";
+import PaymentSettings from "./PaymentSettings";
 
 type EmailProvider = "letter_opener" | "smtp" | "gmail" | "ses";
-type Tab = "identidade" | "email";
+type Tab = "identidade" | "pagamento" | "email";
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: "identidade", label: "Identidade visual" },
+  { id: "pagamento", label: "Pagamento" },
   { id: "email", label: "E-mail" },
 ];
 
@@ -196,6 +198,8 @@ export default function SettingsPage() {
         <div className="max-w-2xl space-y-4 md:space-y-6">
 
           {tab === "identidade" && <BrandingSettings config={config} />}
+
+          {tab === "pagamento" && <PaymentSettings config={config} />}
 
           {tab === "email" && (
           <>
