@@ -160,16 +160,22 @@ describe("CatalogLinkPage", () => {
     expect(await screen.findByText("Catalogo atacado")).toBeInTheDocument();
     expect(screen.getByText("Catalogo Atacado")).toBeInTheDocument();
     expect(screen.getByText((content) => content.includes("149,90"))).toBeInTheDocument();
-    expect(screen.getByText("Preencha nome e WhatsApp do comprador para liberar o pedido.")).toBeInTheDocument();
+    expect(screen.getByText("Preencha nome, WhatsApp e CPF ou CNPJ do comprador para liberar o pedido.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: /biquini aurora/i }));
 
     const buyerName = screen.getByPlaceholderText("Nome do comprador");
     const buyerPhone = screen.getByPlaceholderText("WhatsApp");
+    const buyerDocument = screen.getByPlaceholderText("CPF ou CNPJ");
     fireEvent.change(buyerName, { target: { value: "Loja Mar" } });
     expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
     fireEvent.change(buyerPhone, { target: { value: "11999990000" } });
+
+    // Documento invalido mantem o pedido travado, mesmo com nome e telefone ok.
+    fireEvent.change(buyerDocument, { target: { value: "529.982.247-24" } });
+    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
+    fireEvent.change(buyerDocument, { target: { value: "11222333000181" } });
 
     const sizeInputs = screen.getAllByRole("spinbutton");
     fireEvent.change(sizeInputs[0], { target: { value: "2" } });
@@ -186,6 +192,7 @@ describe("CatalogLinkPage", () => {
         order: {
           buyer_name: "Loja Mar",
           buyer_phone: "11999990000",
+          buyer_document: "11222333000181",
           items: [
             {
               catalog_item_id: 202,

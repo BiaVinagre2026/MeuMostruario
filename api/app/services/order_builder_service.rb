@@ -33,6 +33,8 @@ class OrderBuilderService
         buyer_name: buyer[:name] || buyer["name"],
         buyer_phone: buyer[:phone] || buyer["phone"],
         buyer_email: buyer[:email] || buyer["email"],
+        # Guardado so com digitos: e nesse formato que o PSP espera receber.
+        buyer_document: DocumentValidator.clean(buyer[:document] || buyer["document"]).presence,
         status: "pending",
         payment_status: payment_status || (catalog_link&.allow_payment? ? "pending" : "not_required"),
         notes: notes,

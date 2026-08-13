@@ -112,6 +112,7 @@ RSpec.describe "Isolamento entre tenants", type: :request do
              order: {
                buyer_name: "Loja Alfa",
                buyer_phone: "11999990000",
+               buyer_document: "11222333000181",
                items: [{ catalog_item_id: fixture[:item].id, qty: 2 }]
              }
            },

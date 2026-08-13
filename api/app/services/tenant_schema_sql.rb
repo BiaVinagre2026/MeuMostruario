@@ -655,6 +655,7 @@ class TenantSchemaSql
         buyer_name      VARCHAR(255),
         buyer_phone     VARCHAR(30),
         buyer_email     VARCHAR(255),
+        buyer_document  VARCHAR(20),
         status          VARCHAR(20)    NOT NULL DEFAULT 'pending',
         payment_status  VARCHAR(30)    NOT NULL DEFAULT 'not_required',
         notes           TEXT,
@@ -707,6 +708,7 @@ class TenantSchemaSql
         id                    BIGSERIAL PRIMARY KEY,
         order_id              BIGINT         NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
         gateway_reference     VARCHAR(120),
+        idempotency_key       VARCHAR(64),
         status                VARCHAR(30)    NOT NULL DEFAULT 'pending',
         payment_method        VARCHAR(30),
         amount                DECIMAL(10,2)  NOT NULL DEFAULT 0,
@@ -722,6 +724,8 @@ class TenantSchemaSql
 
       CREATE INDEX IF NOT EXISTS idx_payments_order ON payments (order_id);
       CREATE INDEX IF NOT EXISTS idx_payments_gateway_reference ON payments (gateway_reference);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_idempotency_key
+        ON payments (idempotency_key) WHERE idempotency_key IS NOT NULL;
     SQL
   end
 end

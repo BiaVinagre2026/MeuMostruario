@@ -95,6 +95,95 @@ RSpec.describe "Api::V1::CatalogLinks", type: :request do
     end
   end
 
+  describe "documento do comprador" do
+    def post_order(link, document:, allow_payment:)
+      post "/api/v1/catalog_links/#{link[:link].token}/orders",
+           params: {
+             order: {
+               buyer_name: "Loja Oceano",
+               buyer_phone: "11999990000",
+               buyer_document: document,
+               items: [{ catalog_item_id: link[:item].id, qty: 1 }]
+             }
+           },
+           headers: headers
+    end
+
+    it "exige o documento quando o link cobra" do
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: true
+      )
+
+      post_order(fixture, document: nil, allow_payment: true)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_response["errors"]).to include("informe o CPF ou CNPJ do comprador")
+    end
+
+    it "dispensa o documento quando o link nao cobra" do
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: false
+      )
+
+      post_order(fixture, document: nil, allow_payment: false)
+
+      expect(response).to have_http_status(:created)
+    end
+
+    it "recusa documento com digito verificador errado" do
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: false
+      )
+
+      post_order(fixture, document: "529.982.247-24", allow_payment: false)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_response["errors"]).to include("CPF ou CNPJ invalido")
+    end
+
+    it "aceita CPF, guardando apenas os digitos" do
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: false
+      )
+
+      post_order(fixture, document: "529.982.247-25", allow_payment: false)
+
+      expect(response).to have_http_status(:created)
+      within_tenant(tenant) do
+        expect(Order.order(:id).last.buyer_document).to eq("52998224725")
+      end
+    end
+
+    it "aceita CNPJ, guardando apenas os digitos" do
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: false
+      )
+
+      post_order(fixture, document: "11.222.333/0001-81", allow_payment: false)
+
+      expect(response).to have_http_status(:created)
+      within_tenant(tenant) do
+        expect(Order.order(:id).last.buyer_document).to eq("11222333000181")
+      end
+    end
+
+    it "nao devolve o documento na resposta do pedido" do
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: false
+      )
+
+      post_order(fixture, document: "529.982.247-25", allow_payment: false)
+
+      expect(json_response["order"]).not_to have_key("buyer_document")
+    end
+  end
+
   describe "POST /api/v1/catalog_links/:token/orders" do
     it "creates an anonymous wholesale order and keeps the price snapshot" do
       fixture = create_catalog_fixture(
@@ -111,6 +200,7 @@ RSpec.describe "Api::V1::CatalogLinks", type: :request do
                buyer_name: "Loja Oceano",
                buyer_phone: "11999990000",
                buyer_email: "compras@oceano.com",
+               buyer_document: "11.222.333/0001-81",
                payment_method: "pix",
                items: [
                  {

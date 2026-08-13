@@ -46,6 +46,10 @@ module Api
         items = normalized_order_items
         return render json: { errors: ["items nao pode estar vazio"] }, status: :unprocessable_entity if items.empty?
 
+        if (document_error = buyer_document_error)
+          return render json: { errors: [document_error] }, status: :unprocessable_entity
+        end
+
         order = OrderBuilderService.build(
           catalog_link: @catalog_link,
           buyer: buyer_params.to_h,
@@ -132,8 +136,22 @@ module Api
         )
       end
 
+      # O gateway exige customer_document na cobranca, entao o documento e
+      # obrigatorio quando o link cobra. Sem pagamento o pedido segue sem ele,
+      # mas se vier preenchido precisa ser um CPF ou CNPJ de verdade.
+      def buyer_document_error
+        document = params.dig(:order, :buyer_document)
+
+        if document.blank?
+          return "informe o CPF ou CNPJ do comprador" if @catalog_link.allow_payment?
+          return nil
+        end
+
+        "CPF ou CNPJ invalido" unless DocumentValidator.valid?(document)
+      end
+
       def buyer_params
-        params.require(:order).permit(:buyer_name, :buyer_phone, :buyer_email).transform_keys do |key|
+        params.require(:order).permit(:buyer_name, :buyer_phone, :buyer_email, :buyer_document).transform_keys do |key|
           key.to_s.sub("buyer_", "")
         end
       end

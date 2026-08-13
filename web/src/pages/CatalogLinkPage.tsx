@@ -12,6 +12,7 @@ import {
   sendCatalogInterest,
 } from "@/lib/api/photoCatalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
+import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
 
 type QtyMap = Record<number, Record<string, number>>;
 const PHONE_MIN_DIGITS = 10;
@@ -22,6 +23,7 @@ export default function CatalogLinkPage() {
   const [qty, setQty] = useState<QtyMap>({});
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
+  const [buyerDocument, setBuyerDocument] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["catalog-link", token],
@@ -49,7 +51,11 @@ export default function CatalogLinkPage() {
   const buyerPhoneDigits = onlyDigits(buyerPhone);
   const buyerPhoneFilled = buyerPhoneDigits.length >= PHONE_MIN_DIGITS;
   const buyerReadyForContact = buyerNameFilled && buyerPhoneFilled;
-  const buyerReadyForOrder = buyerNameFilled && buyerPhoneFilled;
+  // O documento so e exigido quando o link cobra: e o gateway que o obriga.
+  const documentRequired = data?.allow_payment ?? false;
+  const buyerDocumentValid = isValidDocument(buyerDocument);
+  const buyerDocumentOk = documentRequired ? buyerDocumentValid : true;
+  const buyerReadyForOrder = buyerNameFilled && buyerPhoneFilled && buyerDocumentOk;
   const showContactValidation = selectedCount > 0 || orderLines.length > 0;
 
   const interest = useMutation({
@@ -82,6 +88,7 @@ export default function CatalogLinkPage() {
       order: {
         buyer_name: buyerName,
         buyer_phone: buyerPhoneDigits,
+        buyer_document: documentDigits(buyerDocument),
         items: orderLines.map(({ item, qty: itemQty }) => ({
           catalog_item_id: item.id,
           product_id: item.product_id,
@@ -159,7 +166,9 @@ export default function CatalogLinkPage() {
       ? "Preencha seu nome e WhatsApp para enviar interesse. O link da selecao pode ser gerado mesmo sem contato."
       : (selectedCount === 0 ? "Selecione ao menos uma foto para enviar interesse ou gerar um novo link." : `${selectedCount} foto(s) selecionada(s).`))
     : (!buyerReadyForOrder
-      ? "Preencha nome e WhatsApp do comprador para liberar o pedido."
+      ? (documentRequired
+        ? "Preencha nome, WhatsApp e CPF ou CNPJ do comprador para liberar o pedido."
+        : "Preencha nome e WhatsApp do comprador para liberar o pedido.")
       : (orderLines.length === 0 ? "Selecione fotos e informe as quantidades por tamanho para registrar o pedido." : `${selectedCount} foto(s) selecionada(s) · ${piecesCount} peca(s) no pedido.`));
 
   return (
@@ -240,11 +249,26 @@ export default function CatalogLinkPage() {
                 placeholder="WhatsApp"
                 style={inputStyle(showContactValidation && !buyerPhoneFilled)}
               />
+              {documentRequired && (
+                <input
+                  value={buyerDocument}
+                  onChange={(event) => setBuyerDocument(formatDocumentInput(event.target.value))}
+                  placeholder="CPF ou CNPJ"
+                  inputMode="numeric"
+                  aria-label="CPF ou CNPJ"
+                  style={inputStyle(showContactValidation && !buyerDocumentValid)}
+                />
+              )}
             </div>
-            {showContactValidation && (!buyerNameFilled || !buyerPhoneFilled) && (
+            {showContactValidation && (!buyerNameFilled || !buyerPhoneFilled || (documentRequired && !buyerDocumentValid)) && (
               <div style={{ fontSize: 12, color: "#b04848" }}>
                 {!buyerNameFilled ? "Informe o nome. " : ""}
-                {!buyerPhoneFilled ? "Use um WhatsApp com DDD para continuar." : ""}
+                {!buyerPhoneFilled ? "Use um WhatsApp com DDD para continuar. " : ""}
+                {documentRequired && !buyerDocumentValid
+                  ? (buyerDocument.trim() === ""
+                    ? "Informe o CPF ou CNPJ para pagar."
+                    : "CPF ou CNPJ invalido.")
+                  : ""}
               </div>
             )}
             <div style={{ fontSize: 12, color: "#6f665e" }}>{actionHint}</div>
