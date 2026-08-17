@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTenant } from "@/providers/TenantProvider";
 import { Photo, Btn, Tag } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
-import { TIERS, brl, TONE } from "@/data/catalog";
+import { TIERS, TONE } from "@/data/catalog";
 import { useProducts, useCollections } from "@/hooks/useCatalog";
 import { PaymentModal } from "@/components/showroom/PaymentModal";
 import { apiClient } from "@/lib/api/client";

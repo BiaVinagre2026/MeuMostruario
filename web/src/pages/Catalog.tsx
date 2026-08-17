@@ -404,10 +404,15 @@ function QuickAddDrawer({ productId, products, onClose, addToCart }: {
   addToCart: (item: CartItem) => void;
 }) {
   const p = products.find((x) => x.id === productId) ?? products[0];
-  if (!p) return null;
-  const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
-  const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(p.sizes.map((s) => [s, 0])));
+  // Os hooks vem antes da guarda: um catalogo vazio faria p ser undefined e a
+  // ordem dos hooks mudaria de um render para o outro.
+  const [colorId, setColorId] = useState(p?.colors[0]?.id ?? "");
+  const [qty, setQty] = useState<Record<string, number>>(
+    Object.fromEntries((p?.sizes ?? []).map((s) => [s, 0]))
+  );
   const total = Object.values(qty).reduce((a, b) => a + b, 0);
+
+  if (!p) return null;
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,10,10,0.4)", zIndex: 100, display: "flex", justifyContent: "flex-end" }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="sr-quick-add-drawer" style={{ background: "white", height: "100%", padding: 32, overflow: "auto", display: "flex", flexDirection: "column", gap: 24 }}>

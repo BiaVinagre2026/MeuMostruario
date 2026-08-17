@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo, Btn } from "./primitives";
 import { Icons } from "./icons";
-import { TENANT, TIERS, brl } from "@/data/catalog";
+import { TENANT, TIERS } from "@/data/catalog";
 import { PaymentModal } from "./PaymentModal";
 
 type FooterModal = "how" | "minorder" | "payment" | null;

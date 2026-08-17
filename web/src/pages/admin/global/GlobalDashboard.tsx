@@ -25,11 +25,10 @@ export default function GlobalDashboard() {
     enabled: isSuperAdmin,
   });
 
-  if (!isSuperAdmin) {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
-
-  const tenants = data?.tenants ?? [];
+  // Os hooks precisam vir antes de qualquer retorno: o operador chega de forma
+  // assincrona, entao isSuperAdmin muda entre renders e a ordem dos hooks nao
+  // pode depender dele.
+  const tenants = useMemo(() => data?.tenants ?? [], [data]);
   const totals = useMemo(() => {
     const active = tenants.filter((tenant) => tenant.status === "active").length;
     const suspended = tenants.filter((tenant) => tenant.status === "suspended").length;
@@ -41,6 +40,10 @@ export default function GlobalDashboard() {
       enterprise,
     };
   }, [tenants]);
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
 
   const recentTenants = [...tenants]
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))

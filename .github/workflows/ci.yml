@@ -87,6 +87,9 @@ jobs:
       - name: Checagem de tipos
         run: npx tsc --noEmit
 
+      - name: ESLint
+        run: npm run lint
+
       - name: Vitest
         run: npm test
 

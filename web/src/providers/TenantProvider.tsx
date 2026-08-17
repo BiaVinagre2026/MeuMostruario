@@ -158,9 +158,9 @@ function hexToHsl(hex: string): string {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!m) return "0 0% 0%";
 
-  let r = parseInt(m[1], 16) / 255;
-  let g = parseInt(m[2], 16) / 255;
-  let b = parseInt(m[3], 16) / 255;
+  const r = parseInt(m[1], 16) / 255;
+  const g = parseInt(m[2], 16) / 255;
+  const b = parseInt(m[3], 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);

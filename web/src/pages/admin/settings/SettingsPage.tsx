@@ -7,7 +7,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAdminConfig, updateAdminConfig, type AdminConfig } from "@/lib/api/config";
+import { getAdminConfig, updateAdminConfig } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
 import BrandingSettings from "./BrandingSettings";
 import PaymentSettings from "./PaymentSettings";

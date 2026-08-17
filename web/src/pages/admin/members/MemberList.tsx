@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Loader2, UserCheck, UserX } from "lucide-react";
+import { Search, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getMembers, updateMemberStatus, type AdminMember } from "@/lib/api/members";
+import { getMembers, updateMemberStatus } from "@/lib/api/members";
 
 const STATUS_TABS = [
   { label: "Todos",     value: "" },

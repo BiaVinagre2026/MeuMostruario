@@ -69,12 +69,14 @@ export default function TenantListPage() {
     },
   });
 
+  // Hooks antes do retorno condicional: isSuperAdmin so fica conhecido depois
+  // que o operador carrega, e a ordem dos hooks nao pode variar entre renders.
+  const tenants = useMemo(() => data?.tenants ?? [], [data]);
+  const sortedTenants = useMemo(() => [...tenants].sort((a, b) => a.name.localeCompare(b.name)), [tenants]);
+
   if (!isSuperAdmin) {
     return <Navigate to="/admin/dashboard" replace />;
   }
-
-  const tenants = data?.tenants ?? [];
-  const sortedTenants = useMemo(() => [...tenants].sort((a, b) => a.name.localeCompare(b.name)), [tenants]);
 
   function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

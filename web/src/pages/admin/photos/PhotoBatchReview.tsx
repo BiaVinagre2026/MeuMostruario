@@ -37,7 +37,9 @@ export default function PhotoBatchReview() {
     enabled: Number.isFinite(batchId),
   });
 
-  const photos = batch?.photos ?? [];
+  // Sem o useMemo, o ?? [] cria um array novo a cada render e invalida todos os
+  // useMemo abaixo, que recalculam a lista inteira de fotos sem necessidade.
+  const photos = useMemo(() => batch?.photos ?? [], [batch]);
   const skuOptions = useMemo(
     () => Array.from(new Set(photos.map((photo) => photo.suggested_sku).filter(Boolean))).sort(),
     [photos]

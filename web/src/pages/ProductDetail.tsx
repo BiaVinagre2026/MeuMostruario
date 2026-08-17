@@ -20,7 +20,6 @@ function useIsMobile(bp = 768) {
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate  = useNavigate();
-  const addToCart = useCartStore((s) => s.add);
 
   const { data: p, isLoading, isError } = useProduct(id ?? "");
 

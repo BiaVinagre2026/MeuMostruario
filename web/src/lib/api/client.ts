@@ -1,4 +1,3 @@
-import type { ApiError as ApiErrorType } from "@/types/auth";
 import { getActiveTenantSlug } from "@/lib/tenantContext";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useOperatorStore } from "@/stores/useOperatorStore";
