@@ -172,7 +172,10 @@ export default function CatalogLinkPage() {
       ? (documentRequired
         ? "Preencha nome, WhatsApp e CPF ou CNPJ do comprador para liberar o pedido."
         : "Preencha nome e WhatsApp do comprador para liberar o pedido.")
-      : (orderLines.length === 0 ? "Selecione fotos e informe as quantidades por tamanho para registrar o pedido." : `${selectedCount} foto(s) selecionada(s) · ${piecesCount} peca(s) no pedido.`));
+      // No atacado o que conta e o item com quantidade, nao o card marcado: da
+      // para digitar a grade sem clicar na foto, e antes isso aparecia como
+      // "0 foto(s) selecionada(s)" ao lado de um pedido cheio.
+      : (orderLines.length === 0 ? "Selecione fotos e informe as quantidades por tamanho para registrar o pedido." : `${orderLines.length} modelo(s) no pedido · ${piecesCount} peca(s).`));
 
   return (
     <main style={{ minHeight: "100vh", background: "#faf8f5", color: "#1d1b18" }}>
@@ -203,7 +206,9 @@ export default function CatalogLinkPage() {
             <div style={{ fontSize: 13, color: "#6f665e" }}>{data.items.length} fotos</div>
             {(selectedCount > 0 || piecesCount > 0) && (
               <div style={{ fontSize: 12, color: "#6f665e" }}>
-                {selectedCount} selecionada(s){piecesCount > 0 ? ` · ${piecesCount} peca(s)` : ""}
+                {selectedCount > 0 ? `${selectedCount} selecionada(s)` : ""}
+                {selectedCount > 0 && piecesCount > 0 ? " · " : ""}
+                {piecesCount > 0 ? `${piecesCount} peca(s)` : ""}
               </div>
             )}
           </div>
@@ -243,30 +248,35 @@ export default function CatalogLinkPage() {
       }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, alignItems: "center" }}>
           <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input
-                value={buyerName}
-                onChange={(event) => setBuyerName(event.target.value)}
-                placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
-                style={inputStyle(showContactValidation && !buyerNameFilled)}
-              />
-              <input
-                value={buyerPhone}
-                onChange={(event) => setBuyerPhone(formatPhoneInput(event.target.value))}
-                placeholder="WhatsApp"
-                style={inputStyle(showContactValidation && !buyerPhoneFilled)}
-              />
-              {documentRequired && (
+            {/* Os campos de contato so aparecem quando ha o que enviar. No
+                celular a barra ficava com 31% da tela justamente enquanto o
+                comprador ainda estava rolando as fotos e nao precisava deles. */}
+            {showContactValidation && (
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
                 <input
-                  value={buyerDocument}
-                  onChange={(event) => setBuyerDocument(formatDocumentInput(event.target.value))}
-                  placeholder="CPF ou CNPJ"
-                  inputMode="numeric"
-                  aria-label="CPF ou CNPJ"
-                  style={inputStyle(showContactValidation && !buyerDocumentValid)}
+                  value={buyerName}
+                  onChange={(event) => setBuyerName(event.target.value)}
+                  placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
+                  style={inputStyle(!buyerNameFilled)}
                 />
-              )}
-            </div>
+                <input
+                  value={buyerPhone}
+                  onChange={(event) => setBuyerPhone(formatPhoneInput(event.target.value))}
+                  placeholder="WhatsApp"
+                  style={inputStyle(!buyerPhoneFilled)}
+                />
+                {documentRequired && (
+                  <input
+                    value={buyerDocument}
+                    onChange={(event) => setBuyerDocument(formatDocumentInput(event.target.value))}
+                    placeholder="CPF ou CNPJ"
+                    inputMode="numeric"
+                    aria-label="CPF ou CNPJ"
+                    style={inputStyle(!buyerDocumentValid)}
+                  />
+                )}
+              </div>
+            )}
             {showContactValidation && (!buyerNameFilled || !buyerPhoneFilled || (documentRequired && !buyerDocumentValid)) && (
               <div style={{ fontSize: 12, color: "#b04848" }}>
                 {!buyerNameFilled ? "Informe o nome. " : ""}
@@ -499,7 +509,8 @@ function CenteredText({ children }: { children: React.ReactNode }) {
 function inputStyle(invalid = false): React.CSSProperties {
   return {
     height: 38,
-    width: "min(100%, 220px)",
+    width: "100%",
+    minWidth: 0,
     border: `1px solid ${invalid ? "#b04848" : "#d8d0c6"}`,
     padding: "0 10px",
     background: "white",

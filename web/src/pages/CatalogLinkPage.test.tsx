@@ -250,10 +250,13 @@ describe("CatalogLinkPage", () => {
     renderPage();
 
     expect(await screen.findByText("Catalogo atacado")).toBeInTheDocument();
+
+    // A quantidade vem primeiro: os campos de contato so aparecem quando ha
+    // algo a enviar, para a barra nao ocupar a tela toda no celular.
+    fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "1" } });
     fireEvent.change(screen.getByPlaceholderText("Nome do comprador"), { target: { value: "Loja Mar" } });
     fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "11999990000" } });
     fireEvent.change(screen.getByPlaceholderText("CPF ou CNPJ"), { target: { value: "11222333000181" } });
-    fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "1" } });
 
     fireEvent.click(screen.getByRole("button", { name: /^Pedido$/i }));
 
