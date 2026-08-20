@@ -142,10 +142,12 @@ docker compose restart api
 > Pagamento e WhatsApp têm guia próprio: **[docs/INTEGRACOES.md](docs/INTEGRACOES.md)**.
 
 - **Pagamento**: integrado com a Orbe PSP (Pix), mas ainda **não validado contra o gateway
-  real** — falta credencial de merchant e um endereço público para o callback.
-- **WhatsApp**: integrado apenas no carrinho do showroom legado; o catálogo por link
-  ainda não envia. O número já é editável em Configurações.
-- **Storefront SSR** (`api/app/views/public/`): conteúdo ainda é o do showroom de moda
-  anterior, não o de fábrica.
+  real** — falta credencial de merchant, um endereço público para o callback e a
+  confirmação do nome do header da assinatura.
+- **Deploy**: o projeto nunca foi publicado. O backend tem Dockerfile de produção, mas o
+  frontend é uma SPA sem forma de ser servida, e faltam hospedagem, domínio e o DNS
+  curinga que o subdomínio por tenant exige.
+- **WhatsApp no catálogo por link**: as demais telas já usam o número do tenant; falta a
+  tela do comprador atacado, onde a mensagem precisa sair depois do pedido registrado.
 
 Para o contexto de produto e as decisões de arquitetura, veja [CLAUDE.md](CLAUDE.md).

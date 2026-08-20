@@ -92,6 +92,24 @@ Nesta fase, isso deixa de ser apenas compatibilidade e volta a ser parte do prod
     gateway configurado. O comprador recebe QR Code e copia-e-cola na própria tela.
 12. A Orbe avisa `POST /api/v1/payments/webhook/:tenant_slug` a cada mudança de status.
 
+## Estado Atual
+
+Fluxo do MVP completo e validado no navegador. O que falta para operar de verdade:
+
+- **Pagamento nunca falou com a Orbe.** Código e testes prontos com resposta simulada.
+  Faltam credencial de merchant, endereço público para o callback e a confirmação do nome
+  do header da assinatura. Ver `docs/INTEGRACOES.md`.
+- **Deploy não existe.** O `api/Dockerfile` é de produção e o supervisord sobe Puma,
+  Sidekiq e Redis juntos, mas o frontend não tem como ser servido: é SPA Vite sem
+  Dockerfile, sem nginx e sem rota de fallback na API. Também faltam hospedagem, banco
+  gerenciado, domínio e o DNS curinga que o subdomínio por tenant exige.
+- **WhatsApp no `CatalogLinkPage`.** As demais telas já usam `lib/whatsapp.ts` com o número
+  do tenant. Na tela do comprador atacado a mensagem deve sair **depois** do pedido
+  registrado, nunca no lugar dele.
+
+Storefront SSR (`api/app/views/public/`) está funcionando e é dirigido pelos dados do
+tenant — não tem conteúdo fixo da fase anterior.
+
 ## Comandos
 
 Backend:
@@ -110,8 +128,25 @@ npm install
 npm run dev
 npm run build
 npx tsc --noEmit
+npm run lint
 npm test
 ```
+
+Se a API subir e não responder, é o PID travado — acontece com frequência:
+
+```bash
+rm -f api/tmp/pids/server.pid && docker compose restart api
+```
+
+## Qualidade
+
+- CI em `.github/workflows/ci.yml`: RSpec com postgres e redis, mais tipos, lint, testes e
+  build no frontend. Roda em push de qualquer branch e em pull request.
+- Isolamento entre tenants tem cobertura dedicada em
+  `api/spec/requests/api/v1/tenant_isolation_spec.rb`. Todo teste ali afirma os dois lados:
+  o tenant dono responde e o outro não. Sem isso um 404 poderia vir de qualquer motivo.
+- `bin/rails catalog:repair_legacy_products TENANT=demo` conserta produtos cujo nome e SKU
+  foram sobrescritos por uma importação antiga.
 
 ## Versionamento
 
