@@ -5,6 +5,7 @@ import { Btn } from "@/components/showroom/primitives";
 import { TIERS, brl, activeTier, TONE } from "@/data/catalog";
 import { useTenant } from "@/providers/TenantProvider";
 import { apiClient } from "@/lib/api/client";
+import { extractWhatsappNumber } from "@/lib/whatsapp";
 import type { CartItem } from "@/types/catalog";
 
 function useIsMobile(bp = 768) {
@@ -15,15 +16,6 @@ function useIsMobile(bp = 768) {
     return () => window.removeEventListener("resize", h);
   }, [bp]);
   return v;
-}
-
-// Extrai número limpo de uma URL wa.me ou string de telefone
-function extractWhatsappNumber(raw: string | undefined): string {
-  if (!raw) return "";
-  // https://wa.me/5511999999999 → 5511999999999
-  const match = raw.match(/wa\.me\/(\d+)/);
-  if (match) return match[1];
-  return raw.replace(/\D/g, "");
 }
 
 export function CartDrawer() {

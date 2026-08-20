@@ -2,9 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Photo, Btn } from "@/components/showroom/primitives";
 import { Icons } from "@/components/showroom/icons";
-import { TONE, brl, activeTier, TENANT } from "@/data/catalog";
+import { TONE, brl, activeTier } from "@/data/catalog";
 import { useProduct } from "@/hooks/useCatalog";
 import { useCartStore } from "@/stores/useCartStore";
+import { useTenant } from "@/providers/TenantProvider";
+import { openWhatsapp } from "@/lib/whatsapp";
+import { toast } from "sonner";
 import type { Product, Color } from "@/types/catalog";
 
 function useIsMobile(bp = 768) {
@@ -45,6 +48,16 @@ function ProductDetailInner({ p }: { p: Product }) {
   const navigate  = useNavigate();
   const addToCart = useCartStore((s) => s.add);
   const isMobile  = useIsMobile();
+  const tenant    = useTenant();
+
+  // O numero sai das Configuracoes do tenant, nao mais do arquivo estatico.
+  function falarSobreEstaPeca() {
+    const aberto = openWhatsapp(
+      tenant.social.whatsapp,
+      `Ola, tenho interesse na peca ${p.name} (${p.sku ?? p.id}). Pode me ajudar?`
+    );
+    if (!aberto) toast.error("WhatsApp ainda nao configurado nas Configuracoes do tenant.");
+  }
 
   const [colorId, setColorId] = useState(p.colors[0]?.id ?? "");
   const [qty, setQty]         = useState<Record<string, number>>(Object.fromEntries(p.sizes.map((s) => [s, 0])));
@@ -342,11 +355,7 @@ function ProductDetailInner({ p }: { p: Product }) {
               {total > 0 ? `ADICIONAR ${total} PEÇA${total !== 1 ? "S" : ""}` : "SELECIONE QUANTIDADE"}
             </Btn>
             <Btn variant="outline" size="lg" icon={<Icons.Whats/>}
-              onClick={() => {
-                const num = TENANT.whatsapp.replace(/\D/g, "");
-                const msg = encodeURIComponent(`Olá, tenho interesse na peça ${p.name} (${p.sku ?? p.id}). Pode me ajudar?`);
-                window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
-              }}>
+              onClick={falarSobreEstaPeca}>
               WHATSAPP
             </Btn>
           </div>
@@ -396,11 +405,7 @@ function ProductDetailInner({ p }: { p: Product }) {
           {total > 0 ? `ADICIONAR ${total} PEÇA${total !== 1 ? "S" : ""}` : "SELECIONE QUANTIDADE"}
         </Btn>
         <Btn variant="outline" size="lg" icon={<Icons.Whats/>}
-          onClick={() => {
-            const num = TENANT.whatsapp.replace(/\D/g, "");
-            const msg = encodeURIComponent(`Olá, tenho interesse na peça ${p.name} (${p.sku ?? p.id}). Pode me ajudar?`);
-            window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
-          }}>
+          onClick={falarSobreEstaPeca}>
         </Btn>
       </div>
 

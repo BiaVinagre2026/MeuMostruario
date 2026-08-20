@@ -79,24 +79,28 @@ social.whatsapp; // "https://wa.me/5521981538334" ou "+55 11 90000-0000"
 
 O formato é livre — o admin pode digitar link ou número.
 
-### Referência que já funciona
+### Helpers compartilhados
 
-[`web/src/components/cart/CartDrawer.tsx`](../web/src/components/cart/CartDrawer.tsx) faz
-isso corretamente hoje: normaliza o número com `extractWhatsappNumber` (aceita tanto
-`wa.me/55...` quanto texto com máscara), monta a mensagem do pedido e abre
-`https://wa.me/<numero>?text=<mensagem>`. Vale copiar a abordagem.
+[`web/src/lib/whatsapp.ts`](../web/src/lib/whatsapp.ts) concentra o tratamento:
 
-Ele também trata o caso do número não configurado, mostrando um aviso em vez de quebrar.
+- `extractWhatsappNumber(raw)` — aceita link `wa.me/55...` ou texto com máscara
+- `whatsappUrl(raw, mensagem)` — monta o endereço, ou string vazia sem número
+- `openWhatsapp(raw, mensagem)` — abre em nova aba e **devolve `false`** quando o tenant
+  ainda não configurou o número, para quem chamou poder avisar em vez de não fazer nada
+
+### Onde já está ligado
+
+| Arquivo | Situação |
+|---|---|
+| `web/src/components/cart/CartDrawer.tsx` | Envia o pedido do carrinho |
+| `web/src/components/showroom/Footer.tsx` | Botão "Falar com o atacado" |
+| `web/src/pages/ProductDetail.tsx` | Botão de interesse na peça |
 
 ### Onde falta plugar
 
 | Arquivo | Situação |
 |---|---|
 | `web/src/pages/CatalogLinkPage.tsx` | Não envia por WhatsApp. **É o principal** — é a tela do comprador atacado. |
-| `web/src/components/showroom/Footer.tsx` | Usa `alert()` com número estático de `@/data/catalog` |
-| `web/src/pages/ProductDetail.tsx` | Idem |
-
-Os dois últimos são do showroom legado, que ainda tem conteúdo da fase anterior.
 
 ### Sugestão para o link de atacado
 

@@ -4,6 +4,9 @@ import { Logo, Btn } from "./primitives";
 import { Icons } from "./icons";
 import { TENANT, TIERS } from "@/data/catalog";
 import { PaymentModal } from "./PaymentModal";
+import { useTenant } from "@/providers/TenantProvider";
+import { openWhatsapp } from "@/lib/whatsapp";
+import { toast } from "sonner";
 
 type FooterModal = "how" | "minorder" | "payment" | null;
 
@@ -21,6 +24,17 @@ export function Footer({ compact = false }: { compact?: boolean }) {
   const navigate  = useNavigate();
   const [modal, setModal] = useState<FooterModal>(null);
   const isMobile  = useIsMobile();
+  const tenant    = useTenant();
+
+  // O numero vem das Configuracoes do tenant. Sem ele configurado, avisa em vez
+  // de abrir uma conversa vazia.
+  function falarComAtacado() {
+    const aberto = openWhatsapp(
+      tenant.social.whatsapp,
+      `Ola! Vim pelo catalogo da ${tenant.companyName || tenant.tenantName} e quero falar sobre atacado.`
+    );
+    if (!aberto) toast.error("WhatsApp ainda nao configurado nas Configuracoes do tenant.");
+  }
 
   if (compact) {
     return (
@@ -34,7 +48,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
         <Logo size={14}/>
         {!isMobile && <span style={{ opacity: 0.5 }}>{TENANT.name} · {TENANT.cnpj} · São Paulo, Brasil</span>}
         <Btn variant="accent" size="sm" icon={<Icons.Whats/>}
-          onClick={() => alert("Abre WhatsApp: " + TENANT.whatsapp)}>
+          onClick={falarComAtacado}>
           Atacado
         </Btn>
       </footer>
@@ -68,7 +82,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
             </p>
             <Btn variant="accent" icon={<Icons.Whats/>}
               style={{ width: "100%", justifyContent: "center" }}
-              onClick={() => alert("Abre WhatsApp: " + TENANT.whatsapp)}>
+              onClick={falarComAtacado}>
               Falar com o atacado
             </Btn>
 
@@ -108,7 +122,7 @@ export function Footer({ compact = false }: { compact?: boolean }) {
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: 40, marginTop: 28, flexWrap: "wrap" }}>
                 <Btn variant="accent" icon={<Icons.Whats/>}
-                  onClick={() => alert("Abre WhatsApp: " + TENANT.whatsapp)}>
+                  onClick={falarComAtacado}>
                   Falar com o atacado
                 </Btn>
                 <ul style={{ listStyle: "none", display: "flex", gap: 28, alignItems: "center" }}>
