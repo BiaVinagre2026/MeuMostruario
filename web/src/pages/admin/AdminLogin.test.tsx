@@ -53,7 +53,7 @@ describe("AdminLogin", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "admin@demo.com" } });
-    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "password123" } });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
     expect(await screen.findByText("Tenant admin home")).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("AdminLogin", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "root@demo.com" } });
-    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "password123" } });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
     expect(await screen.findByText("Global admin home")).toBeInTheDocument();

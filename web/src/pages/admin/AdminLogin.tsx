@@ -1,9 +1,9 @@
-﻿import { useEffect } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +12,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useOperatorLogin } from "@/hooks/useOperatorAuth";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import type { Operator } from "@/types/operator";
+import { resolveTenantSlugFromHost } from "@/lib/tenantContext";
 
+// Terceira copia da mesma logica no projeto, agora unificada: abrindo pelo IP
+// da rede (o caminho do celular) o "192" era tomado como tenant, o campo de
+// slug sumia do formulario e o login ia com tenant inexistente.
 function detectTenantSlug(): string {
-  const host = window.location.hostname;
-  const parts = host.split(".");
-  if (parts.length >= 2) {
-    const slug = parts[0];
-    if (slug && !["www", "api", "admin", "app", "localhost"].includes(slug)) {
-      return slug;
-    }
-  }
-  return "";
+  return resolveTenantSlugFromHost(window.location.hostname) ?? "";
 }
 
 export function getAdminHome(role?: Operator["role"]): string {
@@ -43,6 +39,7 @@ export default function AdminLogin() {
   const isLoading = useOperatorStore((s) => s.isLoading);
   const operatorRole = useOperatorStore((s) => s.operator?.role);
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   const detectedSlug = detectTenantSlug();
   const showTenantField = !detectedSlug;
@@ -118,13 +115,26 @@ export default function AdminLogin() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                disabled={isPending}
-                {...register("password")}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  disabled={isPending}
+                  className="pr-11"
+                  {...register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((atual) => !atual)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  // 44px: no celular digitar senha errada e comum, e o alvo
+                  // precisa ser tocavel sem acertar o campo por engano.
+                  className="absolute right-0 top-0 h-full w-11 grid place-items-center text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
+import { networkInterfaces, type NetworkInterfaceInfo } from "os";
 
 function resolveVersion(): string {
   if (process.env.VITE_APP_VERSION) return process.env.VITE_APP_VERSION;
@@ -20,6 +21,20 @@ function resolveGitSha(): string {
     return "";
   }
 }
+
+/**
+ * IPs desta maquina na rede local, para o celular abrir o app pelo endereco de
+ * rede. Descobertos no boot em vez de fixados: o IP muda quando o roteador
+ * renova o DHCP ou quando se troca de rede.
+ */
+function localNetworkHosts(): string[] {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter((iface): iface is NetworkInterfaceInfo => Boolean(iface) && !iface!.internal)
+    .map((iface) => iface.address);
+}
+
+const LOCAL_NETWORK_HOSTS = localNetworkHosts();
 
 export default defineConfig({
   define: {
@@ -42,8 +57,13 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: ["localhost", ".app.local"],
-    host: "::",
+    // IPs da rede local entram na lista para o acesso pelo celular nao depender
+    // do comportamento padrao do Vite com endereco numerico, que ja mudou entre
+    // versoes. `.app.local` cobre os subdominios por tenant em desenvolvimento.
+    allowedHosts: ["localhost", ".app.local", ...LOCAL_NETWORK_HOSTS],
+    // true escuta em IPv4 e IPv6. O "::" anterior dependia de dual-stack do
+    // sistema para responder no IPv4 da rede.
+    host: true,
     port: 3000,
     strictPort: true,
     hmr: {

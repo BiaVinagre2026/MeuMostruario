@@ -15,6 +15,7 @@ import type { TokenOrderResponse } from "@/lib/api/photoCatalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
 import { copyToClipboard } from "@/lib/clipboard";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 type QtyMap = Record<number, Record<string, number>>;
 const PHONE_MIN_DIGITS = 10;
@@ -44,6 +45,10 @@ export default function CatalogLinkPage() {
   const [placedOrder, setPlacedOrder] = useState<TokenOrderResponse | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const painelRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  // No celular o pedido vive numa folha que sobe quando o comprador pede, em
+  // vez de uma barra permanente comendo um terco da tela.
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // O painel nasce no topo do documento, mas quem acabou de tocar em "Pedido"
   // esta no fim de uma pagina longa. Sem trazer a tela ate ele, o QR Code do
@@ -209,6 +214,43 @@ export default function CatalogLinkPage() {
       // para digitar a grade sem clicar na foto, e antes isso aparecia como
       // "0 foto(s) selecionada(s)" ao lado de um pedido cheio.
       : (orderLines.length === 0 ? "Selecione fotos e informe as quantidades por tamanho para registrar o pedido." : `${orderLines.length} modelo(s) no pedido · ${piecesCount} peca(s).`));
+
+  if (isMobile) {
+    return (
+      <MobileCatalog
+        data={data}
+        publicOnly={publicOnly}
+        qty={qty}
+        selected={selected}
+        orderLines={orderLines}
+        piecesCount={piecesCount}
+        total={total}
+        onQty={setItemQty}
+        onToggle={toggle}
+        sheetOpen={sheetOpen}
+        onOpenSheet={() => setSheetOpen(true)}
+        onCloseSheet={() => setSheetOpen(false)}
+        buyerName={buyerName}
+        buyerPhone={buyerPhone}
+        buyerDocument={buyerDocument}
+        onBuyerName={setBuyerName}
+        onBuyerPhone={(value) => setBuyerPhone(formatPhoneInput(value))}
+        onBuyerDocument={(value) => setBuyerDocument(formatDocumentInput(value))}
+        documentRequired={documentRequired}
+        buyerNameFilled={buyerNameFilled}
+        buyerPhoneFilled={buyerPhoneFilled}
+        buyerDocumentValid={buyerDocumentValid}
+        orderDisabled={orderDisabled}
+        interestDisabled={interestDisabled}
+        onOrder={() => order.mutate()}
+        onInterest={() => interest.mutate()}
+        orderPending={order.isPending}
+        interestPending={interest.isPending}
+        placedOrder={placedOrder}
+        onClosePayment={() => setPlacedOrder(null)}
+      />
+    );
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#faf8f5", color: "#1d1b18" }}>
@@ -605,6 +647,434 @@ function PaymentPanel({ response, onClose }: { response: TokenOrderResponse; onC
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * Catalogo no celular: uma peca por tela, com rolagem que encaixa.
+ *
+ * O layout de grade que serve no desktop nao servia aqui — cabecalho fixo em
+ * cima e barra de pedido fixa embaixo sobravam menos de um terco da tela para a
+ * foto. Aqui o cabecalho rola embora, cada peca ocupa a tela inteira e o pedido
+ * mora numa folha que sobe so quando o comprador chama.
+ */
+function MobileCatalog(props: {
+  data: PublicCatalogLink;
+  publicOnly: boolean;
+  qty: QtyMap;
+  selected: Set<number>;
+  orderLines: Array<{ item: PublicCatalogItem; qty: Record<string, number>; total: number }>;
+  piecesCount: number;
+  total: number;
+  onQty: (itemId: number, size: string, value: number) => void;
+  onToggle: (itemId: number) => void;
+  sheetOpen: boolean;
+  onOpenSheet: () => void;
+  onCloseSheet: () => void;
+  buyerName: string;
+  buyerPhone: string;
+  buyerDocument: string;
+  onBuyerName: (v: string) => void;
+  onBuyerPhone: (v: string) => void;
+  onBuyerDocument: (v: string) => void;
+  documentRequired: boolean;
+  buyerNameFilled: boolean;
+  buyerPhoneFilled: boolean;
+  buyerDocumentValid: boolean;
+  orderDisabled: boolean;
+  interestDisabled: boolean;
+  onOrder: () => void;
+  onInterest: () => void;
+  orderPending: boolean;
+  interestPending: boolean;
+  placedOrder: TokenOrderResponse | null;
+  onClosePayment: () => void;
+}) {
+  const { data, publicOnly, qty, piecesCount, total, placedOrder } = props;
+  const temPedido = publicOnly ? props.selected.size > 0 : piecesCount > 0;
+
+  if (placedOrder) {
+    return (
+      <main style={{ minHeight: "100dvh", background: "#faf8f5", overflowY: "auto" }}>
+        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} />
+      </main>
+    );
+  }
+
+  return (
+    <>
+      <main
+        style={{
+          height: "100dvh",
+          overflowY: "auto",
+          scrollSnapType: "y mandatory",
+          background: "#faf8f5",
+          color: "#1d1b18",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {/* Sem position:sticky — some ao rolar e devolve a tela para as fotos. */}
+        <header style={{ padding: "20px 16px 16px", background: "white", borderBottom: "1px solid #e5ded4" }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", color: "#8a7f73" }}>
+            {publicOnly ? "Catalogo" : "Atacado"}
+          </div>
+          <h1 style={{ fontSize: 22, margin: "6px 0 0", lineHeight: 1.15 }}>{data.catalog.name}</h1>
+          <div style={{ fontSize: 13, color: "#6f665e", marginTop: 6 }}>
+            {data.items.length} pecas · deslize para ver
+          </div>
+        </header>
+
+        {data.items.map((item, index) => (
+          <MobileItemScreen
+            key={item.id}
+            item={item}
+            posicao={index + 1}
+            deTotal={data.items.length}
+            showPrices={data.show_prices}
+            allowOrder={data.allow_order}
+            selected={props.selected.has(item.id)}
+            qty={qty[item.id] ?? {}}
+            onToggle={() => props.onToggle(item.id)}
+            onQty={(size, value) => props.onQty(item.id, size, value)}
+          />
+        ))}
+      </main>
+
+      {!props.sheetOpen && (
+        <MobileSummaryPill
+          publicOnly={publicOnly}
+          temPedido={temPedido}
+          piecesCount={piecesCount}
+          selecionadas={props.selected.size}
+          total={total}
+          showPrices={data.show_prices}
+          onOpen={props.onOpenSheet}
+        />
+      )}
+
+      {props.sheetOpen && (
+        <MobileCheckoutSheet
+          {...props}
+          temPedido={temPedido}
+        />
+      )}
+    </>
+  );
+}
+
+/** Uma peca ocupando a tela inteira, com a foto grande e a grade embaixo. */
+function MobileItemScreen({ item, posicao, deTotal, showPrices, allowOrder, selected, qty, onToggle, onQty }: {
+  item: PublicCatalogItem;
+  posicao: number;
+  deTotal: number;
+  showPrices: boolean;
+  allowOrder: boolean;
+  selected: boolean;
+  qty: Record<string, number>;
+  onToggle: () => void;
+  onQty: (size: string, value: number) => void;
+}) {
+  const pecasNoItem = Object.values(qty).reduce((soma, v) => soma + v, 0);
+  const atributos = [item.color, item.pantone, item.size_group].filter(Boolean).join(" · ");
+
+  return (
+    <section
+      style={{
+        height: "100dvh",
+        scrollSnapAlign: "start",
+        display: "flex",
+        flexDirection: "column",
+        background: "white",
+        borderBottom: "1px solid #e5ded4",
+      }}
+    >
+      <div style={{ position: "relative", flex: 1, minHeight: 0, background: "#eee8df" }}>
+        {item.image_url && (
+          <img
+            src={item.image_url}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+          />
+        )}
+        <div style={{
+          position: "absolute", top: 12, right: 12,
+          background: "rgba(29,27,24,0.72)", color: "white",
+          fontSize: 12, padding: "4px 10px", borderRadius: 999,
+        }}>
+          {posicao}/{deTotal}
+        </div>
+        {pecasNoItem > 0 && (
+          <div style={{
+            position: "absolute", top: 12, left: 12,
+            background: "#1d1b18", color: "white",
+            fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
+          }}>
+            {pecasNoItem} no pedido
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: "14px 16px", display: "grid", gap: 10, flexShrink: 0 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.2 }}>{item.name}</div>
+          <div style={{ fontSize: 13, color: "#6f665e", marginTop: 3 }}>{atributos || "Sem classificacao"}</div>
+        </div>
+
+        {showPrices && (
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{brl(Number(item.price ?? 0))}</div>
+        )}
+
+        {allowOrder ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            {item.sizes.map((size) => (
+              <SizeStepper
+                key={size}
+                size={size}
+                valor={qty[size] ?? 0}
+                onChange={(valor) => onQty(size, valor)}
+              />
+            ))}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-pressed={selected}
+            style={{
+              ...buttonStyle(selected ? "primary" : "secondary"),
+              width: "100%",
+              justifyContent: "center",
+            }}
+          >
+            {selected ? <Check size={18} /> : null}
+            {selected ? "Selecionada" : "Tenho interesse nesta"}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Menos e mais de 44px: no celular ninguem quer digitar num campo minusculo. */
+function SizeStepper({ size, valor, onChange }: { size: string; valor: number; onChange: (v: number) => void }) {
+  const botao: React.CSSProperties = {
+    width: 44, height: 44,
+    border: "1px solid #d8d0c6",
+    background: "white",
+    fontSize: 20, lineHeight: 1,
+    cursor: "pointer",
+    display: "grid", placeItems: "center",
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <span style={{ fontSize: 15, fontWeight: 500 }}>{size}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button type="button" aria-label={`Tirar uma peca do tamanho ${size}`} style={botao}
+          onClick={() => onChange(Math.max(0, valor - 1))}>−</button>
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          aria-label={size}
+          value={valor || ""}
+          placeholder="0"
+          onFocus={(event) => event.target.select()}
+          onChange={(event) => onChange(Math.max(0, Number(event.target.value)))}
+          style={{ width: 56, height: 44, fontSize: 16, textAlign: "center", border: "1px solid #d8d0c6", background: "white" }}
+        />
+        <button type="button" aria-label={`Somar uma peca do tamanho ${size}`} style={botao}
+          onClick={() => onChange(valor + 1)}>+</button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Resumo flutuante: ocupa uma faixa fina, nao um terco da tela como a barra
+ * antiga. So aparece quando ha o que enviar.
+ */
+function MobileSummaryPill({ publicOnly, temPedido, piecesCount, selecionadas, total, showPrices, onOpen }: {
+  publicOnly: boolean;
+  temPedido: boolean;
+  piecesCount: number;
+  selecionadas: number;
+  total: number;
+  showPrices: boolean;
+  onOpen: () => void;
+}) {
+  if (!temPedido) return null;
+
+  const resumo = publicOnly
+    ? `${selecionadas} peca(s) selecionada(s)`
+    : `${piecesCount} peca(s)${showPrices ? ` · ${brl(total)}` : ""}`;
+
+  return (
+    <div style={{
+      position: "fixed", left: 12, right: 12,
+      bottom: "calc(12px + env(safe-area-inset-bottom))",
+      zIndex: 30,
+    }}>
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{
+          width: "100%", minHeight: 54,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "0 18px",
+          background: "#1d1b18", color: "white",
+          border: "none", borderRadius: 999,
+          boxShadow: "0 6px 24px rgba(29,27,24,0.28)",
+          fontSize: 15, cursor: "pointer",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ShoppingBag size={18} />
+          {resumo}
+        </span>
+        <span style={{ fontWeight: 600 }}>{publicOnly ? "Enviar" : "Fechar pedido"}</span>
+      </button>
+    </div>
+  );
+}
+
+/** Folha que sobe com contato e acoes. Fecha tocando fora ou no X. */
+function MobileCheckoutSheet(props: {
+  publicOnly: boolean;
+  temPedido: boolean;
+  piecesCount: number;
+  total: number;
+  data: PublicCatalogLink;
+  orderLines: Array<{ item: PublicCatalogItem; qty: Record<string, number>; total: number }>;
+  buyerName: string;
+  buyerPhone: string;
+  buyerDocument: string;
+  onBuyerName: (v: string) => void;
+  onBuyerPhone: (v: string) => void;
+  onBuyerDocument: (v: string) => void;
+  documentRequired: boolean;
+  buyerNameFilled: boolean;
+  buyerPhoneFilled: boolean;
+  buyerDocumentValid: boolean;
+  orderDisabled: boolean;
+  interestDisabled: boolean;
+  onOrder: () => void;
+  onInterest: () => void;
+  orderPending: boolean;
+  interestPending: boolean;
+  onCloseSheet: () => void;
+}) {
+  const { publicOnly, data, orderLines, piecesCount, total } = props;
+  const faltaAlgo = !props.buyerNameFilled || !props.buyerPhoneFilled
+    || (props.documentRequired && !props.buyerDocumentValid);
+
+  return (
+    <div
+      onClick={props.onCloseSheet}
+      style={{
+        position: "fixed", inset: 0, zIndex: 40,
+        background: "rgba(29,27,24,0.45)",
+        display: "flex", alignItems: "flex-end",
+      }}
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: "100%", maxHeight: "88dvh", overflowY: "auto",
+          background: "white",
+          borderRadius: "16px 16px 0 0",
+          padding: `18px 16px calc(18px + env(safe-area-inset-bottom))`,
+          display: "grid", gap: 14,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <strong style={{ fontSize: 17 }}>{publicOnly ? "Enviar interesse" : "Seu pedido"}</strong>
+          <button type="button" aria-label="Fechar" onClick={props.onCloseSheet}
+            style={{ width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {!publicOnly && orderLines.length > 0 && (
+          <div style={{ display: "grid", gap: 8, borderTop: "1px solid #eee6dc", paddingTop: 12 }}>
+            {orderLines.map(({ item, qty: linha, total: pecas }) => (
+              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 14 }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontWeight: 500 }}>{item.name}</span>
+                  <span style={{ color: "#6f665e", fontSize: 12 }}>
+                    {Object.entries(linha).filter(([, v]) => v > 0).map(([t, v]) => `${t}: ${v}`).join("  ")}
+                  </span>
+                </span>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  {pecas} pc{data.show_prices ? ` · ${brl(pecas * Number(item.price ?? 0))}` : ""}
+                </span>
+              </div>
+            ))}
+            {data.show_prices && (
+              <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #eee6dc", paddingTop: 10, fontSize: 16 }}>
+                <strong>Total</strong>
+                <strong>{brl(total)}</strong>
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: "#6f665e" }}>{piecesCount} peca(s) no total</div>
+          </div>
+        )}
+
+        <div style={{ display: "grid", gap: 8, borderTop: "1px solid #eee6dc", paddingTop: 12 }}>
+          <input
+            value={props.buyerName}
+            onChange={(event) => props.onBuyerName(event.target.value)}
+            placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
+            autoComplete="name"
+            style={inputStyle(!props.buyerNameFilled)}
+          />
+          <input
+            value={props.buyerPhone}
+            onChange={(event) => props.onBuyerPhone(event.target.value)}
+            placeholder="WhatsApp"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            style={inputStyle(!props.buyerPhoneFilled)}
+          />
+          {props.documentRequired && (
+            <input
+              value={props.buyerDocument}
+              onChange={(event) => props.onBuyerDocument(event.target.value)}
+              placeholder="CPF ou CNPJ"
+              inputMode="numeric"
+              aria-label="CPF ou CNPJ"
+              style={inputStyle(!props.buyerDocumentValid)}
+            />
+          )}
+          {faltaAlgo && (
+            <div style={{ fontSize: 13, color: "#b04848" }}>
+              {!props.buyerNameFilled ? "Informe o nome. " : ""}
+              {!props.buyerPhoneFilled ? "Use um WhatsApp com DDD. " : ""}
+              {props.documentRequired && !props.buyerDocumentValid
+                ? (props.buyerDocument.trim() === "" ? "Informe o CPF ou CNPJ." : "CPF ou CNPJ invalido.")
+                : ""}
+            </div>
+          )}
+        </div>
+
+        {publicOnly ? (
+          <button type="button" disabled={props.interestDisabled} onClick={props.onInterest}
+            style={{ ...buttonStyle("primary", props.interestDisabled), width: "100%", minHeight: 50 }}>
+            {props.interestPending ? <Loader2 size={18} /> : <MessageCircle size={18} />}
+            Enviar interesse
+          </button>
+        ) : (
+          <button type="button" disabled={props.orderDisabled} onClick={props.onOrder}
+            style={{ ...buttonStyle("primary", props.orderDisabled), width: "100%", minHeight: 50 }}>
+            {props.orderPending ? <Loader2 size={18} /> : <ShoppingBag size={18} />}
+            {data.allow_payment ? "Fechar pedido e pagar" : "Enviar pedido"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
