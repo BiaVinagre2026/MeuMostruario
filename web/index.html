@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover habilita env(safe-area-inset-*), usado pelas barras
+         fixas para nao ficarem sob o indicador de gesto do iPhone.
+         interactive-widget faz o teclado do celular encolher o layout em vez de
+         cobrir os campos. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>App</title>
     <meta name="description" content="Multi-tenant whitelabel application" />
     <meta name="theme-color" content="#1E40AF" />

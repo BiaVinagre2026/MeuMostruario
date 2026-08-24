@@ -7,7 +7,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       className="toaster group"
-      duration={7000}
+      // No rodape o aviso cobria os botoes das barras fixas — e por 7s, com a
+      // acao principal do comprador inacessivel embaixo dele.
+      position="top-center"
+      duration={4000}
       style={{ "--width": "427px" } as React.CSSProperties}
       toastOptions={{
         style: {

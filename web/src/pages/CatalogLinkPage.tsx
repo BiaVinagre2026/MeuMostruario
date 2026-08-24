@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Copy, Loader2, MessageCircle, ShoppingBag, X } from "lucide-react";
@@ -14,6 +14,7 @@ import {
 import type { TokenOrderResponse } from "@/lib/api/photoCatalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
+import { copyToClipboard } from "@/lib/clipboard";
 
 type QtyMap = Record<number, Record<string, number>>;
 const PHONE_MIN_DIGITS = 10;
@@ -25,7 +26,33 @@ export default function CatalogLinkPage() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerDocument, setBuyerDocument] = useState("");
+
+  // A barra de acao e fixa e muda de altura conforme o pedido cresce. Sem medir,
+  // o espaco reservado no fim da lista erra e as ultimas fotos ficam embaixo
+  // dela — no celular isso escondia a linha inteira.
+  const footerRef = useRef<HTMLElement>(null);
+  const [footerHeight, setFooterHeight] = useState(140);
+
+  // Medido a cada render, antes da pintura: a altura da barra muda junto com o
+  // estado que causou o render. So grava quando muda de verdade, senao vira
+  // laco infinito.
+  useLayoutEffect(() => {
+    const altura = footerRef.current?.getBoundingClientRect().height;
+    if (altura && Math.abs(altura - footerHeight) > 1) setFooterHeight(altura);
+  });
+
   const [placedOrder, setPlacedOrder] = useState<TokenOrderResponse | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+
+  // O painel nasce no topo do documento, mas quem acabou de tocar em "Pedido"
+  // esta no fim de uma pagina longa. Sem trazer a tela ate ele, o QR Code do
+  // Pix aparece fora da area visivel e o comprador acha que nada aconteceu.
+  useLayoutEffect(() => {
+    if (placedOrder || generatedLink) {
+      painelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [placedOrder, generatedLink]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["catalog-link", token],
@@ -78,8 +105,14 @@ export default function CatalogLinkPage() {
     mutationFn: () => createSelectionLink(token, selectedIds),
     onSuccess: (res) => {
       const url = `${window.location.origin}/link/${res.catalog_link.token}`;
-      void navigator.clipboard.writeText(url);
-      toast.success("Link da selecao copiado.");
+      // A copia acontece depois da resposta da rede, fora do gesto do toque:
+      // o Safari do iOS recusa, e por http a API de clipboard nem existe. Por
+      // isso o link tambem fica visivel na tela, em vez de so prometer que foi
+      // copiado.
+      setGeneratedLink(url);
+      void copyToClipboard(url).then((copiado) => {
+        toast.success(copiado ? "Link da selecao copiado." : "Link gerado. Toque para copiar.");
+      });
       clearSelection();
     },
     onError: () => toast.error("Nao foi possivel gerar o link."),
@@ -215,12 +248,50 @@ export default function CatalogLinkPage() {
         </div>
       </header>
 
-      {placedOrder && (
-        <PaymentPanel response={placedOrder} onClose={() => setPlacedOrder(null)} />
+      {generatedLink && (
+        <div ref={painelRef} style={{ maxWidth: 1180, margin: "16px auto 0", padding: "0 18px" }}>
+          <div style={{ border: "1px solid #d8d0c6", background: "white", padding: 14, display: "grid", gap: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Link da selecao</div>
+            <input
+              readOnly
+              value={generatedLink}
+              aria-label="Link da selecao"
+              onFocus={(event) => event.target.select()}
+              style={{ ...inputStyle(), fontSize: 14 }}
+            />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  void copyToClipboard(generatedLink).then((copiado) => {
+                    toast[copiado ? "success" : "error"](copiado ? "Copiado." : "Copie manualmente do campo acima.");
+                  });
+                }}
+                style={buttonStyle("secondary")}
+              >
+                <Copy size={16} />
+                Copiar
+              </button>
+              <button type="button" onClick={() => setGeneratedLink(null)} style={buttonStyle("ghost")}>
+                <X size={16} />
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
-      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "22px 18px 140px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
+      {placedOrder && (
+        <div ref={painelRef}>
+          <PaymentPanel response={placedOrder} onClose={() => setPlacedOrder(null)} />
+        </div>
+      )}
+
+      <section style={{ maxWidth: 1180, margin: "0 auto", padding: `22px 18px ${footerHeight + 24}px` }}>
+        {/* 140px cabe em duas colunas num celular de 360px; com 180px sobrava
+            uma foto por linha, gigante, e o comprador rolava o catalogo inteiro
+            por uma fresta. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
           {data.items.map((item) => (
             <CatalogCard
               key={item.id}
@@ -236,14 +307,15 @@ export default function CatalogLinkPage() {
         </div>
       </section>
 
-      <footer style={{
+      <footer ref={footerRef} style={{
         position: "fixed",
         left: 0,
         right: 0,
         bottom: 0,
         background: "white",
         borderTop: "1px solid #e5ded4",
-        padding: "12px 18px",
+        // A faixa do indicador de gesto do iPhone come os ultimos ~34px.
+        padding: "12px 18px calc(12px + env(safe-area-inset-bottom))",
         zIndex: 20,
       }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, alignItems: "center" }}>
@@ -257,12 +329,18 @@ export default function CatalogLinkPage() {
                   value={buyerName}
                   onChange={(event) => setBuyerName(event.target.value)}
                   placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
+                  autoComplete="name"
                   style={inputStyle(!buyerNameFilled)}
                 />
                 <input
                   value={buyerPhone}
                   onChange={(event) => setBuyerPhone(formatPhoneInput(event.target.value))}
                   placeholder="WhatsApp"
+                  // Sem type/inputMode o celular abre o teclado de letras para
+                  // digitar telefone — e e esse campo que destrava o pedido.
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   style={inputStyle(!buyerPhoneFilled)}
                 />
                 {documentRequired && (
@@ -367,7 +445,18 @@ function CatalogCard({
         style={{ display: "block", width: "100%", textAlign: "left", position: "relative", cursor: "pointer" }}
       >
         <div style={{ aspectRatio: "3 / 4", background: "#eee8df", overflow: "hidden" }}>
-          {item.image_url && <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />}
+          {/* O backend ainda serve a foto original nos quatro tamanhos, entao
+              um catalogo grande baixa dezenas de MB no 4G. Ate existirem as
+              variantes, carregar sob demanda e o que salva o comprador. */}
+          {item.image_url && (
+            <img
+              src={item.image_url}
+              alt={item.name}
+              loading="lazy"
+              decoding="async"
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+            />
+          )}
         </div>
         {selected && (
           <span style={{ position: "absolute", top: 8, right: 8, background: "#1d1b18", color: "white", borderRadius: 999, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -396,9 +485,22 @@ function CatalogCard({
                   min={0}
                   inputMode="numeric"
                   aria-label={`${item.name} ${size}`}
-                  value={qty[size] ?? 0}
+                  // Vazio em vez de "0": no celular o cursor cai onde o dedo
+                  // toca, e digitar 2 a esquerda de um zero virava 20 pecas.
+                  value={qty[size] || ""}
+                  placeholder="0"
+                  onFocus={(event) => event.target.select()}
                   onChange={(event) => onQty(size, Number(event.target.value))}
-                  style={{ width: 58, border: "1px solid #d8d0c6", padding: "5px 6px" }}
+                  // 16px evita o zoom automatico do Safari no iPhone ao tocar
+                  // no campo; 44px de altura e o minimo confortavel para o dedo.
+                  style={{
+                    width: 64,
+                    height: 44,
+                    fontSize: 16,
+                    border: "1px solid #d8d0c6",
+                    padding: "5px 8px",
+                    background: "white",
+                  }}
                 />
               </label>
             ))}
@@ -428,8 +530,11 @@ function PaymentPanel({ response, onClose }: { response: TokenOrderResponse; onC
 
   function copyPix() {
     if (!pixCode) return;
-    void navigator.clipboard.writeText(pixCode);
-    toast.success("Codigo Pix copiado.");
+    void copyToClipboard(pixCode).then((copiado) => {
+      toast[copiado ? "success" : "error"](
+        copiado ? "Codigo Pix copiado." : "Nao foi possivel copiar. Selecione o codigo acima."
+      );
+    });
   }
 
   return (
@@ -513,7 +618,8 @@ function CenteredText({ children }: { children: React.ReactNode }) {
 
 function inputStyle(invalid = false): React.CSSProperties {
   return {
-    height: 38,
+    height: 44,
+    fontSize: 16,
     width: "100%",
     minWidth: 0,
     border: `1px solid ${invalid ? "#b04848" : "#d8d0c6"}`,
@@ -525,7 +631,7 @@ function inputStyle(invalid = false): React.CSSProperties {
 function buttonStyle(variant: "primary" | "secondary" | "ghost", disabled = false): React.CSSProperties {
   if (variant === "ghost") {
     return {
-      height: 38,
+      height: 44,
       display: "inline-flex",
       alignItems: "center",
       gap: 7,
@@ -538,9 +644,10 @@ function buttonStyle(variant: "primary" | "secondary" | "ghost", disabled = fals
   }
 
   return {
-    height: 38,
+    height: 44,
     display: "inline-flex",
     alignItems: "center",
+    justifyContent: "center",
     gap: 7,
     border: "1px solid #1d1b18",
     background: variant === "primary" ? (disabled ? "#7d756d" : "#1d1b18") : "white",
