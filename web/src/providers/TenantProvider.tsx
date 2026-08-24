@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { updateFavicon, type FaviconMode } from "@/lib/favicon";
-import { setActiveTenantSlug } from "@/lib/tenantContext";
+import { setActiveTenantSlug, resolveTenantSlugFromHost } from "@/lib/tenantContext";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -237,24 +237,9 @@ function loadGoogleFont(fontName: string): void {
   document.head.appendChild(link);
 }
 
-// ---------------------------------------------------------------------------
-// Tenant resolution from subdomain
-// ---------------------------------------------------------------------------
-
-function resolveTenantId(): string | undefined {
-  const host = window.location.hostname;
-  const parts = host.split(".");
-  if (parts.length >= 2) {
-    const slug = parts[0];
-    if (slug && !["www", "api", "admin", "app", "localhost"].includes(slug)) {
-      return slug;
-    }
-  }
-  return undefined;
-}
-
 function fetchBranding(): Promise<RawBrandingResponse> {
-  const tenantId = resolveTenantId() ?? (import.meta.env.VITE_TENANT_SLUG as string | undefined);
+  const tenantId = resolveTenantSlugFromHost(window.location.hostname)
+    ?? (import.meta.env.VITE_TENANT_SLUG as string | undefined);
   const apiUrl = (import.meta.env.VITE_API_URL as string) ?? "";
 
   const headers: Record<string, string> = { Accept: "application/json" };

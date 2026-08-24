@@ -297,16 +297,21 @@ export default function CatalogLinkPage() {
           </div>
           <div style={{ display: "grid", gap: 8, alignItems: "center", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))" }}>
             {data.show_prices && <strong>{brl(total)}</strong>}
-            <button
-              type="button"
-              disabled={interestDisabled}
-              aria-disabled={interestDisabled}
-              onClick={() => interest.mutate()}
-              style={buttonStyle("secondary", interestDisabled)}
-            >
-              {interest.isPending ? <Loader2 size={16} /> : <MessageCircle size={16} />}
-              Interesse
-            </button>
+            {/* Interesse so faz sentido no link publico, onde e a unica acao
+                possivel. No atacado ele ficava travado para sempre: dependia de
+                clicar no card, e ali o comprador so digita quantidade. */}
+            {publicOnly && (
+              <button
+                type="button"
+                disabled={interestDisabled}
+                aria-disabled={interestDisabled}
+                onClick={() => interest.mutate()}
+                style={buttonStyle("secondary", interestDisabled)}
+              >
+                {interest.isPending ? <Loader2 size={16} /> : <MessageCircle size={16} />}
+                Interesse
+              </button>
+            )}
             <button
               type="button"
               disabled={selectionDisabled}
