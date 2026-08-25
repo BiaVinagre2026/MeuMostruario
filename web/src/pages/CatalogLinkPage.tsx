@@ -16,6 +16,8 @@ import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
 import { copyToClipboard } from "@/lib/clipboard";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { ModelCarousel, agruparPorModelo } from "./catalogLink/ModelCarousel";
+import { radius, rotulo, sombra, t } from "./catalogLink/showcaseTheme";
 
 type QtyMap = Record<number, Record<string, number>>;
 const PHONE_MIN_DIGITS = 10;
@@ -690,12 +692,13 @@ function MobileCatalog(props: {
   placedOrder: TokenOrderResponse | null;
   onClosePayment: () => void;
 }) {
-  const { data, publicOnly, qty, piecesCount, total, placedOrder } = props;
+  const { data, publicOnly, qty, piecesCount, placedOrder } = props;
   const temPedido = publicOnly ? props.selected.size > 0 : piecesCount > 0;
+  const grupos = useMemo(() => agruparPorModelo(data.items), [data.items]);
 
   if (placedOrder) {
     return (
-      <main style={{ minHeight: "100dvh", background: "#faf8f5", overflowY: "auto" }}>
+      <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto" }}>
         <PaymentPanel response={placedOrder} onClose={props.onClosePayment} />
       </main>
     );
@@ -705,49 +708,43 @@ function MobileCatalog(props: {
     <>
       <main
         style={{
-          height: "100dvh",
-          overflowY: "auto",
-          scrollSnapType: "y mandatory",
-          background: "#faf8f5",
-          color: "#1d1b18",
+          minHeight: "100dvh",
+          background: t.ground,
+          color: t.ink,
+          paddingBottom: 96,
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {/* Sem position:sticky — some ao rolar e devolve a tela para as fotos. */}
-        <header style={{ padding: "20px 16px 16px", background: "white", borderBottom: "1px solid #e5ded4" }}>
-          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", color: "#8a7f73" }}>
-            {publicOnly ? "Catalogo" : "Atacado"}
-          </div>
-          <h1 style={{ fontSize: 22, margin: "6px 0 0", lineHeight: 1.15 }}>{data.catalog.name}</h1>
-          <div style={{ fontSize: 13, color: "#6f665e", marginTop: 6 }}>
-            {data.items.length} pecas · deslize para ver
-          </div>
+        {/* Rola embora junto com o conteudo: nada fixo no topo. */}
+        <header style={{ padding: "26px 16px 6px" }}>
+          <div style={rotulo}>{publicOnly ? "Catálogo" : "Atacado"}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 680, letterSpacing: "-0.03em", margin: "8px 0 0", lineHeight: 1.1 }}>
+            {data.catalog.name}
+          </h1>
+          <p style={{ fontSize: 14, color: t.muted, margin: "8px 0 0" }}>
+            {grupos.length} modelo{grupos.length > 1 ? "s" : ""} · {data.items.length} fotos · deslize para o lado
+          </p>
         </header>
 
-        {data.items.map((item, index) => (
-          <MobileItemScreen
-            key={item.id}
-            item={item}
-            posicao={index + 1}
-            deTotal={data.items.length}
+        {grupos.map((grupo) => (
+          <ModelCarousel
+            key={grupo.chave}
+            grupo={grupo}
             showPrices={data.show_prices}
             allowOrder={data.allow_order}
-            selected={props.selected.has(item.id)}
-            qty={qty[item.id] ?? {}}
-            onToggle={() => props.onToggle(item.id)}
-            onQty={(size, value) => props.onQty(item.id, size, value)}
+            qty={qty}
+            onQty={props.onQty}
+            selected={props.selected}
+            onToggle={props.onToggle}
           />
         ))}
       </main>
 
-      {!props.sheetOpen && (
-        <MobileSummaryPill
+      {!props.sheetOpen && temPedido && (
+        <CheckoutFab
           publicOnly={publicOnly}
-          temPedido={temPedido}
           piecesCount={piecesCount}
           selecionadas={props.selected.size}
-          total={total}
-          showPrices={data.show_prices}
           onOpen={props.onOpenSheet}
         />
       )}
@@ -762,181 +759,48 @@ function MobileCatalog(props: {
   );
 }
 
-/** Uma peca ocupando a tela inteira, com a foto grande e a grade embaixo. */
-function MobileItemScreen({ item, posicao, deTotal, showPrices, allowOrder, selected, qty, onToggle, onQty }: {
-  item: PublicCatalogItem;
-  posicao: number;
-  deTotal: number;
-  showPrices: boolean;
-  allowOrder: boolean;
-  selected: boolean;
-  qty: Record<string, number>;
-  onToggle: () => void;
-  onQty: (size: string, value: number) => void;
-}) {
-  const pecasNoItem = Object.values(qty).reduce((soma, v) => soma + v, 0);
-  const atributos = [item.color, item.pantone, item.size_group].filter(Boolean).join(" · ");
-
-  return (
-    <section
-      style={{
-        height: "100dvh",
-        scrollSnapAlign: "start",
-        display: "flex",
-        flexDirection: "column",
-        background: "white",
-        borderBottom: "1px solid #e5ded4",
-      }}
-    >
-      <div style={{ position: "relative", flex: 1, minHeight: 0, background: "#eee8df" }}>
-        {item.image_url && (
-          <img
-            src={item.image_url}
-            alt={item.name}
-            loading="lazy"
-            decoding="async"
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
-          />
-        )}
-        <div style={{
-          position: "absolute", top: 12, right: 12,
-          background: "rgba(29,27,24,0.72)", color: "white",
-          fontSize: 12, padding: "4px 10px", borderRadius: 999,
-        }}>
-          {posicao}/{deTotal}
-        </div>
-        {pecasNoItem > 0 && (
-          <div style={{
-            position: "absolute", top: 12, left: 12,
-            background: "#1d1b18", color: "white",
-            fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
-          }}>
-            {pecasNoItem} no pedido
-          </div>
-        )}
-      </div>
-
-      <div style={{ padding: "14px 16px", display: "grid", gap: 10, flexShrink: 0 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.2 }}>{item.name}</div>
-          <div style={{ fontSize: 13, color: "#6f665e", marginTop: 3 }}>{atributos || "Sem classificacao"}</div>
-        </div>
-
-        {showPrices && (
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{brl(Number(item.price ?? 0))}</div>
-        )}
-
-        {allowOrder ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            {item.sizes.map((size) => (
-              <SizeStepper
-                key={size}
-                size={size}
-                valor={qty[size] ?? 0}
-                onChange={(valor) => onQty(size, valor)}
-              />
-            ))}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-pressed={selected}
-            style={{
-              ...buttonStyle(selected ? "primary" : "secondary"),
-              width: "100%",
-              justifyContent: "center",
-            }}
-          >
-            {selected ? <Check size={18} /> : null}
-            {selected ? "Selecionada" : "Tenho interesse nesta"}
-          </button>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** Menos e mais de 44px: no celular ninguem quer digitar num campo minusculo. */
-function SizeStepper({ size, valor, onChange }: { size: string; valor: number; onChange: (v: number) => void }) {
-  const botao: React.CSSProperties = {
-    width: 44, height: 44,
-    border: "1px solid #d8d0c6",
-    background: "white",
-    fontSize: 20, lineHeight: 1,
-    cursor: "pointer",
-    display: "grid", placeItems: "center",
-  };
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-      <span style={{ fontSize: 15, fontWeight: 500 }}>{size}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button type="button" aria-label={`Tirar uma peca do tamanho ${size}`} style={botao}
-          onClick={() => onChange(Math.max(0, valor - 1))}>−</button>
-        <input
-          type="number"
-          min={0}
-          inputMode="numeric"
-          aria-label={size}
-          value={valor || ""}
-          placeholder="0"
-          onFocus={(event) => event.target.select()}
-          onChange={(event) => onChange(Math.max(0, Number(event.target.value)))}
-          style={{ width: 56, height: 44, fontSize: 16, textAlign: "center", border: "1px solid #d8d0c6", background: "white" }}
-        />
-        <button type="button" aria-label={`Somar uma peca do tamanho ${size}`} style={botao}
-          onClick={() => onChange(valor + 1)}>+</button>
-      </div>
-    </div>
-  );
-}
-
 /**
- * Resumo flutuante: ocupa uma faixa fina, nao um terco da tela como a barra
- * antiga. So aparece quando ha o que enviar.
+ * Botao redondo no canto, nao uma barra: nao corta a tela nem tampa a ultima
+ * foto. Aparece so quando ha o que enviar.
  */
-function MobileSummaryPill({ publicOnly, temPedido, piecesCount, selecionadas, total, showPrices, onOpen }: {
+function CheckoutFab({ publicOnly, piecesCount, selecionadas, onOpen }: {
   publicOnly: boolean;
-  temPedido: boolean;
   piecesCount: number;
   selecionadas: number;
-  total: number;
-  showPrices: boolean;
   onOpen: () => void;
 }) {
-  if (!temPedido) return null;
-
-  const resumo = publicOnly
-    ? `${selecionadas} peca(s) selecionada(s)`
-    : `${piecesCount} peca(s)${showPrices ? ` · ${brl(total)}` : ""}`;
+  const contagem = publicOnly ? selecionadas : piecesCount;
 
   return (
-    <div style={{
-      position: "fixed", left: 12, right: 12,
-      bottom: "calc(12px + env(safe-area-inset-bottom))",
-      zIndex: 30,
-    }}>
-      <button
-        type="button"
-        onClick={onOpen}
-        style={{
-          width: "100%", minHeight: 54,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: 12, padding: "0 18px",
-          background: "#1d1b18", color: "white",
-          border: "none", borderRadius: 999,
-          boxShadow: "0 6px 24px rgba(29,27,24,0.28)",
-          fontSize: 15, cursor: "pointer",
-        }}
-      >
-        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ShoppingBag size={18} />
-          {resumo}
-        </span>
-        <span style={{ fontWeight: 600 }}>{publicOnly ? "Enviar" : "Fechar pedido"}</span>
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={publicOnly ? `Enviar interesse de ${contagem} peça(s)` : `Fechar pedido com ${contagem} peça(s)`}
+      style={{
+        position: "fixed",
+        right: 16,
+        bottom: "calc(16px + env(safe-area-inset-bottom))",
+        zIndex: 30,
+        height: 60, minWidth: 60,
+        padding: "0 20px",
+        display: "inline-flex", alignItems: "center", gap: 10,
+        background: t.ink, color: "white",
+        border: "none", borderRadius: radius.pilula,
+        boxShadow: sombra.flutuante,
+        fontSize: 15, fontWeight: 600, cursor: "pointer",
+      }}
+    >
+      <ShoppingBag size={20} />
+      <span style={{
+        background: t.accent, color: "white",
+        minWidth: 24, height: 24, padding: "0 7px",
+        borderRadius: radius.pilula,
+        display: "grid", placeItems: "center",
+        fontSize: 13, fontWeight: 700,
+      }}>
+        {contagem}
+      </span>
+    </button>
   );
 }
 
