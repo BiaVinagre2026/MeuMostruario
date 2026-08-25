@@ -133,17 +133,29 @@ export default function OrderList() {
                           #{order.id}
                         </td>
                         <td className="px-4 py-2.5">
-                          {order.member ? (
-                            <div>
-                              <p className="font-medium text-xs md:text-sm">{order.member.full_name}</p>
-                              <p className="text-xs text-muted-foreground hidden sm:block">{order.member.email}</p>
-                              <span className={["sm:hidden inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium mt-1", STATUS_COLORS[order.status]].join(" ")}>
-                                {STATUS_LABELS[order.status]}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="italic text-muted-foreground/60 text-xs">Pedido por link</span>
-                          )}
+                          {/* O status fica fora do ramo do lojista: pedido por
+                              link tambem tem status, e antes ficava sem nenhum
+                              no celular — justamente onde a coluna some. */}
+                          <div>
+                            {order.member ? (
+                              <>
+                                <p className="font-medium text-xs md:text-sm">{order.member.full_name}</p>
+                                <p className="text-xs text-muted-foreground hidden sm:block">{order.member.email}</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="font-medium text-xs md:text-sm">
+                                  {order.buyer?.name || "Pedido por link"}
+                                </p>
+                                <p className="text-xs text-muted-foreground/70 hidden sm:block">
+                                  {order.buyer?.phone || "Sem lojista cadastrado"}
+                                </p>
+                              </>
+                            )}
+                            <span className={["sm:hidden inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium mt-1", STATUS_COLORS[order.status]].join(" ")}>
+                              {STATUS_LABELS[order.status]}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-xs hidden sm:table-cell">
                           {order.total_units}

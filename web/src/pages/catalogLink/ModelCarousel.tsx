@@ -18,7 +18,7 @@ export interface ModelGroup {
  * vezes em cores diferentes. A foto seguinte fica parcialmente visivel para o
  * dedo saber que ha mais para o lado.
  */
-export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selected, onToggle }: {
+export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selected, onToggle, larguraFoto, onAbrirFoto }: {
   grupo: ModelGroup;
   showPrices: boolean;
   allowOrder: boolean;
@@ -26,6 +26,9 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
   onQty: (itemId: number, size: string, value: number) => void;
   selected: Set<number>;
   onToggle: (itemId: number) => void;
+  /** 82% no celular, bem menos no desktop: a mesma peca cabe varias vezes. */
+  larguraFoto: string;
+  onAbrirFoto: (indice: number) => void;
 }) {
   const trilhoRef = useRef<HTMLDivElement>(null);
   const [ativo, setAtivo] = useState(0);
@@ -113,21 +116,26 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {grupo.itens.map((item) => {
+        {grupo.itens.map((item, indice) => {
           const pecas = Object.values(qty[item.id] ?? {}).reduce((s, v) => s + v, 0);
           return (
-            <figure
+            <button
               key={item.id}
+              type="button"
+              onClick={() => onAbrirFoto(indice)}
+              aria-label={`Abrir foto ${indice + 1} de ${grupo.nome}`}
               style={{
-                flex: "0 0 82%",
+                flex: `0 0 ${larguraFoto}`,
                 scrollSnapAlign: "center",
-                margin: 0,
+                padding: 0,
                 position: "relative",
                 aspectRatio: "3 / 4",
                 borderRadius: radius.foto,
                 overflow: "hidden",
                 background: t.line,
                 boxShadow: sombra.suave,
+                border: "none",
+                cursor: "zoom-in",
               }}
             >
               {item.image_url && (
@@ -136,7 +144,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
                   alt={item.name}
                   loading="lazy"
                   decoding="async"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }}
                 />
               )}
               {pecas > 0 && (
@@ -149,7 +157,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
                   {pecas}
                 </span>
               )}
-            </figure>
+            </button>
           );
         })}
       </div>

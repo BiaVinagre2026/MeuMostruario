@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, Loader2, MessageCircle, ShoppingBag, X } from "lucide-react";
+import { Copy, Loader2, MessageCircle, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { brl } from "@/data/catalog";
@@ -16,7 +16,10 @@ import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
 import { copyToClipboard } from "@/lib/clipboard";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { ModelCarousel, agruparPorModelo } from "./catalogLink/ModelCarousel";
+import { openWhatsapp } from "@/lib/whatsapp";
+import { useTenant } from "@/providers/TenantProvider";
+import { ModelCarousel, agruparPorModelo, type ModelGroup } from "./catalogLink/ModelCarousel";
+import { PhotoViewer } from "./catalogLink/PhotoViewer";
 import { radius, rotulo, sombra, t } from "./catalogLink/showcaseTheme";
 
 type QtyMap = Record<number, Record<string, number>>;
@@ -48,6 +51,7 @@ export default function CatalogLinkPage() {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const painelRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const tenant = useTenant();
   // No celular o pedido vive numa folha que sobe quando o comprador pede, em
   // vez de uma barra permanente comendo um terco da tela.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -69,7 +73,6 @@ export default function CatalogLinkPage() {
 
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
   const selectedCount = selectedIds.length;
-  const allSelected = data ? selectedCount === data.items.length && data.items.length > 0 : false;
   const orderLines = useMemo(() => {
     if (!data) return [];
     return data.items
@@ -92,7 +95,6 @@ export default function CatalogLinkPage() {
   const buyerDocumentValid = isValidDocument(buyerDocument);
   const buyerDocumentOk = documentRequired ? buyerDocumentValid : true;
   const buyerReadyForOrder = buyerNameFilled && buyerPhoneFilled && buyerDocumentOk;
-  const showContactValidation = selectedCount > 0 || orderLines.length > 0;
 
   const interest = useMutation({
     mutationFn: () => sendCatalogInterest(token, {
@@ -183,10 +185,6 @@ export default function CatalogLinkPage() {
     setQty({});
   }
 
-  function selectAllItems() {
-    if (!data) return;
-    setSelected(new Set(data.items.map((item) => item.id)));
-  }
 
   if (isLoading) {
     return <CenteredText>Carregando catalogo...</CenteredText>;
@@ -204,359 +202,47 @@ export default function CatalogLinkPage() {
   const interestDisabled = selectedCount === 0 || interest.isPending || !buyerReadyForContact;
   const selectionDisabled = selectedCount === 0 || selection.isPending;
   const orderDisabled = orderLines.length === 0 || order.isPending || !buyerReadyForOrder;
-  const actionHint = publicOnly
-    ? (!buyerReadyForContact
-      ? "Preencha seu nome e WhatsApp para enviar interesse. O link da selecao pode ser gerado mesmo sem contato."
-      : (selectedCount === 0 ? "Selecione ao menos uma foto para enviar interesse ou gerar um novo link." : `${selectedCount} foto(s) selecionada(s).`))
-    : (!buyerReadyForOrder
-      ? (documentRequired
-        ? "Preencha nome, WhatsApp e CPF ou CNPJ do comprador para liberar o pedido."
-        : "Preencha nome e WhatsApp do comprador para liberar o pedido.")
-      // No atacado o que conta e o item com quantidade, nao o card marcado: da
-      // para digitar a grade sem clicar na foto, e antes isso aparecia como
-      // "0 foto(s) selecionada(s)" ao lado de um pedido cheio.
-      : (orderLines.length === 0 ? "Selecione fotos e informe as quantidades por tamanho para registrar o pedido." : `${orderLines.length} modelo(s) no pedido · ${piecesCount} peca(s).`));
-
-  if (isMobile) {
-    return (
-      <MobileCatalog
-        data={data}
-        publicOnly={publicOnly}
-        qty={qty}
-        selected={selected}
-        orderLines={orderLines}
-        piecesCount={piecesCount}
-        total={total}
-        onQty={setItemQty}
-        onToggle={toggle}
-        sheetOpen={sheetOpen}
-        onOpenSheet={() => setSheetOpen(true)}
-        onCloseSheet={() => setSheetOpen(false)}
-        buyerName={buyerName}
-        buyerPhone={buyerPhone}
-        buyerDocument={buyerDocument}
-        onBuyerName={setBuyerName}
-        onBuyerPhone={(value) => setBuyerPhone(formatPhoneInput(value))}
-        onBuyerDocument={(value) => setBuyerDocument(formatDocumentInput(value))}
-        documentRequired={documentRequired}
-        buyerNameFilled={buyerNameFilled}
-        buyerPhoneFilled={buyerPhoneFilled}
-        buyerDocumentValid={buyerDocumentValid}
-        orderDisabled={orderDisabled}
-        interestDisabled={interestDisabled}
-        onOrder={() => order.mutate()}
-        onInterest={() => interest.mutate()}
-        orderPending={order.isPending}
-        interestPending={interest.isPending}
-        placedOrder={placedOrder}
-        onClosePayment={() => setPlacedOrder(null)}
-      />
-    );
-  }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#faf8f5", color: "#1d1b18" }}>
-      <header style={{ padding: "22px 18px", borderBottom: "1px solid #e5ded4", background: "white", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", color: "#8a7f73" }}>
-              {publicOnly ? "Catalogo publico" : "Catalogo atacado"}
-            </div>
-            <h1 style={{ fontSize: 24, margin: "4px 0 0", lineHeight: 1.1 }}>{data.catalog.name}</h1>
-            {data.catalog.description && (
-              <p style={{ margin: "8px 0 0", fontSize: 13, color: "#6f665e", maxWidth: 560 }}>{data.catalog.description}</p>
-            )}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-              <button type="button" onClick={allSelected ? (publicOnly ? clearSelection : clearOrder) : selectAllItems} style={buttonStyle("ghost")}>
-                {allSelected ? <X size={16} /> : null}
-                {allSelected ? "Desmarcar todas" : "Selecionar todas"}
-              </button>
-              {selectedCount > 0 && !allSelected && (
-                <button type="button" onClick={publicOnly ? clearSelection : clearOrder} style={buttonStyle("ghost")}>
-                  <X size={16} />
-                  {publicOnly ? "Limpar selecao" : "Limpar pedido"}
-                </button>
-              )}
-            </div>
-          </div>
-          <div style={{ display: "grid", justifyItems: "end", gap: 6 }}>
-            <div style={{ fontSize: 13, color: "#6f665e" }}>{data.items.length} fotos</div>
-            {(selectedCount > 0 || piecesCount > 0) && (
-              <div style={{ fontSize: 12, color: "#6f665e" }}>
-                {selectedCount > 0 ? `${selectedCount} selecionada(s)` : ""}
-                {selectedCount > 0 && piecesCount > 0 ? " · " : ""}
-                {piecesCount > 0 ? `${piecesCount} peca(s)` : ""}
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {generatedLink && (
-        <div ref={painelRef} style={{ maxWidth: 1180, margin: "16px auto 0", padding: "0 18px" }}>
-          <div style={{ border: "1px solid #d8d0c6", background: "white", padding: 14, display: "grid", gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Link da selecao</div>
-            <input
-              readOnly
-              value={generatedLink}
-              aria-label="Link da selecao"
-              onFocus={(event) => event.target.select()}
-              style={{ ...inputStyle(), fontSize: 14 }}
-            />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  void copyToClipboard(generatedLink).then((copiado) => {
-                    toast[copiado ? "success" : "error"](copiado ? "Copiado." : "Copie manualmente do campo acima.");
-                  });
-                }}
-                style={buttonStyle("secondary")}
-              >
-                <Copy size={16} />
-                Copiar
-              </button>
-              <button type="button" onClick={() => setGeneratedLink(null)} style={buttonStyle("ghost")}>
-                <X size={16} />
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {placedOrder && (
-        <div ref={painelRef}>
-          <PaymentPanel response={placedOrder} onClose={() => setPlacedOrder(null)} />
-        </div>
-      )}
-
-      <section style={{ maxWidth: 1180, margin: "0 auto", padding: `22px 18px ${footerHeight + 24}px` }}>
-        {/* 140px cabe em duas colunas num celular de 360px; com 180px sobrava
-            uma foto por linha, gigante, e o comprador rolava o catalogo inteiro
-            por uma fresta. */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
-          {data.items.map((item) => (
-            <CatalogCard
-              key={item.id}
-              item={item}
-              showPrices={data.show_prices}
-              allowOrder={data.allow_order}
-              selected={selected.has(item.id)}
-              qty={qty[item.id] ?? {}}
-              onToggle={() => toggle(item.id)}
-              onQty={(size, value) => setItemQty(item.id, size, value)}
-            />
-          ))}
-        </div>
-      </section>
-
-      <footer ref={footerRef} style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "white",
-        borderTop: "1px solid #e5ded4",
-        // A faixa do indicador de gesto do iPhone come os ultimos ~34px.
-        padding: "12px 18px calc(12px + env(safe-area-inset-bottom))",
-        zIndex: 20,
-      }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 8 }}>
-            {/* Os campos de contato so aparecem quando ha o que enviar. No
-                celular a barra ficava com 31% da tela justamente enquanto o
-                comprador ainda estava rolando as fotos e nao precisava deles. */}
-            {showContactValidation && (
-              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
-                <input
-                  value={buyerName}
-                  onChange={(event) => setBuyerName(event.target.value)}
-                  placeholder={publicOnly ? "Seu nome" : "Nome do comprador"}
-                  autoComplete="name"
-                  style={inputStyle(!buyerNameFilled)}
-                />
-                <input
-                  value={buyerPhone}
-                  onChange={(event) => setBuyerPhone(formatPhoneInput(event.target.value))}
-                  placeholder="WhatsApp"
-                  // Sem type/inputMode o celular abre o teclado de letras para
-                  // digitar telefone — e e esse campo que destrava o pedido.
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  style={inputStyle(!buyerPhoneFilled)}
-                />
-                {documentRequired && (
-                  <input
-                    value={buyerDocument}
-                    onChange={(event) => setBuyerDocument(formatDocumentInput(event.target.value))}
-                    placeholder="CPF ou CNPJ"
-                    inputMode="numeric"
-                    aria-label="CPF ou CNPJ"
-                    style={inputStyle(!buyerDocumentValid)}
-                  />
-                )}
-              </div>
-            )}
-            {showContactValidation && (!buyerNameFilled || !buyerPhoneFilled || (documentRequired && !buyerDocumentValid)) && (
-              <div style={{ fontSize: 12, color: "#b04848" }}>
-                {!buyerNameFilled ? "Informe o nome. " : ""}
-                {!buyerPhoneFilled ? "Use um WhatsApp com DDD para continuar. " : ""}
-                {documentRequired && !buyerDocumentValid
-                  ? (buyerDocument.trim() === ""
-                    ? "Informe o CPF ou CNPJ para pagar."
-                    : "CPF ou CNPJ invalido.")
-                  : ""}
-              </div>
-            )}
-            <div style={{ fontSize: 12, color: "#6f665e" }}>{actionHint}</div>
-            {!publicOnly && orderLines.length > 0 && (
-              <div style={{ fontSize: 12, color: "#6f665e" }}>
-                Total estimado: <strong style={{ color: "#1d1b18" }}>{brl(total)}</strong>
-              </div>
-            )}
-          </div>
-          <div style={{ display: "grid", gap: 8, alignItems: "center", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))" }}>
-            {data.show_prices && <strong>{brl(total)}</strong>}
-            {/* Interesse so faz sentido no link publico, onde e a unica acao
-                possivel. No atacado ele ficava travado para sempre: dependia de
-                clicar no card, e ali o comprador so digita quantidade. */}
-            {publicOnly && (
-              <button
-                type="button"
-                disabled={interestDisabled}
-                aria-disabled={interestDisabled}
-                onClick={() => interest.mutate()}
-                style={buttonStyle("secondary", interestDisabled)}
-              >
-                {interest.isPending ? <Loader2 size={16} /> : <MessageCircle size={16} />}
-                Interesse
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={selectionDisabled}
-              aria-disabled={selectionDisabled}
-              onClick={() => selection.mutate()}
-              style={buttonStyle("secondary", selectionDisabled)}
-            >
-              {selection.isPending ? <Loader2 size={16} /> : <Copy size={16} />}
-              Gerar link
-            </button>
-            {data.allow_order && (
-              <button
-                type="button"
-                disabled={orderDisabled}
-                aria-disabled={orderDisabled}
-                onClick={() => order.mutate()}
-                style={buttonStyle("primary", orderDisabled)}
-              >
-                {order.isPending ? <Loader2 size={16} /> : <ShoppingBag size={16} />}
-                Pedido
-              </button>
-            )}
-          </div>
-        </div>
-      </footer>
-    </main>
-  );
-}
-
-function CatalogCard({
-  item,
-  showPrices,
-  allowOrder,
-  selected,
-  qty,
-  onToggle,
-  onQty,
-}: {
-  item: PublicCatalogItem;
-  showPrices: boolean;
-  allowOrder: boolean;
-  selected: boolean;
-  qty: Record<string, number>;
-  onToggle: () => void;
-  onQty: (size: string, value: number) => void;
-}) {
-  return (
-    <article style={{ background: "white", border: selected ? "2px solid #1d1b18" : "1px solid #e5ded4" }}>
-      <button
-        type="button"
-        aria-pressed={selected}
-        onClick={onToggle}
-        style={{ display: "block", width: "100%", textAlign: "left", position: "relative", cursor: "pointer" }}
-      >
-        <div style={{ aspectRatio: "3 / 4", background: "#eee8df", overflow: "hidden" }}>
-          {/* O backend ainda serve a foto original nos quatro tamanhos, entao
-              um catalogo grande baixa dezenas de MB no 4G. Ate existirem as
-              variantes, carregar sob demanda e o que salva o comprador. */}
-          {item.image_url && (
-            <img
-              src={item.image_url}
-              alt={item.name}
-              loading="lazy"
-              decoding="async"
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
-            />
-          )}
-        </div>
-        {selected && (
-          <span style={{ position: "absolute", top: 8, right: 8, background: "#1d1b18", color: "white", borderRadius: 999, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-            <Check size={15} />
-          </span>
-        )}
-      </button>
-      <div style={{ padding: 12, display: "grid", gap: 7 }}>
-        <strong style={{ fontSize: 14 }}>{item.name}</strong>
-        <div style={{ fontSize: 12, color: "#6f665e" }}>
-          {[item.color, item.pantone, item.size_group].filter(Boolean).join(" · ") || "Sem classificacao"}
-        </div>
-        {selected && (
-          <div style={{ fontSize: 12, color: "#1d1b18", fontWeight: 600 }}>
-            Selecionada
-          </div>
-        )}
-        {showPrices && <div style={{ fontWeight: 700 }}>{brl(Number(item.price ?? 0))}</div>}
-        {allowOrder && (
-          <div style={{ display: "grid", gap: 5 }}>
-            {item.sizes.map((size) => (
-              <label key={size} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12 }}>
-                <span>{size}</span>
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="numeric"
-                  aria-label={`${item.name} ${size}`}
-                  // Vazio em vez de "0": no celular o cursor cai onde o dedo
-                  // toca, e digitar 2 a esquerda de um zero virava 20 pecas.
-                  value={qty[size] || ""}
-                  placeholder="0"
-                  onFocus={(event) => event.target.select()}
-                  onChange={(event) => onQty(size, Number(event.target.value))}
-                  // 16px evita o zoom automatico do Safari no iPhone ao tocar
-                  // no campo; 44px de altura e o minimo confortavel para o dedo.
-                  style={{
-                    width: 64,
-                    height: 44,
-                    fontSize: 16,
-                    border: "1px solid #d8d0c6",
-                    padding: "5px 8px",
-                    background: "white",
-                  }}
-                />
-              </label>
-            ))}
-            {Object.values(qty).some((value) => value > 0) && (
-              <div style={{ fontSize: 12, color: "#6f665e" }}>
-                {Object.values(qty).reduce((sum, value) => sum + value, 0)} peca(s) neste item
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </article>
+    <CatalogShowcase
+      data={data}
+      publicOnly={publicOnly}
+      isMobile={isMobile}
+      qty={qty}
+      selected={selected}
+      orderLines={orderLines}
+      piecesCount={piecesCount}
+      total={total}
+      onQty={setItemQty}
+      onToggle={toggle}
+      sheetOpen={sheetOpen}
+      onOpenSheet={() => setSheetOpen(true)}
+      onCloseSheet={() => setSheetOpen(false)}
+      buyerName={buyerName}
+      buyerPhone={buyerPhone}
+      buyerDocument={buyerDocument}
+      onBuyerName={setBuyerName}
+      onBuyerPhone={(value) => setBuyerPhone(formatPhoneInput(value))}
+      onBuyerDocument={(value) => setBuyerDocument(formatDocumentInput(value))}
+      documentRequired={documentRequired}
+      buyerNameFilled={buyerNameFilled}
+      buyerPhoneFilled={buyerPhoneFilled}
+      buyerDocumentValid={buyerDocumentValid}
+      orderDisabled={orderDisabled}
+      interestDisabled={interestDisabled}
+      onOrder={() => order.mutate()}
+      onInterest={() => interest.mutate()}
+      orderPending={order.isPending}
+      interestPending={interest.isPending}
+      placedOrder={placedOrder}
+      onClosePayment={() => setPlacedOrder(null)}
+      whatsapp={tenant.social.whatsapp}
+      generatedLink={generatedLink}
+      onCloseGeneratedLink={() => setGeneratedLink(null)}
+      selectionDisabled={selectionDisabled}
+      onSelection={() => selection.mutate()}
+      selectionPending={selection.isPending}
+    />
   );
 }
 
@@ -567,10 +253,19 @@ function CatalogCard({
  * falha na emissao (o pedido existe, a cobranca nao) e pedido sem cobranca,
  * quando o link nao cobra.
  */
-function PaymentPanel({ response, onClose }: { response: TokenOrderResponse; onClose: () => void }) {
+function PaymentPanel({ response, onClose, whatsapp }: {
+  response: TokenOrderResponse;
+  onClose: () => void;
+  whatsapp?: string | null;
+}) {
   const payment = response.payment;
   const pixCode = payment?.pix_qr_code;
   const failed = payment?.status === "failed";
+
+  function enviarNoWhatsapp() {
+    const aberto = openWhatsapp(whatsapp, montarMensagemDoPedido(response));
+    if (!aberto) toast.error("A fabrica ainda nao configurou o WhatsApp nas Configuracoes.");
+  }
 
   function copyPix() {
     if (!pixCode) return;
@@ -647,9 +342,40 @@ function PaymentPanel({ response, onClose }: { response: TokenOrderResponse; onC
             A fabrica ja recebeu seu pedido e vai combinar o pagamento com voce.
           </p>
         )}
+
+        {/* O envio pelo WhatsApp vem DEPOIS do pedido registrado, nunca no
+            lugar dele: se o comprador fechar a aba do WhatsApp, o pedido ja
+            esta salvo e visivel para a fabrica. */}
+        <button type="button" onClick={enviarNoWhatsapp} style={{ ...buttonStyle("secondary"), justifyContent: "center" }}>
+          <MessageCircle size={16} />
+          Enviar pedido no WhatsApp
+        </button>
       </div>
     </section>
   );
+}
+
+/** Mensagem do pedido para a fabrica, com itens, grade e total. */
+export function montarMensagemDoPedido(response: TokenOrderResponse): string {
+  const { order } = response;
+  const linhas = [
+    `Pedido #${order.id}`,
+    order.buyer_name ? `Comprador: ${order.buyer_name}` : null,
+    "",
+  ].filter((linha) => linha !== null) as string[];
+
+  (order.items ?? []).forEach((item) => {
+    const grade = item.size ? ` (${item.size})` : "";
+    linhas.push(`• ${item.qty}x ${item.product_name ?? "Item"}${grade}`);
+  });
+
+  linhas.push("", `Total: ${brl(Number(order.total_value ?? 0))}`);
+
+  if (response.payment?.pix_qr_code) {
+    linhas.push("", "Pix copia e cola:", response.payment.pix_qr_code);
+  }
+
+  return linhas.join("\n");
 }
 
 /**
@@ -660,7 +386,21 @@ function PaymentPanel({ response, onClose }: { response: TokenOrderResponse; onC
  * foto. Aqui o cabecalho rola embora, cada peca ocupa a tela inteira e o pedido
  * mora numa folha que sobe so quando o comprador chama.
  */
-function MobileCatalog(props: {
+/**
+ * Vitrine do catalogo — a mesma no celular e no desktop.
+ *
+ * Antes eram dois layouts: grade no desktop, carrossel no celular. Manter os
+ * dois significava corrigir tudo duas vezes. O que muda entre eles agora e
+ * so a largura da foto e o formato do painel de pedido.
+ */
+function CatalogShowcase(props: {
+  isMobile: boolean;
+  whatsapp?: string | null;
+  generatedLink: string | null;
+  onCloseGeneratedLink: () => void;
+  selectionDisabled: boolean;
+  onSelection: () => void;
+  selectionPending: boolean;
   data: PublicCatalogLink;
   publicOnly: boolean;
   qty: QtyMap;
@@ -692,14 +432,19 @@ function MobileCatalog(props: {
   placedOrder: TokenOrderResponse | null;
   onClosePayment: () => void;
 }) {
-  const { data, publicOnly, qty, piecesCount, placedOrder } = props;
+  const { data, publicOnly, qty, piecesCount, placedOrder, isMobile } = props;
   const temPedido = publicOnly ? props.selected.size > 0 : piecesCount > 0;
   const grupos = useMemo(() => agruparPorModelo(data.items), [data.items]);
+  // Qual grupo esta aberto em tela cheia, e em que foto.
+  const [visor, setVisor] = useState<{ grupo: ModelGroup; indice: number } | null>(null);
+  // No celular a foto ocupa quase a largura toda; no desktop cabem varias, e a
+  // proxima aparecendo na borda continua sinalizando que ha mais para o lado.
+  const larguraFoto = isMobile ? "82%" : "clamp(240px, 26%, 340px)";
 
   if (placedOrder) {
     return (
       <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto" }}>
-        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} />
+        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={props.whatsapp} />
       </main>
     );
   }
@@ -715,30 +460,60 @@ function MobileCatalog(props: {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {/* Rola embora junto com o conteudo: nada fixo no topo. */}
-        <header style={{ padding: "26px 16px 6px" }}>
-          <div style={rotulo}>{publicOnly ? "Catálogo" : "Atacado"}</div>
-          <h1 style={{ fontSize: 28, fontWeight: 680, letterSpacing: "-0.03em", margin: "8px 0 0", lineHeight: 1.1 }}>
-            {data.catalog.name}
-          </h1>
-          <p style={{ fontSize: 14, color: t.muted, margin: "8px 0 0" }}>
-            {grupos.length} modelo{grupos.length > 1 ? "s" : ""} · {data.items.length} fotos · deslize para o lado
-          </p>
-        </header>
+        <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+          {/* Rola embora junto com o conteudo: nada fixo no topo. */}
+          <header style={{ padding: isMobile ? "26px 16px 6px" : "44px 16px 10px" }}>
+            <div style={rotulo}>{publicOnly ? "Catálogo" : "Atacado"}</div>
+            <h1 style={{
+              fontSize: isMobile ? 28 : 44,
+              fontWeight: 680, letterSpacing: "-0.03em",
+              margin: "8px 0 0", lineHeight: 1.05,
+            }}>
+              {data.catalog.name}
+            </h1>
+            {data.catalog.description && (
+              <p style={{ fontSize: 15, color: t.inkSoft, margin: "10px 0 0", maxWidth: "60ch" }}>
+                {data.catalog.description}
+              </p>
+            )}
+            <p style={{ fontSize: 14, color: t.muted, margin: "8px 0 0" }}>
+              {grupos.length} modelo{grupos.length > 1 ? "s" : ""} · {data.items.length} fotos ·
+              {isMobile ? " deslize para o lado" : " toque na foto para ampliar"}
+            </p>
+          </header>
 
-        {grupos.map((grupo) => (
-          <ModelCarousel
-            key={grupo.chave}
-            grupo={grupo}
-            showPrices={data.show_prices}
-            allowOrder={data.allow_order}
-            qty={qty}
-            onQty={props.onQty}
-            selected={props.selected}
-            onToggle={props.onToggle}
-          />
-        ))}
+          {grupos.map((grupo) => (
+            <ModelCarousel
+              key={grupo.chave}
+              grupo={grupo}
+              showPrices={data.show_prices}
+              allowOrder={data.allow_order}
+              qty={qty}
+              onQty={props.onQty}
+              selected={props.selected}
+              onToggle={props.onToggle}
+              larguraFoto={larguraFoto}
+              onAbrirFoto={(indice) => setVisor({ grupo, indice })}
+            />
+          ))}
+        </div>
       </main>
+
+      {visor && (
+        <PhotoViewer
+          itens={visor.grupo.itens}
+          indiceInicial={visor.indice}
+          showPrices={data.show_prices}
+          allowOrder={data.allow_order}
+          qty={qty}
+          onQty={props.onQty}
+          onFechar={() => setVisor(null)}
+        />
+      )}
+
+      {props.generatedLink && (
+        <GeneratedLinkPanel url={props.generatedLink} onClose={props.onCloseGeneratedLink} />
+      )}
 
       {!props.sheetOpen && temPedido && (
         <CheckoutFab
@@ -750,7 +525,7 @@ function MobileCatalog(props: {
       )}
 
       {props.sheetOpen && (
-        <MobileCheckoutSheet
+        <CheckoutSheet
           {...props}
           temPedido={temPedido}
         />
@@ -805,7 +580,12 @@ function CheckoutFab({ publicOnly, piecesCount, selecionadas, onOpen }: {
 }
 
 /** Folha que sobe com contato e acoes. Fecha tocando fora ou no X. */
-function MobileCheckoutSheet(props: {
+/** Folha no celular, caixa centrada no desktop — mesmo conteudo. */
+function CheckoutSheet(props: {
+  isMobile: boolean;
+  selectionDisabled: boolean;
+  onSelection: () => void;
+  selectionPending: boolean;
   publicOnly: boolean;
   temPedido: boolean;
   piecesCount: number;

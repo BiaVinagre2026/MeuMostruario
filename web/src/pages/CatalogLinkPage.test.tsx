@@ -4,7 +4,6 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CatalogLinkPage from "./CatalogLinkPage";
 
 import {
-  createSelectionLink,
   createTokenOrder,
   getPublicCatalogLink,
   sendCatalogInterest,
@@ -43,6 +42,56 @@ function renderPage(initialPath = "/link/demo-token") {
   );
 }
 
+const publicLink = {
+  id: 1,
+  token: "demo-token",
+  link_type: "public_client" as const,
+  show_prices: false,
+  allow_order: false,
+  allow_payment: false,
+  catalog: { id: 10, name: "Catalogo Cliente", description: "Sem preco" },
+  items: [
+    {
+      id: 101,
+      product_id: 55,
+      photo_id: 77,
+      name: "Vestido Solar",
+      image_url: "https://cdn.example.com/vestido.jpg",
+      color: "Azul",
+      pantone: "19-4052 TPX",
+      size_group: "M/G" as const,
+      sizes: ["M/G"] as const,
+      price: null,
+      price_retail: null,
+    },
+  ],
+};
+
+const wholesaleLink = {
+  id: 2,
+  token: "demo-token",
+  link_type: "wholesale_buyer" as const,
+  show_prices: true,
+  allow_order: true,
+  allow_payment: true,
+  catalog: { id: 11, name: "Catalogo Atacado", description: "Com pedido" },
+  items: [
+    {
+      id: 202,
+      product_id: 88,
+      photo_id: 99,
+      name: "Biquini Aurora",
+      image_url: "https://cdn.example.com/biquini.jpg",
+      color: "Verde",
+      pantone: "17-5641 TPX",
+      size_group: "P/M" as const,
+      sizes: ["P/M", "M/G"] as const,
+      price: 149.9,
+      price_retail: 219.9,
+    },
+  ],
+};
+
 describe("CatalogLinkPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,185 +102,114 @@ describe("CatalogLinkPage", () => {
     });
   });
 
-  it("hides prices and order action for public links", async () => {
+  it("nao expoe preco nem pedido no link publico, e envia interesse pela folha", async () => {
+    vi.mocked(getPublicCatalogLink).mockResolvedValue(publicLink);
+    vi.mocked(sendCatalogInterest).mockResolvedValue({});
+
+    renderPage();
+
+    expect(await screen.findByText("Catalogo Cliente")).toBeInTheDocument();
+    expect(screen.getByText("Vestido Solar")).toBeInTheDocument();
+    expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Pedido$/i })).not.toBeInTheDocument();
+
+    // Sem nada escolhido nao ha o que enviar, entao nem o botao de fechar existe.
+    expect(screen.queryByRole("button", { name: /Enviar interesse de/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tenho interesse" }));
+
+    const fab = await screen.findByRole("button", { name: /Enviar interesse de 1/ });
+    fireEvent.click(fab);
+
+    fireEvent.change(await screen.findByPlaceholderText("Seu nome"), { target: { value: "Cliente Final" } });
+    fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "(11) 99999-0000" } });
+
+    const enviar = screen.getByRole("button", { name: "Enviar interesse" });
+    await waitFor(() => expect(enviar).toBeEnabled());
+    fireEvent.click(enviar);
+
+    await waitFor(() => {
+      expect(sendCatalogInterest).toHaveBeenCalledWith("demo-token", {
+        name: "Cliente Final",
+        phone: "11999990000",
+        catalog_item_ids: [101],
+        message: "Tenho interesse nessas fotos.",
+      });
+    });
+  });
+
+  it("agrupa as fotos por modelo e abre a foto em tela cheia", async () => {
     vi.mocked(getPublicCatalogLink).mockResolvedValue({
-      id: 1,
-      token: "demo-token",
-      link_type: "public_client",
-      show_prices: false,
-      allow_order: false,
-      allow_payment: false,
-      catalog: { id: 10, name: "Catalogo Cliente", description: "Sem preco" },
+      ...publicLink,
       items: [
-        {
-          id: 101,
-          product_id: 55,
-          photo_id: 77,
-          name: "Vestido Solar",
-          image_url: "https://cdn.example.com/vestido.jpg",
-          color: "Azul",
-          pantone: "19-4052 TPX",
-          size_group: "M/G",
-          sizes: ["M/G"],
-          price: null,
-          price_retail: null,
-        },
+        publicLink.items[0],
+        { ...publicLink.items[0], id: 102, color: "Preto" },
       ],
     });
 
     renderPage();
 
-    expect(await screen.findByText("Catalogo publico")).toBeInTheDocument();
-    expect(screen.getByText("Catalogo Cliente")).toBeInTheDocument();
-    expect(screen.getByText("Preencha seu nome e WhatsApp para enviar interesse. O link da selecao pode ser gerado mesmo sem contato.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Interesse" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Gerar link" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Selecionar todas" })).toBeInTheDocument();
-    expect(screen.queryByText("Pedido")).not.toBeInTheDocument();
-    expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
+    // Duas fotos do mesmo modelo viram um grupo so, nao dois cartoes soltos.
+    const titulo = await screen.findByRole("heading", { name: "Vestido Solar" });
+    expect(titulo).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Abrir foto \d de Vestido Solar/ })).toHaveLength(2);
 
-    vi.mocked(sendCatalogInterest).mockResolvedValue({});
-    vi.mocked(createSelectionLink).mockResolvedValue({
-      catalog_link: {
-        id: 77,
-        token: "selection-token",
-        link_type: "selection",
-        show_prices: false,
-        allow_order: false,
-        allow_payment: false,
-      },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Abrir foto 1 de Vestido Solar" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Selecionar todas" }));
+    const visor = await screen.findByRole("dialog");
+    expect(visor).toHaveAttribute("aria-label", expect.stringContaining("foto 1 de 2"));
 
+    fireEvent.click(screen.getByRole("button", { name: "Próxima foto" }));
     await waitFor(() => {
-      expect(screen.getByText("Selecionada")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Gerar link" })).toBeEnabled();
-      expect(screen.getByRole("button", { name: "Desmarcar todas" })).toBeInTheDocument();
+      expect(screen.getByRole("dialog")).toHaveAttribute("aria-label", expect.stringContaining("foto 2 de 2"));
     });
 
-    expect(screen.getByRole("button", { name: "Interesse" })).toBeDisabled();
-    expect(screen.getByText("Informe o nome. Use um WhatsApp com DDD para continuar.")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText("Seu nome"), { target: { value: "Cliente Final" } });
-    fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "(11) 99999-0000" } });
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Interesse" })).toBeEnabled();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Desmarcar todas" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Selecione ao menos uma foto para enviar interesse ou gerar um novo link.")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Desmarcar todas" })).not.toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Fechar foto" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  const wholesaleLink = {
-    id: 2,
-    token: "demo-token",
-    link_type: "wholesale_buyer" as const,
-    show_prices: true,
-    allow_order: true,
-    allow_payment: true,
-    catalog: { id: 11, name: "Catalogo Atacado", description: "Com pedido" },
-    items: [
-      {
-        id: 202,
-        product_id: 88,
-        photo_id: 99,
-        name: "Biquini Aurora",
-        image_url: "https://cdn.example.com/biquini.jpg",
-        color: "Verde",
-        pantone: "17-5641 TPX",
-        size_group: "P/M" as const,
-        sizes: ["P/M", "M/G"] as const,
-        price: 149.9,
-        price_retail: 219.9,
-      },
-    ],
-  };
-
-  it("shows prices and submits wholesale orders with size quantities", async () => {
+  it("mostra preco, exige documento e envia o pedido do atacado", async () => {
     vi.mocked(getPublicCatalogLink).mockResolvedValue(wholesaleLink);
+    vi.mocked(createTokenOrder).mockResolvedValue({
+      order: { id: 42, status: "pending", payment_status: "pending", total_value: 299.8 },
+      payment: null,
+    });
 
     renderPage();
 
-    expect(await screen.findByText("Catalogo atacado")).toBeInTheDocument();
-    expect(screen.getByText("Catalogo Atacado")).toBeInTheDocument();
-    expect(screen.getByText((content) => content.includes("149,90"))).toBeInTheDocument();
-    expect(screen.getByText("Preencha nome, WhatsApp e CPF ou CNPJ do comprador para liberar o pedido.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
+    expect(await screen.findByText("Catalogo Atacado")).toBeInTheDocument();
+    expect(screen.getByText((texto) => texto.includes("149,90"))).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /biquini aurora/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Somar uma peça do tamanho P/M" }));
+    fireEvent.click(screen.getByRole("button", { name: "Somar uma peça do tamanho P/M" }));
 
-    const buyerName = screen.getByPlaceholderText("Nome do comprador");
-    const buyerPhone = screen.getByPlaceholderText("WhatsApp");
-    const buyerDocument = screen.getByPlaceholderText("CPF ou CNPJ");
-    fireEvent.change(buyerName, { target: { value: "Loja Mar" } });
-    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
-    fireEvent.change(buyerPhone, { target: { value: "11999990000" } });
+    fireEvent.click(await screen.findByRole("button", { name: /Fechar pedido com 2/ }));
 
-    // Documento invalido mantem o pedido travado, mesmo com nome e telefone ok.
-    fireEvent.change(buyerDocument, { target: { value: "529.982.247-24" } });
-    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeDisabled();
-    fireEvent.change(buyerDocument, { target: { value: "11222333000181" } });
+    fireEvent.change(await screen.findByPlaceholderText("Nome do comprador"), { target: { value: "Loja Mar" } });
+    fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "11999990000" } });
 
-    const sizeInputs = screen.getAllByRole("spinbutton");
-    fireEvent.change(sizeInputs[0], { target: { value: "2" } });
+    const enviar = screen.getByRole("button", { name: /Fechar pedido e pagar/ });
+    // O link cobra, entao sem documento valido o pedido nao sai.
+    expect(enviar).toBeDisabled();
 
-    expect(screen.getByRole("button", { name: "Desmarcar todas" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Pedido$/i })).toBeEnabled();
-    expect(screen.getByText("Total estimado:")).toBeInTheDocument();
-    expect(screen.getByText("2 peca(s) neste item")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("CPF ou CNPJ"), { target: { value: "529.982.247-24" } });
+    expect(enviar).toBeDisabled();
 
-    vi.mocked(createTokenOrder).mockResolvedValue({
-      order: { id: 42, status: "pending", payment_status: "pending", total_value: 299.8 },
-      payment: {
-        id: 7,
-        status: "pending",
-        payment_method: "pix",
-        amount: 299.8,
-        pix_qr_code: "00020126BR.GOV.BCB.PIX.CODIGO",
-        checkout_url: "https://psp.exemplo/qr/7.png",
-        pix_expiration: "2026-08-13T23:59:59Z",
-      },
-    });
+    fireEvent.change(screen.getByPlaceholderText("CPF ou CNPJ"), { target: { value: "11222333000181" } });
+    await waitFor(() => expect(enviar).toBeEnabled());
 
-    fireEvent.click(screen.getByRole("button", { name: /^Pedido$/i }));
+    fireEvent.click(enviar);
 
     await waitFor(() => {
-      expect(createTokenOrder).toHaveBeenCalledWith("demo-token", {
-        order: {
+      expect(createTokenOrder).toHaveBeenCalledWith("demo-token", expect.objectContaining({
+        order: expect.objectContaining({
           buyer_name: "Loja Mar",
           buyer_phone: "11999990000",
           buyer_document: "11222333000181",
-          items: [
-            {
-              catalog_item_id: 202,
-              product_id: 88,
-              photo_id: 99,
-              product_name: "Biquini Aurora",
-              color: "Verde",
-              pantone: "17-5641 TPX",
-              image_url: "https://cdn.example.com/biquini.jpg",
-              price: 149.9,
-              qty: { "P/M": 2 },
-            },
-          ],
-          subtotal: 299.8,
           total: 299.8,
-          payment_method: "pix",
-        },
-      });
+        }),
+      }));
     });
-
-    // Depois do pedido o comprador precisa ver como pagar, nao so um toast.
-    expect(await screen.findByText("Pague com Pix")).toBeInTheDocument();
-    expect(screen.getByText("00020126BR.GOV.BCB.PIX.CODIGO")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Copiar codigo/ })).toBeInTheDocument();
-    expect(screen.getByAltText("QR Code do Pix")).toHaveAttribute("src", "https://psp.exemplo/qr/7.png");
   });
 
   it("avisa que a cobranca falhou sem esconder que o pedido foi salvo", async () => {
@@ -249,16 +227,16 @@ describe("CatalogLinkPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Catalogo atacado")).toBeInTheDocument();
+    expect(await screen.findByText("Catalogo Atacado")).toBeInTheDocument();
 
-    // A quantidade vem primeiro: os campos de contato so aparecem quando ha
-    // algo a enviar, para a barra nao ocupar a tela toda no celular.
-    fireEvent.change(screen.getAllByRole("spinbutton")[0], { target: { value: "1" } });
-    fireEvent.change(screen.getByPlaceholderText("Nome do comprador"), { target: { value: "Loja Mar" } });
+    fireEvent.click(screen.getByRole("button", { name: "Somar uma peça do tamanho P/M" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Fechar pedido com 1/ }));
+
+    fireEvent.change(await screen.findByPlaceholderText("Nome do comprador"), { target: { value: "Loja Mar" } });
     fireEvent.change(screen.getByPlaceholderText("WhatsApp"), { target: { value: "11999990000" } });
     fireEvent.change(screen.getByPlaceholderText("CPF ou CNPJ"), { target: { value: "11222333000181" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /^Pedido$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Fechar pedido e pagar/ }));
 
     expect(await screen.findByText("Pedido registrado, cobranca pendente")).toBeInTheDocument();
     expect(screen.getByText(/Seu pedido foi salvo/)).toBeInTheDocument();

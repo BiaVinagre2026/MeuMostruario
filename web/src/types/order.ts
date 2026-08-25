@@ -26,6 +26,8 @@ export interface Order {
   total_value: string;
   notes: string | null;
   member: OrderMember | null;
+  /** Preenchido nos pedidos que chegam por link, onde nao ha lojista cadastrado. */
+  buyer?: { name: string | null; phone: string | null; email: string | null } | null;
   created_at: string;
   updated_at: string;
 }
