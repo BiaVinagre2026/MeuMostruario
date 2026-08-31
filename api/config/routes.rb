@@ -75,7 +75,7 @@ Rails.application.routes.draw do
         # Catalog – products, variants, images
         resources :products, only: [:index, :show, :create, :update, :destroy] do
           resources :variants, only: [:create, :update, :destroy], controller: "product_variants"
-          resources :images,   only: [:create, :destroy],          controller: "product_images"
+          resources :images,   only: [:create, :update, :destroy], controller: "product_images"
         end
 
         # Catalog – collections, categories & looks

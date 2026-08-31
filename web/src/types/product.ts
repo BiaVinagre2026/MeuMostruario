@@ -25,6 +25,7 @@ export interface ProductImage {
   pantone?: string | null;
   approved_color?: string | null;
   size_group?: string | null;
+  alt_text?: string | null;
   is_cover: boolean;
   position: number;
 }

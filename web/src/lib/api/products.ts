@@ -89,6 +89,18 @@ export async function addProductImage(
   return res.image;
 }
 
+export async function updateProductImage(
+  productId: number,
+  imageId: number,
+  data: Pick<Partial<ProductImage>, "is_cover" | "alt_text" | "position">
+): Promise<ProductImage> {
+  const res = await apiClient.patch<{ image: ProductImage }>(
+    `/api/v1/admin/products/${productId}/images/${imageId}`,
+    { image: data }
+  );
+  return res.image;
+}
+
 export function deleteProductImage(
   productId: number,
   imageId: number

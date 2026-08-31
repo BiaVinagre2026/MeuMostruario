@@ -33,6 +33,7 @@ import {
   updateVariant,
   deleteVariant,
   addProductImage,
+  updateProductImage,
   deleteProductImage,
   uploadFile,
 } from "@/lib/api/products";
@@ -522,6 +523,16 @@ function PhotosTab({ product, productId }: { product: Product; productId: number
     onError: () => toast.error("Erro ao remover imagem."),
   });
 
+  const updateImageMutation = useMutation({
+    mutationFn: ({ imageId, data }: { imageId: number; data: Pick<Partial<ProductImage>, "is_cover" | "alt_text" | "position"> }) =>
+      updateProductImage(productId, imageId, data),
+    onSuccess: () => {
+      toast.success("Imagem atualizada.");
+      void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] });
+    },
+    onError: () => toast.error("Erro ao atualizar imagem."),
+  });
+
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setIsUploading(true);
@@ -591,10 +602,10 @@ function PhotosTab({ product, productId }: { product: Product; productId: number
               key={img.id}
               image={img}
               isDeleting={deleteImageMutation.isPending}
+              isUpdating={updateImageMutation.isPending}
               onDelete={() => deleteImageMutation.mutate(img.id)}
-              onSetCover={() =>
-                addImageMutation.mutate({ url: img.urls.original, isCover: true })
-              }
+              onSetCover={() => updateImageMutation.mutate({ imageId: img.id, data: { is_cover: true } })}
+              onSetRole={(altText) => updateImageMutation.mutate({ imageId: img.id, data: { alt_text: altText || null } })}
             />
           ))}
         </div>
@@ -611,53 +622,61 @@ function PhotosTab({ product, productId }: { product: Product; productId: number
 function ImageCard({
   image,
   isDeleting,
+  isUpdating,
   onDelete,
   onSetCover,
+  onSetRole,
 }: {
   image: ProductImage;
   isDeleting: boolean;
+  isUpdating: boolean;
   onDelete: () => void;
   onSetCover: () => void;
+  onSetRole: (altText: string) => void;
 }) {
   return (
-    <div className="relative group rounded-lg overflow-hidden border bg-muted aspect-[3/4]">
-      <img
-        src={image.urls.regular ?? image.urls.original}
-        alt=""
-        className="w-full h-full object-cover object-top"
-      />
-      {/* Cover badge */}
-      {image.is_cover && (
-        <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-          <Star className="h-3 w-3" />
-          Capa
-        </div>
-      )}
-      {/* Actions overlay */}
-      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end gap-1.5 p-2">
-        {!image.is_cover && (
-          <button
-            onClick={onSetCover}
-            title="Definir como capa"
-            className="flex-1 bg-white/90 hover:bg-white text-foreground text-xs py-1.5 rounded font-medium transition-colors"
-          >
-            <Star className="h-3 w-3 inline mr-1" />
+    <div className="rounded-lg overflow-hidden border bg-muted">
+      <div className="relative group aspect-[3/4]">
+        <img
+          src={image.urls.regular ?? image.urls.original}
+          alt={image.alt_text || "Foto do produto"}
+          className="w-full h-full object-cover object-top"
+        />
+        {image.is_cover && (
+          <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+            <Star className="h-3 w-3" />
             Capa
-          </button>
+          </div>
         )}
-        <button
-          onClick={onDelete}
-          disabled={isDeleting}
-          title="Remover imagem"
-          className="bg-destructive/90 hover:bg-destructive text-white text-xs p-1.5 rounded transition-colors"
-        >
-          {isDeleting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Trash2 className="h-3.5 w-3.5" />
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end gap-1.5 p-2">
+          {!image.is_cover && (
+            <button
+              onClick={onSetCover}
+              disabled={isUpdating}
+              title="Definir como capa"
+              className="flex-1 bg-white/90 hover:bg-white text-foreground text-xs py-1.5 rounded font-medium transition-colors"
+            >
+              <Star className="h-3 w-3 inline mr-1" />
+              Capa
+            </button>
           )}
-        </button>
+          <button
+            onClick={onDelete}
+            disabled={isDeleting}
+            title="Remover imagem"
+            className="bg-destructive/90 hover:bg-destructive text-white text-xs p-1.5 rounded transition-colors"
+          >
+            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
+      <select value={image.alt_text || ""} disabled={isUpdating} onChange={(event) => onSetRole(event.target.value)} className="w-full border-0 border-t bg-background px-2 py-2 text-xs">
+        <option value="">Identificar foto…</option>
+        <option value="Frente">Frente</option>
+        <option value="Costas">Costas</option>
+        <option value="Detalhe">Detalhe</option>
+        <option value="Tecido">Tecido</option>
+      </select>
     </div>
   );
 }
@@ -833,7 +852,6 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
         <NewVariantCard
           key={sizeProfile}
           sizes={sizes}
-          sizeProfile={sizeProfile}
           isSaving={createVariantMutation.isPending}
           onSave={async (row) => {
             for (const size of sizes) {
@@ -854,9 +872,8 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
   );
 }
 
-function NewVariantCard({ sizes, sizeProfile, isSaving, onSave }: {
+function NewVariantCard({ sizes, isSaving, onSave }: {
   sizes: readonly string[];
-  sizeProfile: SizeProfile;
   isSaving: boolean;
   onSave: (row: NewColorRow) => Promise<void>;
 }) {

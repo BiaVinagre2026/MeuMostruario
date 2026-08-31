@@ -22,11 +22,24 @@ module Api
             is_cover: is_cover,
             photo_id: params[:photo_id],
             visual_metadata: params[:visual_metadata] || {},
+            alt_text: params[:alt_text],
             position: next_position(product)
           )
 
           if image.save
             render json: { image: image_json(image) }, status: :created
+          else
+            render json: { errors: image.errors.full_messages }, status: :unprocessable_entity
+          end
+        end
+
+        # PATCH /api/v1/admin/products/:product_id/images/:id
+        def update
+          product = Product.find(params[:product_id])
+          image = product.images.find(params[:id])
+
+          if image.update(image_params)
+            render json: { image: image_json(image) }
           else
             render json: { errors: image.errors.full_messages }, status: :unprocessable_entity
           end
@@ -50,6 +63,10 @@ module Api
           (product.images.maximum(:position) || 0) + 1
         end
 
+        def image_params
+          params.require(:image).permit(:is_cover, :alt_text, :position)
+        end
+
         def image_json(img)
           {
             id:         img.id,
@@ -57,6 +74,7 @@ module Api
             photo_id:   img.photo_id,
             urls:       img.urls,
             visual_metadata: img.visual_metadata,
+            alt_text:  img.alt_text,
             is_cover:   img.is_cover,
             position:   img.position,
             created_at: img.created_at

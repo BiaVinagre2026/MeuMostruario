@@ -146,6 +146,7 @@ module Api
             pantone:  img.pantone,
             approved_color: img.approved_color,
             size_group: img.size_group,
+            alt_text: img.alt_text,
             is_cover: img.is_cover,
             position: img.position
           }
