@@ -669,6 +669,8 @@ function ImageCard({
 // ── Paleta Pantone do mostruário (5 cores) ──────────────────────────────────
 
 const PANTONE_COLORS = [
+  { name: "Coral",       hex: "#FF5A3C" },
+  { name: "Rosa",        hex: "#F0417A" },
   { name: "Preto",       hex: "#1C1C1C" },
   { name: "Off-White",   hex: "#F2EDE4" },
   { name: "Bege",        hex: "#C4A882" },
@@ -716,28 +718,47 @@ function ColorSwatchPicker({
 
 // ────────────────────────────────────────────────────────────────────────────
 
-const SIZES = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2"] as const;
-type SizeKey = (typeof SIZES)[number];
+const RETAIL_SIZES = ["PP", "P", "M", "G", "GG", "XGG"] as const;
+const GROUPED_SIZES = ["P/M", "M/G", "Unico", "Plus 1", "Plus 2"] as const;
+type SizeProfile = "retail" | "grouped";
+
+type VariantInput = {
+  color: string;
+  color_hex: string;
+  size: string;
+  size_group: string | null;
+  stock_qty: number;
+  image_url: string | null;
+};
+
+function sizeValue(variant: ProductVariant) {
+  return variant.size_group || variant.size;
+}
+
+function dimensionsForSize(size: string, profile: SizeProfile) {
+  return { size, size_group: profile === "grouped" ? size : null };
+}
 
 interface NewColorRow {
   color: string;
   color_hex: string;
   image_url: string;
-  stocks: Record<SizeKey, number>;
+  stocks: Record<string, number>;
 }
 
-const EMPTY_COLOR_ROW: NewColorRow = {
-  color: PANTONE_COLORS[0].name,
-  color_hex: PANTONE_COLORS[0].hex,
-  image_url: "",
-  stocks: { "P/M": 0, "M/G": 0, Unico: 0, "Plus 1": 0, "Plus 2": 0 },
-};
+function emptyColorRow(sizes: readonly string[]): NewColorRow {
+  return {
+    color: PANTONE_COLORS[0].name,
+    color_hex: PANTONE_COLORS[0].hex,
+    image_url: "",
+    stocks: Object.fromEntries(sizes.map((size) => [size, 0])),
+  };
+}
 
 function VariantsTab({ product, productId }: { product: Product; productId: number }) {
   const queryClient = useQueryClient();
 
-  // Pega o primeiro (e único) grupo de variantes
-  const group = useMemo(() => {
+  const groups = useMemo(() => {
     const map = new Map<string, { color: string; color_hex: string; image_url: string; variants: ProductVariant[] }>();
     for (const v of product.variants) {
       const key = v.color_hex ?? v.color ?? "";
@@ -746,11 +767,19 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
       }
       map.get(key)!.variants.push(v);
     }
-    return map.size > 0 ? Array.from(map.values())[0] : null;
+    return Array.from(map.values());
   }, [product.variants]);
 
+  const inferredProfile: SizeProfile = product.variants.some((variant) =>
+    GROUPED_SIZES.includes(sizeValue(variant) as (typeof GROUPED_SIZES)[number]))
+    ? "grouped"
+    : "retail";
+  const [sizeProfile, setSizeProfile] = useState<SizeProfile>(inferredProfile);
+  const [addingColor, setAddingColor] = useState(groups.length === 0);
+  const sizes = sizeProfile === "retail" ? RETAIL_SIZES : GROUPED_SIZES;
+
   const createVariantMutation = useMutation({
-    mutationFn: (data: { color: string; color_hex: string; size: string; size_group: string; stock_qty: number; image_url: string | null }) =>
+    mutationFn: (data: VariantInput) =>
       createVariant(productId, data),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "product", productId] }),
     onError: (err) => toast.error(err instanceof ApiError ? err.message : "Erro ao criar variante."),
@@ -770,42 +799,68 @@ function VariantsTab({ product, productId }: { product: Product; productId: numb
   });
 
   return (
-    <div className="max-w-sm">
-      {group ? (
-        <ExistingColorRow
-          group={group}
-          isSaving={updateVariantMutation.isPending || createVariantMutation.isPending}
-          isDeleting={deleteVariantMutation.isPending}
-          onSaveVariant={(variantId, data) => updateVariantMutation.mutate({ variantId, data })}
-          onCreateVariant={(data) => createVariantMutation.mutateAsync(data)}
-          onDeleteGroup={() => group.variants.forEach((v) => deleteVariantMutation.mutate(v.id))}
-        />
-      ) : (
+    <div className="max-w-3xl space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">Grade de tamanhos</p>
+          <p className="text-xs text-muted-foreground">A grade escolhida vale para as novas cores deste produto.</p>
+        </div>
+        <div className="flex rounded-md border p-1">
+          <button type="button" onClick={() => setSizeProfile("retail")} className={`px-3 py-1.5 rounded text-xs font-medium ${sizeProfile === "retail" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Varejo PP–XGG</button>
+          <button type="button" onClick={() => setSizeProfile("grouped")} className={`px-3 py-1.5 rounded text-xs font-medium ${sizeProfile === "grouped" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Agrupada</button>
+        </div>
+      </div>
+
+      {groups.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {groups.map((group) => (
+            <ExistingColorRow
+              key={group.color_hex || group.color}
+              group={group}
+              sizes={sizes}
+              sizeProfile={sizeProfile}
+              isSaving={updateVariantMutation.isPending || createVariantMutation.isPending}
+              isDeleting={deleteVariantMutation.isPending}
+              onSaveVariant={(variantId, data) => updateVariantMutation.mutateAsync({ variantId, data })}
+              onCreateVariant={(data) => createVariantMutation.mutateAsync(data)}
+              onDeleteGroup={() => group.variants.forEach((variant) => deleteVariantMutation.mutate(variant.id))}
+            />
+          ))}
+        </div>
+      )}
+
+      {addingColor ? (
         <NewVariantCard
+          key={sizeProfile}
+          sizes={sizes}
+          sizeProfile={sizeProfile}
           isSaving={createVariantMutation.isPending}
           onSave={async (row) => {
-            for (const size of SIZES) {
+            for (const size of sizes) {
+              if ((row.stocks[size] ?? 0) <= 0) continue;
               await createVariantMutation.mutateAsync({
-                color: row.color, color_hex: row.color_hex, size, size_group: size,
+                color: row.color, color_hex: row.color_hex, ...dimensionsForSize(size, sizeProfile),
                 stock_qty: row.stocks[size], image_url: row.image_url || null,
               });
             }
             toast.success("Grade salva.");
+            setAddingColor(false);
           }}
         />
+      ) : (
+        <Button type="button" variant="outline" onClick={() => setAddingColor(true)}>Adicionar outra cor</Button>
       )}
     </div>
   );
 }
 
-function NewVariantCard({ isSaving, onSave }: {
+function NewVariantCard({ sizes, sizeProfile, isSaving, onSave }: {
+  sizes: readonly string[];
+  sizeProfile: SizeProfile;
   isSaving: boolean;
   onSave: (row: NewColorRow) => Promise<void>;
 }) {
-  const [row, setRow] = useState<NewColorRow>({
-    ...EMPTY_COLOR_ROW,
-    stocks: { "P/M": 0, "M/G": 0, Unico: 0, "Plus 1": 0, "Plus 2": 0 },
-  });
+  const [row, setRow] = useState<NewColorRow>(() => emptyColorRow(sizes));
 
   return (
     <div className="border rounded-md p-4 space-y-3">
@@ -814,7 +869,7 @@ function NewVariantCard({ isSaving, onSave }: {
         onChange={(hex, name) => setRow((r) => ({ ...r, color_hex: hex, color: name }))}
       />
       <div className="space-y-1.5">
-        {SIZES.map((s) => (
+        {sizes.map((s) => (
           <div key={s} className="flex items-center gap-3">
             <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
             <Input
@@ -841,6 +896,8 @@ function NewVariantCard({ isSaving, onSave }: {
 
 function ExistingColorRow({
   group,
+  sizes,
+  sizeProfile,
   isSaving,
   isDeleting,
   onSaveVariant,
@@ -848,33 +905,35 @@ function ExistingColorRow({
   onDeleteGroup,
 }: {
   group: { color: string; color_hex: string; image_url: string; variants: ProductVariant[] };
+  sizes: readonly string[];
+  sizeProfile: SizeProfile;
   isSaving: boolean;
   isDeleting: boolean;
-  onSaveVariant: (variantId: number, data: Partial<ProductVariant>) => void;
-  onCreateVariant: (data: { color: string; color_hex: string; size: string; size_group: string; stock_qty: number; image_url: string | null }) => Promise<unknown>;
+  onSaveVariant: (variantId: number, data: Partial<ProductVariant>) => Promise<unknown>;
+  onCreateVariant: (data: VariantInput) => Promise<unknown>;
   onDeleteGroup: () => void;
 }) {
   const [colorHex, setColorHex] = useState(group.color_hex);
   const [color, setColor]       = useState(group.color);
   const [imageUrl, setImageUrl] = useState(group.image_url);
   const [stocks, setStocks]     = useState<Record<string, number>>(
-    Object.fromEntries(group.variants.map((v) => [v.size_group ?? v.size, v.stock_qty ?? 0]))
+    Object.fromEntries(group.variants.map((variant) => [sizeValue(variant), variant.stock_qty ?? 0]))
   );
 
   const isDirty =
     color !== group.color ||
     colorHex !== group.color_hex ||
     imageUrl !== group.image_url ||
-    SIZES.some((s) => (stocks[s] ?? 0) !== (group.variants.find((v) => (v.size_group ?? v.size) === s)?.stock_qty ?? 0));
+    sizes.some((size) => (stocks[size] ?? 0) !== (group.variants.find((variant) => sizeValue(variant) === size)?.stock_qty ?? 0));
 
   async function handleSave() {
-    for (const size of SIZES) {
-      const variant = group.variants.find((v) => (v.size_group ?? v.size) === size);
+    for (const size of sizes) {
+      const variant = group.variants.find((candidate) => sizeValue(candidate) === size);
       const stockVal = stocks[size] ?? 0;
       if (variant) {
-        onSaveVariant(variant.id, { color, color_hex: colorHex, size_group: size, size, stock_qty: stockVal, image_url: imageUrl || null });
+        await onSaveVariant(variant.id, { color, color_hex: colorHex, ...dimensionsForSize(size, sizeProfile), stock_qty: stockVal, image_url: imageUrl || null });
       } else if (stockVal > 0) {
-        await onCreateVariant({ color, color_hex: colorHex, size, size_group: size, stock_qty: stockVal, image_url: imageUrl || null });
+        await onCreateVariant({ color, color_hex: colorHex, ...dimensionsForSize(size, sizeProfile), stock_qty: stockVal, image_url: imageUrl || null });
       }
     }
     toast.success("Variantes salvas.");
@@ -897,7 +956,7 @@ function ExistingColorRow({
       </div>
 
       <div className="space-y-1.5">
-        {SIZES.map((s) => (
+        {sizes.map((s) => (
           <div key={s} className="flex items-center gap-3">
             <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">{s}</span>
             <Input

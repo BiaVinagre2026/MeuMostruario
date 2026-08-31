@@ -9,6 +9,7 @@ import AuthProvider from "@/components/auth/AuthProvider";
 import OperatorAuthProvider from "@/components/auth/OperatorAuthProvider";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AdminRoute from "@/components/auth/AdminRoute";
+import TenantAdminRoute from "@/components/auth/TenantAdminRoute";
 
 import { ShowroomLayout } from "@/components/showroom/ShowroomLayout";
 import { useOperatorStore } from "@/stores/useOperatorStore";
@@ -77,26 +78,28 @@ export default function App() {
                       <Route path="/admin" element={<AdminHomeRedirect />} />
                       <Route path="/admin/global" element={<GlobalDashboard />} />
                       <Route path="/admin/global/tenants" element={<TenantListPage />} />
-                      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                      <Route element={<TenantAdminRoute />}>
+                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
-                      <Route path="/admin/products" element={<ProductList />} />
-                      <Route path="/admin/products/new" element={<ProductForm />} />
-                      <Route path="/admin/products/:id/edit" element={<ProductForm />} />
+                        <Route path="/admin/products" element={<ProductList />} />
+                        <Route path="/admin/products/new" element={<ProductForm />} />
+                        <Route path="/admin/products/:id/edit" element={<ProductForm />} />
 
-                      <Route path="/admin/photo-batches" element={<PhotoBatchList />} />
-                      <Route path="/admin/photo-batches/:id" element={<PhotoBatchReview />} />
-                      <Route path="/admin/catalogs" element={<CatalogList />} />
+                        <Route path="/admin/photo-batches" element={<PhotoBatchList />} />
+                        <Route path="/admin/photo-batches/:id" element={<PhotoBatchReview />} />
+                        <Route path="/admin/catalogs" element={<CatalogList />} />
 
-                      <Route path="/admin/collections" element={<CollectionList />} />
-                      <Route path="/admin/collections/new" element={<CollectionForm />} />
-                      <Route path="/admin/collections/:id/edit" element={<CollectionForm />} />
+                        <Route path="/admin/collections" element={<CollectionList />} />
+                        <Route path="/admin/collections/new" element={<CollectionForm />} />
+                        <Route path="/admin/collections/:id/edit" element={<CollectionForm />} />
 
-                      <Route path="/admin/members" element={<MemberList />} />
+                        <Route path="/admin/members" element={<MemberList />} />
 
-                      <Route path="/admin/orders" element={<OrderList />} />
-                      <Route path="/admin/orders/:id" element={<OrderDetail />} />
+                        <Route path="/admin/orders" element={<OrderList />} />
+                        <Route path="/admin/orders/:id" element={<OrderDetail />} />
 
-                      <Route path="/admin/settings" element={<SettingsPage />} />
+                        <Route path="/admin/settings" element={<SettingsPage />} />
+                      </Route>
                     </Route>
 
                     <Route path="*" element={<NotFound />} />

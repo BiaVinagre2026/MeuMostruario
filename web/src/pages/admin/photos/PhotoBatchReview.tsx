@@ -14,6 +14,7 @@ import {
   getPhotoBatch,
 } from "@/lib/api/photoCatalog";
 import { SIZE_GROUPS, type Photo, type PhotoBatch } from "@/types/photoCatalog";
+import { sizeLabelComNumeracao } from "@/lib/sizeGroups";
 
 export default function PhotoBatchReview() {
   const { id } = useParams<{ id: string }>();
@@ -272,7 +273,7 @@ export default function PhotoBatchReview() {
                 onChange={(event) => setSizeGroup(event.target.value)}
               >
                 <option value="">Selecione</option>
-                {SIZE_GROUPS.map((size) => <option key={size} value={size}>{size}</option>)}
+                {SIZE_GROUPS.map((size) => <option key={size} value={size}>{sizeLabelComNumeracao(size)}</option>)}
               </select>
             </div>
             <Button disabled={selected.size === 0 || updatePhotos.isPending} onClick={() => updatePhotos.mutate()}>

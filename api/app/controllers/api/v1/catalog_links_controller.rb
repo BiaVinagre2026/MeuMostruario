@@ -50,6 +50,10 @@ module Api
           return render json: { errors: [document_error] }, status: :unprocessable_entity
         end
 
+        if (minimo_error = min_order_error(items))
+          return render json: { errors: [minimo_error] }, status: :unprocessable_entity
+        end
+
         order = OrderBuilderService.build(
           catalog_link: @catalog_link,
           buyer: buyer_params.to_h,
@@ -136,6 +140,30 @@ module Api
         )
       end
 
+      # Pedido minimo do atacado, configurado por tenant.
+      #
+      # A conferencia e feita aqui com o preco que esta no banco, nao com o
+      # total que o cliente enviou: aceitar o valor do cliente deixaria o
+      # minimo furado por quem alterasse a requisicao.
+      def min_order_error(items)
+        minimo = current_tenant&.tenant_config&.min_order_amount.to_d
+        return nil if minimo <= 0
+
+        # normalized_order_items ja resolveu unit_price pelo produto, e qty pode
+        # vir como numero ou como mapa por tamanho — a mesma forma que o
+        # OrderBuilderService aceita. Ler diferente dele faria o minimo divergir
+        # do total que acaba gravado no pedido.
+        total = items.sum do |item|
+          pecas = item[:qty].is_a?(Hash) ? item[:qty].values.sum(&:to_i) : item[:qty].to_i
+          item[:unit_price].to_d * pecas
+        end
+
+        return nil if total >= minimo
+
+        "pedido minimo de #{ActionController::Base.helpers.number_to_currency(minimo, unit: 'R$', separator: ',', delimiter: '.')}" \
+        " — seu pedido soma #{ActionController::Base.helpers.number_to_currency(total, unit: 'R$', separator: ',', delimiter: '.')}"
+      end
+
       # O gateway exige customer_document na cobranca, entao o documento e
       # obrigatorio quando o link cobra. Sem pagamento o pedido segue sem ele,
       # mas se vier preenchido precisa ser um CPF ou CNPJ de verdade.
@@ -167,8 +195,14 @@ module Api
             product_id: product&.id,
             product_name: item[:product_name].presence || product&.name || photo&.approved_model || "Foto #{photo&.id}",
             product_sku: item[:product_sku].presence || product&.sku,
-            price: item[:price].presence || product&.price_wholesale || 0,
-            unit_price: item[:unit_price].presence || product&.price_wholesale || 0,
+            # Preco vem SEMPRE do banco, nunca do que o cliente enviou.
+            #
+            # Antes era `item[:price].presence || product&.price_wholesale`, e o
+            # valor do cliente ganhava: bastava mandar unit_price 1 para levar
+            # uma peca de R$ 159 por R$ 1, com a cobranca saindo pelo valor
+            # falso. Quem abre o link de atacado controla a requisicao.
+            price: product&.price_wholesale || 0,
+            unit_price: product&.price_wholesale || 0,
             color: item[:color].presence || photo&.approved_color,
             pantone: item[:pantone].presence || photo&.approved_pantone,
             image_url: item[:image_url].presence || photo&.display_url || product&.cover_image&.original_url,
@@ -187,6 +221,7 @@ module Api
           show_prices: link.show_prices,
           allow_order: link.allow_order,
           allow_payment: link.allow_payment,
+          min_order_amount: current_tenant&.tenant_config&.min_order_amount.to_d,
           catalog: {
             id: link.catalog.id,
             name: link.catalog.name,

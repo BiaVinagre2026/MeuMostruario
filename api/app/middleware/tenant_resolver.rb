@@ -29,8 +29,10 @@ class TenantResolver
     if request.path.start_with?("/api/v1/admin")
       admin_slug = request.headers["X-Admin-Tenant-Slug"]
       if admin_slug.present?
-        tenant = Tenant.active.find_by(slug: admin_slug)
-        return tenant if tenant
+        # Um slug administrativo explicito nunca pode cair silenciosamente no
+        # tenant padrao. Se ele for invalido ou estiver suspenso, a requisicao
+        # segue sem tenant e os controllers tenant-scoped respondem 404.
+        return Tenant.active.find_by(slug: admin_slug)
       end
     end
 

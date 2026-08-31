@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, PauseCircle, PlayCircle, Plus } from "lucide-react";
+import { Loader2, PauseCircle, PlayCircle, Plus, Store } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api/client";
+import { useTenantWorkspace } from "@/hooks/useTenantWorkspace";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import type { AdminTenant, TenantPlan } from "@/types/operator";
 
@@ -31,6 +32,7 @@ const PLAN_OPTIONS: TenantPlan[] = ["starter", "growth", "enterprise"];
 export default function TenantListPage() {
   const operator = useOperatorStore((state) => state.operator);
   const isSuperAdmin = operator?.role === "super_admin";
+  const { openTenant } = useTenantWorkspace();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     name: "",
@@ -201,6 +203,15 @@ export default function TenantListPage() {
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{tenant.schema_name}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-2">
+                              {isActive && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => void openTenant(tenant.slug)}
+                                >
+                                  <Store className="mr-2 h-4 w-4" />
+                                  Abrir
+                                </Button>
+                              )}
                               {isActive ? (
                                 <Button
                                   variant="outline"

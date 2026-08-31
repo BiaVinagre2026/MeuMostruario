@@ -35,7 +35,12 @@ export const useOperatorStore = create<OperatorStore>()(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
-      setActiveTenantSlug: (slug) => set({ activeTenantSlug: slug }),
+      setActiveTenantSlug: (slug) =>
+        set((state) => ({
+          activeTenantSlug: state.operator?.role === "super_admin"
+            ? slug
+            : state.operator?.tenant_slug ?? null,
+        })),
 
       logout: () =>
         set({

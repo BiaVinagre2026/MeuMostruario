@@ -7,6 +7,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiClient } from "@/lib/api/client";
+import { useTenantWorkspace } from "@/hooks/useTenantWorkspace";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import type { AdminTenant } from "@/types/operator";
 
@@ -18,6 +19,7 @@ export default function GlobalDashboard() {
   const navigate = useNavigate();
   const operator = useOperatorStore((state) => state.operator);
   const isSuperAdmin = operator?.role === "super_admin";
+  const { openTenant } = useTenantWorkspace();
 
   const { data, isLoading } = useQuery<TenantListResponse>({
     queryKey: ["admin", "global", "tenants"],
@@ -102,9 +104,16 @@ export default function GlobalDashboard() {
                         <p className="font-medium text-sm truncate">{tenant.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{tenant.slug} · {tenant.schema_name}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs font-medium uppercase tracking-wide">{tenant.plan}</p>
-                        <p className="text-xs text-muted-foreground">{tenant.status}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-xs font-medium uppercase tracking-wide">{tenant.plan}</p>
+                          <p className="text-xs text-muted-foreground">{tenant.status}</p>
+                        </div>
+                        {tenant.status === "active" && (
+                          <Button variant="outline" size="sm" onClick={() => void openTenant(tenant.slug)}>
+                            Abrir operação
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

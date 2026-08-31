@@ -34,27 +34,29 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const operator = useOperatorStore((state) => state.operator);
+  const activeTenantSlug = useOperatorStore((state) => state.activeTenantSlug);
   const isSuperAdmin = operator?.role === "super_admin";
+  const hasTenantContext = !isSuperAdmin || Boolean(activeTenantSlug);
 
   const { data: productsData } = useQuery({
     queryKey: ["admin", "dashboard-products"],
     queryFn: () => apiClient.get<{ meta: { total_count: number } }>("/api/v1/admin/products?per_page=1"),
-    enabled: !isSuperAdmin,
+    enabled: hasTenantContext,
   });
 
   const { data: ordersData, isLoading: ordersLoading } = useQuery<OrderListResponse>({
     queryKey: ["admin", "dashboard-orders"],
     queryFn: () => apiClient.get<OrderListResponse>("/api/v1/admin/orders?per_page=5"),
-    enabled: !isSuperAdmin,
+    enabled: hasTenantContext,
   });
 
   const { data: membersData } = useQuery({
     queryKey: ["admin", "dashboard-members"],
     queryFn: () => apiClient.get<{ meta: { total_count: number } }>("/api/v1/admin/members?per_page=1"),
-    enabled: !isSuperAdmin,
+    enabled: hasTenantContext,
   });
 
-  if (isSuperAdmin) {
+  if (isSuperAdmin && !activeTenantSlug) {
     return <Navigate to="/admin/global" replace />;
   }
 
@@ -103,7 +105,7 @@ export default function AdminDashboard() {
         </h1>
         <p className="text-xs md:text-sm text-muted-foreground flex items-center gap-2">
           <Building2 className="h-3.5 w-3.5" />
-          Visão geral da operação atual do catálogo
+          Visão geral da operação {activeTenantSlug ? `· ${activeTenantSlug}` : "atual"}
         </p>
       </div>
 

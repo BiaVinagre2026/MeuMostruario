@@ -2,6 +2,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, Building2, Globe2, Images, LayoutDashboard, Link2, LogOut, Menu, Package, Settings, ShoppingBag, Store, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TenantWorkspaceTabs } from "@/components/admin/TenantWorkspaceTabs";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import { useOperatorLogout } from "@/hooks/useOperatorAuth";
 
@@ -40,9 +41,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isSuperAdmin = operator?.role === "super_admin";
-  const navItems = isSuperAdmin ? SUPER_ADMIN_NAV_ITEMS : TENANT_NAV_ITEMS;
+  const navItems = isSuperAdmin
+    ? activeTenantSlug
+      ? [...SUPER_ADMIN_NAV_ITEMS, ...TENANT_NAV_ITEMS]
+      : SUPER_ADMIN_NAV_ITEMS
+    : TENANT_NAV_ITEMS;
 
-  const isActive = (href: string) => location.pathname.startsWith(href);
+  const isActive = (href: string) =>
+    href === "/admin/global"
+      ? location.pathname === href
+      : location.pathname.startsWith(href);
 
   const navLinkClass = (href: string) =>
     [
@@ -58,7 +66,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div>
           <span className="font-semibold text-sm tracking-wide">MeuMostruário</span>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {isSuperAdmin ? "Painel global white-label" : `Tenant ativo: ${activeTenantSlug ?? "demo"}`}
+            {isSuperAdmin && !activeTenantSlug
+              ? "Painel global white-label"
+              : `Cliente ativo: ${activeTenantSlug ?? "demo"}`}
           </p>
         </div>
         <button
@@ -85,7 +95,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </nav>
 
       <div className="px-4 py-4 border-t space-y-2">
-        {!isSuperAdmin && activeTenantSlug && (
+        {activeTenantSlug && (
           <div className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
             <Store className="h-3 w-3" />
             {activeTenantSlug}
@@ -135,7 +145,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-semibold text-sm">MeuMostruário</span>
+          <span className="font-semibold text-sm">
+            MeuMostruário{activeTenantSlug ? ` · ${activeTenantSlug}` : ""}
+          </span>
           <div className="ml-auto">
             <Button
               variant="ghost"
@@ -148,6 +160,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </div>
 
+        {isSuperAdmin && <TenantWorkspaceTabs />}
         {children}
       </div>
     </div>

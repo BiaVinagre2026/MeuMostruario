@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { brl } from "@/data/catalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { TOQUE, radius, rotulo, sombra, t } from "./showcaseTheme";
+import { sizeInfo } from "@/lib/sizeGroups";
 
 export interface ModelGroup {
   chave: string;
@@ -253,6 +254,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
 }
 
 function Stepper({ size, valor, onChange }: { size: string; valor: number; onChange: (v: number) => void }) {
+  const info = sizeInfo(size);
   const botao: React.CSSProperties = {
     width: TOQUE, height: TOQUE,
     border: `1px solid ${t.line}`,
@@ -272,15 +274,22 @@ function Stepper({ size, valor, onChange }: { size: string; valor: number; onCha
       padding: valor > 0 ? "6px 8px 6px 14px" : "6px 8px 6px 14px",
       transition: "background .15s ease",
     }}>
-      <span style={{ fontSize: 15, fontWeight: 500 }}>{size}</span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ fontSize: 15, fontWeight: 500, display: "block" }}>{info.rotulo}</span>
+        {/* A numeracao e o que a lojista usa para decidir, e ate agora nao
+            aparecia: ela via "P/M" sem saber que veste do 36 ao 40. */}
+        {info.numeracao && (
+          <span style={{ fontSize: 12, color: t.muted }}>veste {info.numeracao}</span>
+        )}
+      </span>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button type="button" aria-label={`Tirar uma peça do tamanho ${size}`} style={botao}
+        <button type="button" aria-label={`Tirar uma peça do tamanho ${info.rotulo}`} style={botao}
           onClick={() => onChange(Math.max(0, valor - 1))}>−</button>
         <input
           type="number"
           min={0}
           inputMode="numeric"
-          aria-label={size}
+          aria-label={info.rotulo}
           value={valor || ""}
           placeholder="0"
           onFocus={(event) => event.target.select()}
@@ -290,7 +299,7 @@ function Stepper({ size, valor, onChange }: { size: string; valor: number; onCha
             border: `1px solid ${t.line}`, borderRadius: 12, background: t.surface, color: t.ink,
           }}
         />
-        <button type="button" aria-label={`Somar uma peça do tamanho ${size}`} style={botao}
+        <button type="button" aria-label={`Somar uma peça do tamanho ${info.rotulo}`} style={botao}
           onClick={() => onChange(valor + 1)}>+</button>
       </div>
     </div>

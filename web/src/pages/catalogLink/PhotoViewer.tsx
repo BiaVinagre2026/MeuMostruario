@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { brl } from "@/data/catalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
 import { TOQUE, radius, rotulo, t } from "./showcaseTheme";
+import { sizeInfo } from "@/lib/sizeGroups";
 
 /**
  * A foto em tela cheia, com a grade junto.
@@ -176,6 +177,7 @@ function SetaVisor({ lado, onClick }: { lado: "esquerda" | "direita"; onClick: (
 }
 
 function LinhaGrade({ size, valor, onChange }: { size: string; valor: number; onChange: (v: number) => void }) {
+  const info = sizeInfo(size);
   const botao: React.CSSProperties = {
     width: TOQUE, height: TOQUE,
     border: `1px solid ${t.line}`, background: t.surface,
@@ -189,12 +191,17 @@ function LinhaGrade({ size, valor, onChange }: { size: string; valor: number; on
       background: valor > 0 ? t.accentSoft : "transparent",
       borderRadius: 14, padding: "6px 8px 6px 14px",
     }}>
-      <span style={{ fontSize: 15, fontWeight: 500 }}>{size}</span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ fontSize: 15, fontWeight: 500, display: "block" }}>{info.rotulo}</span>
+        {info.numeracao && (
+          <span style={{ fontSize: 12, color: t.muted }}>veste {info.numeracao}</span>
+        )}
+      </span>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button type="button" aria-label={`Tirar uma peça do tamanho ${size}`} style={botao}
+        <button type="button" aria-label={`Tirar uma peça do tamanho ${info.rotulo}`} style={botao}
           onClick={() => onChange(Math.max(0, valor - 1))}>−</button>
         <input
-          type="number" min={0} inputMode="numeric" aria-label={size}
+          type="number" min={0} inputMode="numeric" aria-label={info.rotulo}
           value={valor || ""} placeholder="0"
           onFocus={(evento) => evento.target.select()}
           onChange={(evento) => onChange(Math.max(0, Number(evento.target.value)))}
@@ -203,7 +210,7 @@ function LinhaGrade({ size, valor, onChange }: { size: string; valor: number; on
             border: `1px solid ${t.line}`, borderRadius: 12, background: t.surface, color: t.ink,
           }}
         />
-        <button type="button" aria-label={`Somar uma peça do tamanho ${size}`} style={botao}
+        <button type="button" aria-label={`Somar uma peça do tamanho ${info.rotulo}`} style={botao}
           onClick={() => onChange(valor + 1)}>+</button>
       </div>
     </div>
