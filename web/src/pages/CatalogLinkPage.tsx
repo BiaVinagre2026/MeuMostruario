@@ -12,17 +12,19 @@ import {
   sendCatalogInterest,
 } from "@/lib/api/photoCatalog";
 import type { TokenOrderResponse } from "@/lib/api/photoCatalog";
-import type { PublicCatalogItem } from "@/types/photoCatalog";
+import type { PublicCatalogItem, PublicCatalogLink } from "@/types/photoCatalog";
 import { formatDocumentInput, isValidDocument, onlyDigits as documentDigits } from "@/lib/document";
 import { copyToClipboard } from "@/lib/clipboard";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { openWhatsapp } from "@/lib/whatsapp";
+import { openWhatsapp, whatsappUrl } from "@/lib/whatsapp";
 import { useTenant } from "@/providers/TenantProvider";
 import { ModelCarousel, agruparPorModelo, type ModelGroup } from "./catalogLink/ModelCarousel";
 import { PhotoViewer } from "./catalogLink/PhotoViewer";
 import { radius, rotulo, sombra, t } from "./catalogLink/showcaseTheme";
+import { sizeLabel } from "@/lib/sizeGroups";
 
 type QtyMap = Record<number, Record<string, number>>;
+type LinhaPedido = { item: PublicCatalogItem; qty: Record<string, number>; total: number };
 const PHONE_MIN_DIGITS = 10;
 
 export default function CatalogLinkPage() {
@@ -48,6 +50,7 @@ export default function CatalogLinkPage() {
   });
 
   const [placedOrder, setPlacedOrder] = useState<TokenOrderResponse | null>(null);
+  const [linhasEnviadas, setLinhasEnviadas] = useState<LinhaPedido[]>([]);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const painelRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -152,6 +155,9 @@ export default function CatalogLinkPage() {
     onSuccess: (response) => {
       toast.success("Pedido registrado.");
       setPlacedOrder(response);
+      // Guardadas antes de limpar: e delas que sai a mensagem detalhada, com
+      // foto, cor e grade — o pedido devolvido pela API ja vem achatado.
+      setLinhasEnviadas(orderLines);
       clearOrder();
     },
     onError: () => toast.error("Nao foi possivel registrar o pedido."),
@@ -241,6 +247,7 @@ export default function CatalogLinkPage() {
       placedOrder={placedOrder}
       onClosePayment={() => setPlacedOrder(null)}
       whatsapp={tenant.social.whatsapp}
+      linhasEnviadas={linhasEnviadas}
       minOrderAmount={minOrderAmount}
       belowMinimum={belowMinimum}
       generatedLink={generatedLink}
@@ -259,17 +266,18 @@ export default function CatalogLinkPage() {
  * falha na emissao (o pedido existe, a cobranca nao) e pedido sem cobranca,
  * quando o link nao cobra.
  */
-function PaymentPanel({ response, onClose, whatsapp }: {
+function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas }: {
   response: TokenOrderResponse;
   onClose: () => void;
   whatsapp?: string | null;
+  linhasEnviadas?: LinhaPedido[];
 }) {
   const payment = response.payment;
   const pixCode = payment?.pix_qr_code;
   const failed = payment?.status === "failed";
 
   function enviarNoWhatsapp() {
-    const aberto = openWhatsapp(whatsapp, montarMensagemDoPedido(response));
+    const aberto = openWhatsapp(whatsapp, montarMensagemDoPedido(response, linhasEnviadas));
     if (!aberto) toast.error("A fabrica ainda nao configurou o WhatsApp nas Configuracoes.");
   }
 
@@ -361,27 +369,64 @@ function PaymentPanel({ response, onClose, whatsapp }: {
   );
 }
 
-/** Mensagem do pedido para a fabrica, com itens, grade e total. */
-export function montarMensagemDoPedido(response: TokenOrderResponse): string {
+/**
+ * Mensagem do pedido para a loja, com foto, descricao, quantidade e valores.
+ *
+ * A foto entra como endereco no texto. O WhatsApp nao aceita anexo por wa.me —
+ * so texto — e monta pre-visualizacao do primeiro endereco que encontra. Por
+ * isso a foto do primeiro item vem no topo: e a unica que o WhatsApp mostra.
+ * E precisa ser um endereco publico; em localhost nao aparece nada.
+ */
+export function montarMensagemDoPedido(response: TokenOrderResponse, linhasDoPedido?: LinhaPedido[]): string {
   const { order } = response;
-  const linhas = [
-    `Pedido #${order.id}`,
-    order.buyer_name ? `Comprador: ${order.buyer_name}` : null,
-    "",
-  ].filter((linha) => linha !== null) as string[];
+  const primeiraFoto = linhasDoPedido?.find((linha) => linha.item.image_url)?.item.image_url;
 
-  (order.items ?? []).forEach((item) => {
-    const grade = item.size ? ` (${item.size})` : "";
-    linhas.push(`• ${item.qty}x ${item.product_name ?? "Item"}${grade}`);
-  });
+  const linhas: string[] = [];
 
-  linhas.push("", `Total: ${brl(Number(order.total_value ?? 0))}`);
+  if (primeiraFoto) linhas.push(urlAbsoluta(primeiraFoto), "");
+
+  linhas.push(`*Pedido #${order.id}*`);
+  if (order.buyer_name) linhas.push(`Comprador: ${order.buyer_name}`);
+  linhas.push("");
+
+  if (linhasDoPedido?.length) {
+    // Com as linhas da tela da para detalhar cor, grade e valor por item; o
+    // pedido devolvido pela API ja vem achatado por tamanho.
+    linhasDoPedido.forEach(({ item, qty, total: pecas }) => {
+      const atributos = [item.color, item.pantone].filter(Boolean).join(" · ");
+      const grade = Object.entries(qty)
+        .filter(([, quantidade]) => quantidade > 0)
+        .map(([tamanho, quantidade]) => `${sizeLabel(tamanho)}: ${quantidade}`)
+        .join(", ");
+      const valor = Number(item.price ?? 0) * pecas;
+
+      linhas.push(`*${item.name}*`);
+      if (atributos) linhas.push(atributos);
+      if (grade) linhas.push(grade);
+      linhas.push(`${pecas} peça(s) — ${brl(valor)}`);
+      if (item.image_url) linhas.push(urlAbsoluta(item.image_url));
+      linhas.push("");
+    });
+  } else {
+    (order.items ?? []).forEach((item) => {
+      const grade = item.size ? ` (${sizeLabel(item.size)})` : "";
+      linhas.push(`• ${item.qty}x ${item.product_name ?? "Item"}${grade}`);
+    });
+    linhas.push("");
+  }
+
+  linhas.push(`*Total: ${brl(Number(order.total_value ?? 0))}*`);
 
   if (response.payment?.pix_qr_code) {
     linhas.push("", "Pix copia e cola:", response.payment.pix_qr_code);
   }
 
   return linhas.join("\n");
+}
+
+/** O WhatsApp precisa do endereco completo; a API devolve caminho relativo. */
+function urlAbsoluta(url: string): string {
+  return url.startsWith("http") ? url : `${window.location.origin}${url}`;
 }
 
 /**
@@ -402,6 +447,7 @@ export function montarMensagemDoPedido(response: TokenOrderResponse): string {
 function CatalogShowcase(props: {
   isMobile: boolean;
   whatsapp?: string | null;
+  linhasEnviadas: LinhaPedido[];
   minOrderAmount: number;
   belowMinimum: boolean;
   generatedLink: string | null;
@@ -448,11 +494,12 @@ function CatalogShowcase(props: {
   // No celular a foto ocupa quase a largura toda; no desktop cabem varias, e a
   // proxima aparecendo na borda continua sinalizando que ha mais para o lado.
   const larguraFoto = isMobile ? "82%" : "clamp(240px, 26%, 340px)";
+  const marca = data.brand;
 
   if (placedOrder) {
     return (
       <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto" }}>
-        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={props.whatsapp} />
+        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={marca?.whatsapp ?? props.whatsapp} linhasEnviadas={props.linhasEnviadas} />
       </main>
     );
   }
@@ -470,7 +517,35 @@ function CatalogShowcase(props: {
       >
         <div style={{ maxWidth: 1180, margin: "0 auto" }}>
           {/* Rola embora junto com o conteudo: nada fixo no topo. */}
-          <header style={{ padding: isMobile ? "26px 16px 6px" : "44px 16px 10px" }}>
+          <header style={{ padding: isMobile ? "22px 16px 6px" : "36px 16px 10px" }}>
+            {/* A marca vem no proprio link, entao aparece igual em qualquer
+                endereco — inclusive aberta pelo IP da rede ou por WhatsApp. */}
+            {marca?.logo_url && (
+              <img
+                src={marca.logo_url}
+                alt={marca.company_name || marca.tenant_name || "Logo da loja"}
+                style={{
+                  height: isMobile ? 56 : 72,
+                  width: "auto",
+                  maxWidth: "70%",
+                  objectFit: "contain",
+                  display: "block",
+                  marginBottom: 16,
+                  borderRadius: 8,
+                }}
+              />
+            )}
+            {marca?.announcement && (
+              <div style={{
+                display: "inline-block",
+                background: t.accentSoft, color: t.accent,
+                fontSize: 12, fontWeight: 600,
+                padding: "6px 12px", borderRadius: radius.pilula,
+                marginBottom: 12,
+              }}>
+                {marca.announcement}
+              </div>
+            )}
             <div style={rotulo}>{publicOnly ? "Catálogo" : "Atacado"}</div>
             <h1 style={{
               fontSize: isMobile ? 28 : 44,
@@ -504,6 +579,8 @@ function CatalogShowcase(props: {
               onAbrirFoto={(indice) => setVisor({ grupo, indice })}
             />
           ))}
+
+          <StoreFooter marca={marca} minOrderAmount={props.minOrderAmount} />
         </div>
       </main>
 
@@ -546,6 +623,97 @@ function CatalogShowcase(props: {
  * Botao redondo no canto, nao uma barra: nao corta a tela nem tampa a ultima
  * foto. Aparece so quando ha o que enviar.
  */
+/**
+ * Rodape com as regras da loja.
+ *
+ * Sao as mesmas informacoes que hoje a lojista recebe por mensagem — horario,
+ * endereco, minimo, formas de envio. Ter isso no proprio link evita que ela
+ * precise procurar a conversa antiga para lembrar como a loja funciona.
+ */
+function StoreFooter({ marca, minOrderAmount }: {
+  marca?: PublicCatalogLink["brand"];
+  minOrderAmount: number;
+}) {
+  const temAlgo = marca?.footer_text || marca?.address || marca?.whatsapp
+    || marca?.instagram || marca?.phone || minOrderAmount > 0;
+  if (!temAlgo) return null;
+
+  return (
+    <footer style={{
+      margin: "8px 16px 0",
+      padding: "20px 18px",
+      background: t.surface,
+      border: `1px solid ${t.line}`,
+      borderRadius: radius.cartao,
+      display: "grid", gap: 12,
+    }}>
+      <div style={rotulo}>{marca?.company_name || marca?.tenant_name || "A loja"}</div>
+
+      {minOrderAmount > 0 && (
+        <div style={{ fontSize: 15, fontWeight: 600 }}>
+          Pedido mínimo no atacado: {brl(minOrderAmount)}
+        </div>
+      )}
+
+      {marca?.footer_text && (
+        // whiteSpace preserva as quebras que a loja escreveu nas Configuracoes:
+        // o texto e uma lista de regras, nao um paragrafo corrido.
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: t.inkSoft, whiteSpace: "pre-line" }}>
+          {marca.footer_text}
+        </p>
+      )}
+
+      {marca?.address && (
+        <div style={{ fontSize: 14, color: t.inkSoft }}>
+          <span style={{ ...rotulo, display: "block", marginBottom: 2 }}>Loja física</span>
+          {marca.address}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {marca?.whatsapp && (
+          <a
+            href={whatsappUrl(marca.whatsapp)}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7, minHeight: 44,
+              padding: "0 16px", borderRadius: radius.pilula,
+              background: t.ink, color: "white", textDecoration: "none",
+              fontSize: 14, fontWeight: 600,
+            }}
+          >
+            <MessageCircle size={17} />
+            WhatsApp
+          </a>
+        )}
+        {marca?.instagram && (
+          <a
+            href={instagramUrl(marca.instagram)}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-flex", alignItems: "center", minHeight: 44,
+              padding: "0 16px", borderRadius: radius.pilula,
+              border: `1px solid ${t.line}`, color: t.ink, textDecoration: "none",
+              fontSize: 14, fontWeight: 600,
+            }}
+          >
+            Instagram
+          </a>
+        )}
+      </div>
+    </footer>
+  );
+}
+
+/** Aceita @perfil, perfil ou a URL inteira. */
+function instagramUrl(valor: string): string {
+  const limpo = valor.trim();
+  if (limpo.startsWith("http")) return limpo;
+  return `https://instagram.com/${limpo.replace(/^@/, "")}`;
+}
+
 function CheckoutFab({ publicOnly, piecesCount, selecionadas, onOpen }: {
   publicOnly: boolean;
   piecesCount: number;

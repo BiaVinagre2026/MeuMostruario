@@ -222,12 +222,36 @@ module Api
           allow_order: link.allow_order,
           allow_payment: link.allow_payment,
           min_order_amount: current_tenant&.tenant_config&.min_order_amount.to_d,
+          brand: brand_json,
           catalog: {
             id: link.catalog.id,
             name: link.catalog.name,
             description: link.catalog.description
           },
           items: link.catalog.catalog_items.select(&:visible).map { |item| catalog_item_json(item, link) }
+        }
+      end
+
+      # A marca viaja junto com o link.
+      #
+      # Antes a tela dependia de resolver o tenant pelo endereco, o que so
+      # funciona com subdominio proprio. Um link e compartilhado por WhatsApp e
+      # aberto de qualquer lugar: ele precisa carregar a propria identidade.
+      def brand_json
+        config = current_tenant&.tenant_config
+        return {} unless config
+
+        {
+          tenant_name: current_tenant.name,
+          company_name: config.company_name,
+          logo_url: config.logo_url,
+          color_primary: config.color_primary,
+          whatsapp: config.social_whatsapp,
+          instagram: config.social_instagram,
+          address: config.company_address,
+          phone: config.company_phone,
+          footer_text: config.footer_text,
+          announcement: config.announcement_bar_text
         }
       end
 

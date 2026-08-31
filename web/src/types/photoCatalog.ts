@@ -121,6 +121,19 @@ export interface PublicCatalogLink {
   allow_payment: boolean;
   /** Pedido mínimo do tenant. Zero significa sem mínimo. */
   min_order_amount?: number | string | null;
+  /** Identidade da loja, enviada junto com o link para ele se bastar sozinho. */
+  brand?: {
+    tenant_name?: string | null;
+    company_name?: string | null;
+    logo_url?: string | null;
+    color_primary?: string | null;
+    whatsapp?: string | null;
+    instagram?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    footer_text?: string | null;
+    announcement?: string | null;
+  } | null;
   catalog: { id: number; name: string; description?: string | null };
   items: PublicCatalogItem[];
 }
