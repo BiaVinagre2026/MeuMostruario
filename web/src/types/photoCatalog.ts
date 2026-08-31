@@ -119,6 +119,8 @@ export interface PublicCatalogLink {
   show_prices: boolean;
   allow_order: boolean;
   allow_payment: boolean;
+  /** Pedido mínimo do tenant. Zero significa sem mínimo. */
+  min_order_amount?: number | string | null;
   catalog: { id: number; name: string; description?: string | null };
   items: PublicCatalogItem[];
 }

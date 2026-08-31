@@ -52,7 +52,7 @@ module Api
             :social_instagram, :social_facebook, :social_tiktok,
             :social_youtube, :social_linkedin, :social_whatsapp,
             :social_twitter, :social_telegram,
-            :overdue_days, :timezone, :locale,
+            :overdue_days, :timezone, :locale, :min_order_amount,
             # Email config
             :email_provider,
             :smtp_host, :smtp_port, :smtp_username, :smtp_password_enc,
@@ -109,6 +109,7 @@ module Api
             social_twitter:     config.social_twitter,
             social_telegram:    config.social_telegram,
             overdue_days:       config.overdue_days,
+            min_order_amount:   config.min_order_amount,
             timezone:           config.timezone,
             locale:             config.locale,
             # Email config (passwords as boolean flags)

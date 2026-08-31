@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_27_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_31_000001) do
   create_schema "tenant_demo"
   create_schema "tenant_mare-coral"
 
@@ -164,7 +164,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000001) do
     t.decimal "unit_price", precision: 10, scale: 2
     t.decimal "subtotal", precision: 10, scale: 2
     t.datetime "created_at", precision: nil, default: -> { "now()" }, null: false
+    t.bigint "product_variant_id"
     t.index ["order_id"], name: "idx_order_items_order"
+    t.index ["product_variant_id"], name: "idx_order_items_product_variant"
   end
 
   create_table "orders", force: :cascade do |t|
@@ -176,6 +178,19 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000001) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", precision: nil, default: -> { "now()" }, null: false
     t.datetime "updated_at", precision: nil, default: -> { "now()" }, null: false
+    t.string "shipping_postal_code", limit: 9
+    t.string "shipping_street", limit: 255
+    t.string "shipping_number", limit: 30
+    t.string "shipping_complement", limit: 120
+    t.string "shipping_neighborhood", limit: 120
+    t.string "shipping_city", limit: 120
+    t.string "shipping_state", limit: 2
+    t.string "shipping_method", limit: 60
+    t.decimal "shipping_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.integer "shipping_estimated_days"
+    t.datetime "stock_reserved_at", precision: nil
+    t.datetime "stock_committed_at", precision: nil
+    t.datetime "stock_released_at", precision: nil
     t.index ["created_at"], name: "idx_orders_created", order: :desc
     t.index ["member_id"], name: "idx_orders_member"
     t.index ["status"], name: "idx_orders_status"
@@ -299,6 +314,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000001) do
     t.integer "position", default: 0, null: false
     t.datetime "created_at", precision: nil, default: -> { "now()" }, null: false
     t.datetime "updated_at", precision: nil, default: -> { "now()" }, null: false
+    t.integer "reserved_qty", default: 0, null: false
+    t.index ["product_id", "color", "size", "size_group"], name: "idx_product_variants_available_stock"
     t.index ["product_id", "position"], name: "idx_product_variants_product"
   end
 
@@ -436,6 +453,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000001) do
     t.string "psp_callback_secret_enc"
     t.string "psp_signature_header", default: "X-Gateway-Signature"
     t.decimal "min_order_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.boolean "shipping_enabled", default: false, null: false
+    t.decimal "shipping_flat_rate", precision: 10, scale: 2
+    t.decimal "free_shipping_threshold", precision: 10, scale: 2
+    t.integer "shipping_estimated_days", default: 7, null: false
+    t.string "shipping_origin_postal_code"
     t.index ["tenant_id"], name: "index_tenant_configs_on_tenant_id", unique: true
   end
 

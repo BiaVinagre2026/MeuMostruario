@@ -201,7 +201,11 @@ export default function CatalogLinkPage() {
   const publicOnly = !data.show_prices;
   const interestDisabled = selectedCount === 0 || interest.isPending || !buyerReadyForContact;
   const selectionDisabled = selectedCount === 0 || selection.isPending;
-  const orderDisabled = orderLines.length === 0 || order.isPending || !buyerReadyForOrder;
+  // O servidor confere o minimo de novo com o preco do banco. Aqui e so para o
+  // comprador saber antes de montar o pedido inteiro e levar recusa no fim.
+  const minOrderAmount = Number(data?.min_order_amount ?? 0);
+  const belowMinimum = minOrderAmount > 0 && total < minOrderAmount;
+  const orderDisabled = orderLines.length === 0 || order.isPending || !buyerReadyForOrder || belowMinimum;
 
   return (
     <CatalogShowcase
@@ -237,6 +241,8 @@ export default function CatalogLinkPage() {
       placedOrder={placedOrder}
       onClosePayment={() => setPlacedOrder(null)}
       whatsapp={tenant.social.whatsapp}
+      minOrderAmount={minOrderAmount}
+      belowMinimum={belowMinimum}
       generatedLink={generatedLink}
       onCloseGeneratedLink={() => setGeneratedLink(null)}
       selectionDisabled={selectionDisabled}
@@ -396,6 +402,8 @@ export function montarMensagemDoPedido(response: TokenOrderResponse): string {
 function CatalogShowcase(props: {
   isMobile: boolean;
   whatsapp?: string | null;
+  minOrderAmount: number;
+  belowMinimum: boolean;
   generatedLink: string | null;
   onCloseGeneratedLink: () => void;
   selectionDisabled: boolean;
@@ -583,6 +591,8 @@ function CheckoutFab({ publicOnly, piecesCount, selecionadas, onOpen }: {
 /** Folha no celular, caixa centrada no desktop — mesmo conteudo. */
 function CheckoutSheet(props: {
   isMobile: boolean;
+  minOrderAmount: number;
+  belowMinimum: boolean;
   selectionDisabled: boolean;
   onSelection: () => void;
   selectionPending: boolean;
@@ -703,6 +713,12 @@ function CheckoutSheet(props: {
             </div>
           )}
         </div>
+
+        {props.belowMinimum && (
+          <div style={{ fontSize: 13, color: t.accent, background: t.accentSoft, borderRadius: 12, padding: "10px 12px" }}>
+            Pedido mínimo de {brl(props.minOrderAmount)}. Faltam {brl(props.minOrderAmount - total)}.
+          </div>
+        )}
 
         {publicOnly ? (
           <button type="button" disabled={props.interestDisabled} onClick={props.onInterest}

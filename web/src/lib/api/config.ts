@@ -60,6 +60,8 @@ export interface AdminConfig {
   psp_callback_secret_set: boolean;
   psp_signature_header: string | null;
   psp_configured: boolean;
+  /** Pedido mínimo do atacado. Zero significa sem mínimo. */
+  min_order_amount: number | string | null;
 }
 
 export async function getAdminConfig(): Promise<AdminConfig> {

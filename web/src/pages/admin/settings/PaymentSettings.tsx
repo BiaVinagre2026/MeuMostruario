@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CreditCard, Eye, EyeOff, Loader2, Save, Webhook } from "lucide-react";
+import { CheckCircle2, CreditCard, Eye, EyeOff, Loader2, Save, ShoppingBag, Webhook } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -83,12 +83,15 @@ export default function PaymentSettings({ config }: { config?: AdminConfig }) {
   const [apiKey, setApiKey] = useState("");
   const [callbackSecret, setCallbackSecret] = useState("");
   const [signatureHeader, setSignatureHeader] = useState(DEFAULT_SIGNATURE_HEADER);
+  const [minOrder, setMinOrder] = useState("");
 
   useEffect(() => {
     if (!config) return;
     setApiUrl(config.psp_api_url || "");
     setMerchantId(config.psp_merchant_id || "");
     setSignatureHeader(config.psp_signature_header || DEFAULT_SIGNATURE_HEADER);
+    const minimo = Number(config.min_order_amount ?? 0);
+    setMinOrder(minimo > 0 ? String(minimo) : "");
   }, [config]);
 
   const save = useMutation({
@@ -97,6 +100,8 @@ export default function PaymentSettings({ config }: { config?: AdminConfig }) {
         psp_api_url: apiUrl.trim() || null,
         psp_merchant_id: merchantId.trim() || null,
         psp_signature_header: signatureHeader.trim() || DEFAULT_SIGNATURE_HEADER,
+        // Vazio significa sem minimo, que e o mesmo que zero no backend.
+        min_order_amount: minOrder.trim() === "" ? 0 : Number(minOrder.replace(",", ".")),
       };
       // Segredo em branco significa "manter o que já está salvo".
       if (apiKey.trim()) payload.psp_api_key_enc = apiKey.trim();
@@ -172,6 +177,30 @@ export default function PaymentSettings({ config }: { config?: AdminConfig }) {
             onChange={setApiKey}
             isSet={config?.psp_api_key_set ?? false}
           />
+        </Field>
+      </Section>
+
+      <Section
+        title="Regras do pedido"
+        icon={<ShoppingBag className="h-4 w-4 text-muted-foreground" />}
+        description="Valem para todo link de atacado deste tenant."
+      >
+        <Field label="Pedido mínimo" hint="Em reais. Deixe vazio para não exigir mínimo.">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">R$</span>
+            <Input
+              value={minOrder}
+              aria-label="Pedido mínimo"
+              inputMode="decimal"
+              onChange={(event) => setMinOrder(event.target.value)}
+              placeholder="300"
+              className="w-32"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            O comprador é avisado na própria tela, e o servidor confere de novo com o preço
+            do banco antes de gravar o pedido.
+          </p>
         </Field>
       </Section>
 
