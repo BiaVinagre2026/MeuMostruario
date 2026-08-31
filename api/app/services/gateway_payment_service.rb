@@ -56,12 +56,20 @@ class GatewayPaymentService
     payment = Payment.find_by!(gateway_reference: reference.to_s)
     status = normalize_status(data["status"] || payload["status"])
 
-    payment.update!(
-      status: status,
-      webhook_payload: payload,
-      paid_at: status == "paid" ? (payment.paid_at || Time.current) : payment.paid_at
-    )
-    payment.order.update!(payment_status: order_payment_status(status))
+    Payment.transaction do
+      if status == "paid"
+        MareCoralInventoryService.commit!(payment.order)
+      elsif status == "cancelled"
+        MareCoralInventoryService.release!(payment.order)
+      end
+
+      payment.update!(
+        status: status,
+        webhook_payload: payload,
+        paid_at: status == "paid" ? (payment.paid_at || Time.current) : payment.paid_at
+      )
+      payment.order.update!(payment_status: order_payment_status(status))
+    end
     payment
   end
 

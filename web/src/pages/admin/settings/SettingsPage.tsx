@@ -11,13 +11,16 @@ import { getAdminConfig, updateAdminConfig } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
 import BrandingSettings from "./BrandingSettings";
 import PaymentSettings from "./PaymentSettings";
+import MareCoralShippingSettings from "./MareCoralShippingSettings";
+import { useTenant } from "@/providers/TenantProvider";
 
 type EmailProvider = "letter_opener" | "smtp" | "gmail" | "ses";
-type Tab = "identidade" | "pagamento" | "email";
+type Tab = "identidade" | "pagamento" | "entrega" | "email";
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: "identidade", label: "Identidade visual" },
   { id: "pagamento", label: "Pagamento" },
+  { id: "entrega", label: "Entrega" },
   { id: "email", label: "E-mail" },
 ];
 
@@ -86,7 +89,15 @@ function PasswordInput({ value, onChange, placeholder, isSet }: {
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
+  const { tenantSlug } = useTenant();
   const [tab, setTab] = useState<Tab>("identidade");
+  const visibleTabs = tenantSlug === "mare-coral"
+    ? TABS
+    : TABS.filter((item) => item.id !== "entrega");
+
+  useEffect(() => {
+    if (tenantSlug !== "mare-coral" && tab === "entrega") setTab("identidade");
+  }, [tab, tenantSlug]);
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["admin", "config"],
@@ -175,7 +186,7 @@ export default function SettingsPage() {
         <h1 className="text-base md:text-lg font-semibold">Configurações</h1>
         <p className="text-xs md:text-sm text-muted-foreground">Identidade da marca e integrações do tenant</p>
         <div className="flex gap-1 mt-3" role="tablist">
-          {TABS.map((item) => (
+          {visibleTabs.map((item) => (
             <button
               key={item.id}
               role="tab"
@@ -200,6 +211,8 @@ export default function SettingsPage() {
           {tab === "identidade" && <BrandingSettings config={config} />}
 
           {tab === "pagamento" && <PaymentSettings config={config} />}
+
+          {tab === "entrega" && tenantSlug === "mare-coral" && <MareCoralShippingSettings />}
 
           {tab === "email" && (
           <>

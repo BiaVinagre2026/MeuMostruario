@@ -42,12 +42,18 @@ module Api
                           status: :unprocessable_entity
           end
 
-          if order.update(status: new_status)
-            render json: { order: order_full_json(order.reload) }
-          else
-            render json: { errors: order.errors.full_messages },
-                   status: :unprocessable_entity
+          Order.transaction do
+            if new_status == "cancelled"
+              MareCoralInventoryService.release!(order)
+            elsif new_status.in?(%w[confirmed processing shipped])
+              MareCoralInventoryService.commit!(order)
+            end
+            order.update!(status: new_status)
           end
+
+          render json: { order: order_full_json(order.reload) }
+        rescue ActiveRecord::RecordInvalid, MareCoralInventoryService::StockError => e
+          render json: { errors: [e.message] }, status: :unprocessable_entity
         end
 
         private
@@ -77,6 +83,7 @@ module Api
         end
 
         def order_summary_json(o)
+          metadata = o.metadata.to_h
           {
             id:          o.id,
             status:      o.status,
@@ -91,7 +98,11 @@ module Api
               email: o.buyer_email
             },
             catalog_link_id: o.catalog_link_id,
-            metadata:    o.metadata,
+            metadata:    metadata,
+            items_subtotal: metadata["items_subtotal"],
+            shipping: metadata["shipping"],
+            shipping_address: metadata["shipping_address"],
+            inventory_state: metadata.dig("inventory", "state"),
             created_at:  o.created_at,
             updated_at:  o.updated_at
           }

@@ -132,7 +132,7 @@ export default function OrderDetail() {
       </div>
 
       <div className="px-6 py-6 space-y-6 max-w-4xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Card Lojista */}
           <div className="border rounded-lg p-4 space-y-1">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -146,8 +146,31 @@ export default function OrderDetail() {
                   <p className="text-sm text-muted-foreground">{order.member.phone}</p>
                 )}
               </>
+            ) : order.buyer?.name || order.buyer?.email || order.buyer?.phone ? (
+              <>
+                <p className="font-medium">{order.buyer.name || "Cliente do site"}</p>
+                {order.buyer.email && <p className="text-sm text-muted-foreground">{order.buyer.email}</p>}
+                {order.buyer.phone && <p className="text-sm text-muted-foreground">{order.buyer.phone}</p>}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground italic">Não informado</p>
+            )}
+          </div>
+
+          <div className="border rounded-lg p-4 space-y-1">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Entrega
+            </h2>
+            {order.shipping_address ? (
+              <>
+                <p className="text-sm">{order.shipping_address.street}, {order.shipping_address.number}</p>
+                {order.shipping_address.complement && <p className="text-sm text-muted-foreground">{order.shipping_address.complement}</p>}
+                <p className="text-sm text-muted-foreground">{order.shipping_address.neighborhood}</p>
+                <p className="text-sm text-muted-foreground">{order.shipping_address.city}/{order.shipping_address.state} · CEP {order.shipping_address.postal_code}</p>
+                <p className="pt-2 text-xs font-medium text-primary">{order.shipping?.method || "Frete a combinar"}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Pedido sem endereço estruturado</p>
             )}
           </div>
 
@@ -161,6 +184,14 @@ export default function OrderDetail() {
               <span className="font-medium">{order.total_units}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Produtos</span>
+              <span className="font-medium font-mono">{brl(order.items_subtotal || String(itemsTotal))}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Frete</span>
+              <span className="font-medium font-mono">{order.shipping?.configured ? brl(String(order.shipping.amount || 0)) : "A combinar"}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 text-sm">
               <span className="text-muted-foreground">Valor total</span>
               <span className="font-medium font-mono">{brl(order.total_value)}</span>
             </div>
@@ -168,6 +199,12 @@ export default function OrderDetail() {
               <span className="text-muted-foreground">Data do pedido</span>
               <span className="font-medium">{formatDate(order.created_at)}</span>
             </div>
+            {order.inventory_state && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Estoque</span>
+                <span className="font-medium">{{ reserved: "Reservado", committed: "Confirmado", released: "Devolvido" }[order.inventory_state]}</span>
+              </div>
+            )}
             {order.notes && (
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground mb-1">Observações</p>
@@ -227,7 +264,7 @@ export default function OrderDetail() {
                     Total
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm font-semibold">
-                    {brl(String(itemsTotal))}
+                    {brl(order.items_subtotal || String(itemsTotal))}
                   </td>
                 </tr>
               </tfoot>

@@ -22,12 +22,30 @@ export interface OrderItem {
 export interface Order {
   id: number;
   status: OrderStatus;
+  payment_status?: "not_required" | "pending" | "paid" | "failed" | "cancelled";
   total_units: number;
   total_value: string;
   notes: string | null;
   member: OrderMember | null;
   /** Preenchido nos pedidos que chegam por link, onde nao ha lojista cadastrado. */
   buyer?: { name: string | null; phone: string | null; email: string | null } | null;
+  items_subtotal?: string | null;
+  shipping?: {
+    configured?: boolean;
+    amount?: string | number;
+    method?: string;
+    estimated_days?: number | null;
+  } | null;
+  shipping_address?: {
+    postal_code?: string;
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+  } | null;
+  inventory_state?: "reserved" | "committed" | "released" | null;
   created_at: string;
   updated_at: string;
 }

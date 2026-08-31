@@ -25,6 +25,8 @@ Rails.application.routes.draw do
       post "catalog_links/:token/interests",  to: "catalog_links#interests"
       post "catalog_links/:token/orders",     to: "catalog_links#orders"
       post "catalog_links/:token/selections", to: "catalog_links#selections"
+      post "mare_coral/storefront/:token/shipping_quote", to: "mare_coral_orders#shipping_quote"
+      post "mare_coral/storefront/:token/orders",         to: "mare_coral_orders#create"
       # O tenant vai na URL porque o PSP nao envia o cabecalho X-Tenant-ID:
       # e esse trecho que diz em qual schema procurar o pagamento e qual
       # segredo usar para conferir a assinatura.
@@ -62,6 +64,8 @@ Rails.application.routes.draw do
         # Tenant configuration - branding, email, storage, AI
         get   "tenant/config", to: "tenant_config#show"
         patch "tenant/config", to: "tenant_config#update"
+        get   "mare_coral/retail_settings", to: "mare_coral_retail_settings#show"
+        patch "mare_coral/retail_settings", to: "mare_coral_retail_settings#update"
 
         # Members (simplified)
         resources :members, only: [:index, :show, :update, :destroy] do
