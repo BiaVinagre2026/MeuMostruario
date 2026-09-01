@@ -4,7 +4,10 @@
 # auditable ledger in the order metadata. Cancelling restores exactly those
 # variants. Only orders explicitly tagged as Maré Coral retail are accepted.
 class MareCoralInventoryService
-  class StockError < StandardError; end
+  # Herda de OrderFulfillment::Rejected para que quem confirma um pedido trate
+  # a recusa sem precisar conhecer esta operacao. Continua sendo StandardError,
+  # entao todo rescue existente segue valendo.
+  class StockError < OrderFulfillment::Rejected; end
 
   def self.reserve!(order:, lines:)
     ensure_mare_coral_order!(order)

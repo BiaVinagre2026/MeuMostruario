@@ -101,10 +101,11 @@ class GatewayPaymentService
     end
 
     Payment.transaction do
-      if status == "paid"
-        MareCoralInventoryService.commit!(payment.order)
-      elsif status == "cancelled"
-        MareCoralInventoryService.release!(payment.order)
+      # Anuncia o que aconteceu; quem tem regra propria escuta em
+      # OrderFulfillment. Este servico nao conhece nenhuma operacao especifica.
+      case status
+      when "paid"      then OrderFulfillment.apply(order: payment.order, evento: :confirmado)
+      when "cancelled" then OrderFulfillment.apply(order: payment.order, evento: :cancelado)
       end
 
       payment.update!(

@@ -44,15 +44,15 @@ module Api
 
           Order.transaction do
             if new_status == "cancelled"
-              MareCoralInventoryService.release!(order)
+              OrderFulfillment.apply(order: order, evento: :cancelado)
             elsif new_status.in?(%w[confirmed processing shipped])
-              MareCoralInventoryService.commit!(order)
+              OrderFulfillment.apply(order: order, evento: :confirmado)
             end
             order.update!(status: new_status)
           end
 
           render json: { order: order_full_json(order.reload) }
-        rescue ActiveRecord::RecordInvalid, MareCoralInventoryService::StockError => e
+        rescue ActiveRecord::RecordInvalid, OrderFulfillment::Rejected => e
           render json: { errors: [e.message] }, status: :unprocessable_entity
         end
 
