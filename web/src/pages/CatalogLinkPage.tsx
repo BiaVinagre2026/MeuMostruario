@@ -417,20 +417,22 @@ function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas, token }: {
 }
 
 /**
- * Mensagem do pedido para a loja, com foto, descricao, quantidade e valores.
+ * Mensagem do pedido para a loja: modelo, Pantone, grade e valor.
  *
- * A foto entra como endereco no texto. O WhatsApp nao aceita anexo por wa.me —
- * so texto — e monta pre-visualizacao do primeiro endereco que encontra. Por
- * isso a foto do primeiro item vem no topo: e a unica que o WhatsApp mostra.
- * E precisa ser um endereco publico; em localhost nao aparece nada.
+ * O wa.me carrega so texto — nao existe anexar foto por ele. O que o WhatsApp
+ * faz e pre-visualizar o primeiro endereco do texto, e so um endereco publico
+ * vira miniatura. Em rede local o endereco nao abre no celular de ninguem: ele
+ * apareceria como um calhau de texto sem imagem nenhuma, que foi exatamente o
+ * que poluiu a mensagem. Por isso a foto so entra quando o catalogo estiver
+ * publicado num endereco alcancavel de fora.
  */
 export function montarMensagemDoPedido(response: TokenOrderResponse, linhasDoPedido?: LinhaPedido[]): string {
   const { order } = response;
-  const primeiraFoto = linhasDoPedido?.find((linha) => linha.item.image_url)?.item.image_url;
+  const capa = linhasDoPedido?.find((linha) => linha.item.image_url)?.item.image_url;
 
   const linhas: string[] = [];
 
-  if (primeiraFoto) linhas.push(urlAbsoluta(primeiraFoto), "");
+  if (capa && enderecoAlcancavelDeFora()) linhas.push(urlAbsoluta(capa), "");
 
   linhas.push(`*Pedido #${order.id}*`);
   if (order.buyer_name) linhas.push(`Comprador: ${order.buyer_name}`);
@@ -449,9 +451,8 @@ export function montarMensagemDoPedido(response: TokenOrderResponse, linhasDoPed
 
       linhas.push(`*${item.name}*`);
       if (atributos) linhas.push(atributos);
-      if (grade) linhas.push(grade);
-      linhas.push(`${pecas} peça(s) — ${brl(valor)}`);
-      if (item.image_url) linhas.push(urlAbsoluta(item.image_url));
+      // Grade e valor cabem na mesma linha: sao a mesma informacao comercial.
+      linhas.push(grade ? `${grade} — ${brl(valor)}` : `${pecas} peça(s) — ${brl(valor)}`);
       linhas.push("");
     });
   } else {
@@ -464,11 +465,22 @@ export function montarMensagemDoPedido(response: TokenOrderResponse, linhasDoPed
 
   linhas.push(`*Total: ${brl(Number(order.total_value ?? 0))}*`);
 
-  if (response.payment?.pix_qr_code) {
-    linhas.push("", "Pix copia e cola:", response.payment.pix_qr_code);
-  }
+  // O codigo Pix inteiro nao entra: quem emitiu foi a loja, que ja acha a
+  // cobranca pelo numero do pedido. Colar as 200 e tantas letras aqui so
+  // enterrava o pedido no meio do texto.
+  if (response.payment?.pix_qr_code) linhas.push("Pix emitido no site.");
 
   return linhas.join("\n");
+}
+
+/**
+ * Diz se o catalogo esta num endereco que o WhatsApp e o celular da loja
+ * conseguem abrir. Em localhost ou IP de rede interna, nao.
+ */
+function enderecoAlcancavelDeFora(): boolean {
+  const host = window.location.hostname;
+  if (host === "localhost" || host.endsWith(".local")) return false;
+  return !/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
 }
 
 /** O WhatsApp precisa do endereco completo; a API devolve caminho relativo. */
@@ -539,9 +551,6 @@ function CatalogShowcase(props: {
   const grupos = useMemo(() => agruparPorModelo(data.items), [data.items]);
   // Qual grupo esta aberto em tela cheia, e em que foto.
   const [visor, setVisor] = useState<{ grupo: ModelGroup; indice: number } | null>(null);
-  // No celular a foto ocupa quase a largura toda; no desktop cabem varias, e a
-  // proxima aparecendo na borda continua sinalizando que ha mais para o lado.
-  const larguraFoto = isMobile ? "82%" : "clamp(240px, 26%, 340px)";
   const marca = data.brand;
 
   if (placedOrder) {
@@ -623,7 +632,7 @@ function CatalogShowcase(props: {
               onQty={props.onQty}
               selected={props.selected}
               onToggle={props.onToggle}
-              larguraFoto={larguraFoto}
+              modo={isMobile ? "celular" : "desktop"}
               onAbrirFoto={(indice) => setVisor({ grupo, indice })}
             />
           ))}

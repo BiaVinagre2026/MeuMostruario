@@ -1,7 +1,7 @@
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import CatalogLinkPage from "./CatalogLinkPage";
+import CatalogLinkPage, { montarMensagemDoPedido } from "./CatalogLinkPage";
 
 import {
   createTokenOrder,
@@ -243,5 +243,64 @@ describe("CatalogLinkPage", () => {
     expect(screen.getByText(/Seu pedido foi salvo/)).toBeInTheDocument();
     expect(screen.getByText(/customer_document invalido/)).toBeInTheDocument();
     expect(screen.queryByText("Pague com Pix")).not.toBeInTheDocument();
+  });
+});
+
+describe("montarMensagemDoPedido", () => {
+  const resposta = {
+    order: { id: 42, status: "pending", payment_status: "pending", total_value: 299.8, buyer_name: "Loja Mar" },
+    payment: {
+      id: 8,
+      status: "pending",
+      payment_method: "pix",
+      amount: 299.8,
+      pix_qr_code: "00020126580014BR.GOV.BCB.PIX0136".padEnd(240, "0"),
+    },
+  };
+
+  const linhas = [
+    {
+      item: wholesaleLink.items[0],
+      qty: { "P/M": 2 },
+      total: 2,
+    },
+  ];
+
+  function comHost(host: string, executar: () => string): string {
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...original, hostname: host, origin: `http://${host}:3000` },
+      writable: true,
+      configurable: true,
+    });
+    try {
+      return executar();
+    } finally {
+      Object.defineProperty(window, "location", { value: original, writable: true, configurable: true });
+    }
+  }
+
+  it("resume o item em modelo, Pantone, grade e valor", () => {
+    const texto = comHost("192.168.0.233", () => montarMensagemDoPedido(resposta, linhas));
+
+    expect(texto).toContain("*Biquini Aurora*");
+    expect(texto).toContain("Verde · 17-5641 TPX");
+    // O brl() separa o R$ do numero com espaco nao-quebravel, nao com espaco comum.
+    expect(texto).toMatch(/P\/M: 2 — R\$\s299,80/);
+    expect(texto).toMatch(/\*Total: R\$\s299,80\*/);
+    // O codigo Pix inteiro enterrava o pedido no meio do texto.
+    expect(texto).not.toContain("BR.GOV.BCB.PIX");
+    expect(texto).toContain("Pix emitido no site.");
+  });
+
+  it("omite a foto em rede local e a inclui num endereco publico", () => {
+    // Endereco de rede interna nao abre no celular da loja: viraria texto
+    // solto, sem miniatura nenhuma.
+    const local = comHost("192.168.0.233", () => montarMensagemDoPedido(resposta, linhas));
+    expect(local).not.toContain("cdn.example.com");
+    expect(local.startsWith("*Pedido #42*")).toBe(true);
+
+    const publico = comHost("catalogo.befit.com.br", () => montarMensagemDoPedido(resposta, linhas));
+    expect(publico.startsWith("https://cdn.example.com/biquini.jpg")).toBe(true);
   });
 });

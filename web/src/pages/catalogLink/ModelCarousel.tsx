@@ -17,10 +17,14 @@ export interface ModelGroup {
  *
  * A vertical separa modelos, a horizontal percorre as fotos do mesmo modelo —
  * que e como o catalogo realmente e montado: varias fotos da mesma peca, as
- * vezes em cores diferentes. A foto seguinte fica parcialmente visivel para o
- * dedo saber que ha mais para o lado.
+ * vezes em cores diferentes.
+ *
+ * No celular a foto ocupa a largura inteira, sem respiro nem intervalo: a tela
+ * e estreita e a fatia da foto seguinte roubava espaco da peca que importa. Quem
+ * navega ali usa a seta ou o dedo. No desktop cabem varias lado a lado, e ai a
+ * seguinte aparecendo na borda continua sinalizando que ha mais para o lado.
  */
-export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selected, onToggle, larguraFoto, onAbrirFoto }: {
+export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selected, onToggle, modo, onAbrirFoto }: {
   grupo: ModelGroup;
   showPrices: boolean;
   allowOrder: boolean;
@@ -28,12 +32,16 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
   onQty: (itemId: number, size: string, value: number) => void;
   selected: Set<number>;
   onToggle: (itemId: number) => void;
-  /** 82% no celular, bem menos no desktop: a mesma peca cabe varias vezes. */
-  larguraFoto: string;
+  modo: "celular" | "desktop";
   onAbrirFoto: (indice: number) => void;
 }) {
   const trilhoRef = useRef<HTMLDivElement>(null);
   const [ativo, setAtivo] = useState(0);
+
+  const telaCheia = modo === "celular";
+  const larguraFoto = telaCheia ? "100%" : "clamp(240px, 26%, 340px)";
+  const respiro = telaCheia ? 0 : 16;
+  const intervalo = telaCheia ? 0 : 10;
 
   const itemAtivo = grupo.itens[Math.min(ativo, grupo.itens.length - 1)];
   const qtyAtivo = qty[itemAtivo?.id] ?? {};
@@ -56,7 +64,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
     let melhor = 0;
     let menor = Infinity;
     Array.from(trilho.children).forEach((filho, indice) => {
-      const distancia = Math.abs((filho as HTMLElement).offsetLeft - 16 - trilho.scrollLeft);
+      const distancia = Math.abs((filho as HTMLElement).offsetLeft - respiro - trilho.scrollLeft);
       if (distancia < menor) { menor = distancia; melhor = indice; }
     });
     return melhor;
@@ -120,7 +128,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
     // o navegador cancela a animacao e devolve a rolagem para onde estava —
     // medido aqui, a seta simplesmente nao saia do lugar. O salto e instantaneo,
     // mas funciona; o snap continua valendo para o deslize do dedo.
-    trilho.scrollTo({ left: Math.max(0, alvo.offsetLeft - 16) });
+    trilho.scrollTo({ left: Math.max(0, alvo.offsetLeft - respiro) });
     // Sincroniza na hora: apos scrollTo programatico o evento de rolagem nao
     // chega de forma confiavel, e sem isso a seta de voltar ficava desabilitada
     // para sempre e o contador congelava na primeira foto.
@@ -177,10 +185,10 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
         onScroll={aoRolar}
         style={{
           display: "flex",
-          gap: 10,
+          gap: intervalo,
           overflowX: "auto",
           scrollSnapType: "x mandatory",
-          padding: "14px 16px 10px",
+          padding: `14px ${respiro}px 10px`,
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
         }}
@@ -199,7 +207,9 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
                 padding: 0,
                 position: "relative",
                 aspectRatio: "3 / 4",
-                borderRadius: radius.foto,
+                // Encostada nas duas bordas, canto arredondado so deixaria uma
+                // falha de fundo na quina — no celular a foto e reta.
+                borderRadius: telaCheia ? 0 : radius.foto,
                 overflow: "hidden",
                 background: t.line,
                 boxShadow: sombra.suave,
