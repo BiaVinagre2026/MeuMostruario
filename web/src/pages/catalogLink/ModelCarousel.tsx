@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { brl } from "@/data/catalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
@@ -47,9 +48,24 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
    * A foto tem 82% do trilho mais o espacamento; qualquer porcentagem fixa
    * erra o indice depois de algumas fotos e o ponto para de acompanhar.
    */
-  function aoRolar() {
+  /** Primeira foto visivel, medida pela borda esquerda do trilho. */
+  function indicePelaEsquerda(): number {
     const trilho = trilhoRef.current;
-    if (!trilho) return;
+    if (!trilho) return 0;
+
+    let melhor = 0;
+    let menor = Infinity;
+    Array.from(trilho.children).forEach((filho, indice) => {
+      const distancia = Math.abs((filho as HTMLElement).offsetLeft - 16 - trilho.scrollLeft);
+      if (distancia < menor) { menor = distancia; melhor = indice; }
+    });
+    return melhor;
+  }
+
+  /** Indice da foto mais proxima do centro, medido na hora. */
+  function indiceVisivel(): number {
+    const trilho = trilhoRef.current;
+    if (!trilho) return 0;
 
     const centro = trilho.scrollLeft + trilho.clientWidth / 2;
     let maisProximo = 0;
@@ -65,17 +81,50 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
       }
     });
 
-    setAtivo(maisProximo);
+    return maisProximo;
   }
 
+  function aoRolar() {
+    setAtivo(indiceVisivel());
+  }
+
+  /**
+   * As setas partem da posicao medida, nao do estado.
+   *
+   * E medem pela borda esquerda: com varias fotos visiveis no desktop, a que
+   * esta no centro fica duas a frente da primeira, e avancar a partir dela
+   * pulava duas fotos por clique.
+   */
+  function passo(direcao: 1 | -1) {
+    const atual = indicePelaEsquerda();
+    irPara(Math.max(0, Math.min(grupo.itens.length - 1, atual + direcao)));
+  }
+
+  /**
+   * Leva a foto pedida para a area visivel.
+   *
+   * Centralizar so serve quando a foto ocupa quase o trilho inteiro, como no
+   * celular. No desktop cabem varias, e centralizar a segunda pediria rolagem
+   * negativa — o navegador trava em zero e a seta parecia nao funcionar. Aqui a
+   * foto e encostada na esquerda quando ha folga, e centralizada quando nao ha.
+   */
   function irPara(indice: number) {
     const trilho = trilhoRef.current;
     const alvo = trilho?.children[indice] as HTMLElement | undefined;
     if (!trilho || !alvo) return;
-    trilho.scrollTo({
-      left: alvo.offsetLeft - (trilho.clientWidth - alvo.offsetWidth) / 2,
-      behavior: "smooth",
-    });
+
+    // Encosta na esquerda, respeitando o respiro do trilho. Centralizar
+    // brigava com o scroll-snap: no desktop, centralizar a segunda foto pede
+    // rolagem negativa, o navegador volta para zero e a seta nao fazia nada.
+    // Sem `behavior: "smooth"` de proposito: com `scroll-snap-type: mandatory`
+    // o navegador cancela a animacao e devolve a rolagem para onde estava —
+    // medido aqui, a seta simplesmente nao saia do lugar. O salto e instantaneo,
+    // mas funciona; o snap continua valendo para o deslize do dedo.
+    trilho.scrollTo({ left: Math.max(0, alvo.offsetLeft - 16) });
+    // Sincroniza na hora: apos scrollTo programatico o evento de rolagem nao
+    // chega de forma confiavel, e sem isso a seta de voltar ficava desabilitada
+    // para sempre e o contador congelava na primeira foto.
+    setAtivo(indice);
   }
 
   const cores = Array.from(new Set(grupo.itens.map((item) => item.color).filter(Boolean)));
@@ -104,6 +153,25 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
         )}
       </div>
 
+      {/* As setas sao a unica forma de percorrer o carrossel com mouse: no
+          celular o dedo desliza, mas no desktop a barra de rolagem esta oculta
+          e sem elas as fotas seguintes ficavam inalcancaveis. */}
+      <div style={{ position: "relative" }}>
+        {grupo.itens.length > 1 && (
+          <>
+            <SetaTrilho
+              lado="esquerda"
+              desabilitada={ativo === 0}
+              onClick={() => passo(-1)}
+            />
+            <SetaTrilho
+              lado="direita"
+              desabilitada={ativo >= grupo.itens.length - 1}
+              onClick={() => passo(1)}
+            />
+          </>
+        )}
+
       <div
         ref={trilhoRef}
         onScroll={aoRolar}
@@ -127,7 +195,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
               aria-label={`Abrir foto ${indice + 1} de ${grupo.nome}`}
               style={{
                 flex: `0 0 ${larguraFoto}`,
-                scrollSnapAlign: "center",
+                scrollSnapAlign: "start",
                 padding: 0,
                 position: "relative",
                 aspectRatio: "3 / 4",
@@ -161,6 +229,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
             </button>
           );
         })}
+      </div>
       </div>
 
       {/* Ate 8 fotos os pontos sao legiveis. Acima disso viram uma fileira
@@ -250,6 +319,41 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
         </div>
       )}
     </section>
+  );
+}
+
+/** Seta sobre o trilho. Fica esmaecida na ponta em vez de sumir, para o lugar
+ *  dela nao mudar a cada rolagem. */
+function SetaTrilho({ lado, desabilitada, onClick }: {
+  lado: "esquerda" | "direita";
+  desabilitada: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={desabilitada}
+      aria-label={lado === "esquerda" ? "Foto anterior" : "Próxima foto"}
+      style={{
+        position: "absolute",
+        [lado === "esquerda" ? "left" : "right"]: 6,
+        top: "50%",
+        transform: "translateY(-50%)",
+        zIndex: 2,
+        width: TOQUE, height: TOQUE,
+        display: "grid", placeItems: "center",
+        borderRadius: radius.pilula,
+        border: `1px solid ${t.line}`,
+        background: t.surface,
+        color: t.ink,
+        boxShadow: sombra.suave,
+        opacity: desabilitada ? 0.35 : 1,
+        cursor: desabilitada ? "default" : "pointer",
+      }}
+    >
+      {lado === "esquerda" ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+    </button>
   );
 }
 

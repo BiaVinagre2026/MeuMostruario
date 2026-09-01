@@ -1,6 +1,6 @@
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import CatalogLinkPage from "./CatalogLinkPage";
 
 import {
@@ -159,7 +159,8 @@ describe("CatalogLinkPage", () => {
     const visor = await screen.findByRole("dialog");
     expect(visor).toHaveAttribute("aria-label", expect.stringContaining("foto 1 de 2"));
 
-    fireEvent.click(screen.getByRole("button", { name: "Próxima foto" }));
+    // Escopado ao visor: o carrossel da tela tambem tem seta com esse rotulo.
+    fireEvent.click(within(visor).getByRole("button", { name: "Próxima foto" }));
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toHaveAttribute("aria-label", expect.stringContaining("foto 2 de 2"));
     });
