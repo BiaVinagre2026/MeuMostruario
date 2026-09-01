@@ -24,6 +24,7 @@ Rails.application.routes.draw do
       get  "catalog_links/:token",            to: "catalog_links#show"
       post "catalog_links/:token/interests",  to: "catalog_links#interests"
       post "catalog_links/:token/orders",     to: "catalog_links#orders"
+      post "catalog_links/:token/orders/:order_id/payment_link", to: "catalog_links#payment_link"
       post "catalog_links/:token/selections", to: "catalog_links#selections"
       post "mare_coral/storefront/:token/shipping_quote", to: "mare_coral_orders#shipping_quote"
       post "mare_coral/storefront/:token/orders",         to: "mare_coral_orders#create"

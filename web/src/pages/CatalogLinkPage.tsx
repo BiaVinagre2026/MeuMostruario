@@ -1,11 +1,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Copy, Loader2, MessageCircle, ShoppingBag, X } from "lucide-react";
+import { CreditCard, Copy, Loader2, MessageCircle, ShoppingBag, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { brl } from "@/data/catalog";
 import {
+  createOrderPaymentLink,
   createSelectionLink,
   createTokenOrder,
   getPublicCatalogLink,
@@ -247,6 +248,7 @@ export default function CatalogLinkPage() {
       placedOrder={placedOrder}
       onClosePayment={() => setPlacedOrder(null)}
       whatsapp={tenant.social.whatsapp}
+      token={token}
       linhasEnviadas={linhasEnviadas}
       minOrderAmount={minOrderAmount}
       belowMinimum={belowMinimum}
@@ -266,12 +268,29 @@ export default function CatalogLinkPage() {
  * falha na emissao (o pedido existe, a cobranca nao) e pedido sem cobranca,
  * quando o link nao cobra.
  */
-function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas }: {
+function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas, token }: {
   response: TokenOrderResponse;
   onClose: () => void;
   whatsapp?: string | null;
   linhasEnviadas?: LinhaPedido[];
+  token: string;
 }) {
+  const [linkPagamento, setLinkPagamento] = useState<string | null>(null);
+
+  const pedirLink = useMutation({
+    mutationFn: () => createOrderPaymentLink(token, response.order.id),
+    onSuccess: (pagamento) => {
+      if (pagamento.checkout_url) {
+        setLinkPagamento(pagamento.checkout_url);
+        window.open(pagamento.checkout_url, "_blank", "noopener,noreferrer");
+      } else {
+        // Sem gateway conectado o pagamento fica em modo local e nao ha para
+        // onde mandar o comprador — melhor dizer do que abrir aba vazia.
+        toast.error(pagamento.error_message || "A loja ainda nao conectou o gateway de pagamento.");
+      }
+    },
+    onError: () => toast.error("Nao foi possivel gerar o link de pagamento."),
+  });
   const payment = response.payment;
   const pixCode = payment?.pix_qr_code;
   const failed = payment?.status === "failed";
@@ -360,10 +379,38 @@ function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas }: {
         {/* O envio pelo WhatsApp vem DEPOIS do pedido registrado, nunca no
             lugar dele: se o comprador fechar a aba do WhatsApp, o pedido ja
             esta salvo e visivel para a fabrica. */}
-        <button type="button" onClick={enviarNoWhatsapp} style={{ ...buttonStyle("secondary"), justifyContent: "center" }}>
-          <MessageCircle size={16} />
-          Enviar pedido no WhatsApp
-        </button>
+        {/* Link de pagamento e WhatsApp lado a lado: o comprador escolhe como
+            pagar e como falar com a loja no mesmo lugar. */}
+        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+          <button
+            type="button"
+            onClick={() => (linkPagamento ? window.open(linkPagamento, "_blank", "noopener,noreferrer") : pedirLink.mutate())}
+            disabled={pedirLink.isPending}
+            style={{ ...buttonStyle("primary", pedirLink.isPending), justifyContent: "center" }}
+          >
+            {pedirLink.isPending ? <Loader2 size={16} /> : <CreditCard size={16} />}
+            {linkPagamento ? "Abrir pagamento" : "Pagar com cartão"}
+          </button>
+
+          <button type="button" onClick={enviarNoWhatsapp} style={{ ...buttonStyle("secondary"), justifyContent: "center" }}>
+            <MessageCircle size={16} />
+            Enviar no WhatsApp
+          </button>
+        </div>
+
+        {linkPagamento && (
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, color: t.muted }}>Link de pagamento</div>
+            <a
+              href={linkPagamento}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 13, wordBreak: "break-all", color: t.accent }}
+            >
+              {linkPagamento}
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -446,6 +493,7 @@ function urlAbsoluta(url: string): string {
  */
 function CatalogShowcase(props: {
   isMobile: boolean;
+  token: string;
   whatsapp?: string | null;
   linhasEnviadas: LinhaPedido[];
   minOrderAmount: number;
@@ -499,7 +547,7 @@ function CatalogShowcase(props: {
   if (placedOrder) {
     return (
       <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto" }}>
-        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={marca?.whatsapp ?? props.whatsapp} linhasEnviadas={props.linhasEnviadas} />
+        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={marca?.whatsapp ?? props.whatsapp} linhasEnviadas={props.linhasEnviadas} token={props.token} />
       </main>
     );
   }

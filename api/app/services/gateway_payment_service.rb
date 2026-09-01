@@ -12,6 +12,11 @@ require "json"
 class GatewayPaymentService
   DEFAULT_API_URL = "https://api.casetec.com.br"
   PIX_PATH = "/psp/v1/pix"
+  PAYMENT_LINKS_PATH = "/psp/v1/payment_links"
+  # Onde mora a pagina de checkout que o comprador abre. A documentacao so
+  # menciona `/pay/{slug}` de passagem, entao o endereco devolvido pelo gateway
+  # tem prioridade e isto e apenas a reserva.
+  DEFAULT_CHECKOUT_HOST = "https://psp.casetec.com.br"
   OPEN_TIMEOUT = 10
   READ_TIMEOUT = 30
 
@@ -46,6 +51,36 @@ class GatewayPaymentService
         raw_response: { "mode" => "gateway_error", "message" => e.message }
       )
       order.update!(payment_status: "failed")
+      payment
+    end
+  end
+
+  # Link de pagamento hospedado, para quem quer pagar com cartao.
+  #
+  # Criado sob demanda, nao junto do pedido: emitir Pix e link de uma vez
+  # abriria duas cobrancas para o mesmo pedido, e so uma seria paga. Assim o
+  # link so nasce quando o comprador escolhe cartao.
+  def create_payment_link!(order:)
+    existente = order.payments.find_by(payment_method: "payment_link", status: %w[pending processing])
+    return existente if existente&.checkout_url.present?
+
+    payment = order.payments.create!(
+      amount: order.total_value,
+      payment_method: "payment_link",
+      status: "pending",
+      idempotency_key: SecureRandom.uuid
+    )
+
+    return record_local_mode!(payment) unless configured?
+
+    begin
+      link = create_hosted_link!(order: order, payment: payment)
+      apply_payment_link!(payment, link)
+    rescue GatewayError => e
+      payment.update!(
+        status: "failed",
+        raw_response: { "mode" => "gateway_error", "message" => e.message }
+      )
       payment
     end
   end
@@ -110,6 +145,47 @@ class GatewayPaymentService
     raise GatewayError, "resposta sem id da cobranca" if response["id"].blank?
 
     response
+  end
+
+  def create_hosted_link!(order:, payment:)
+    body = {
+      title: "Pedido ##{order.id}",
+      description: "#{order.total_units} peça(s)",
+      amount_cents: (order.total_value.to_d * 100).round,
+      currency: "BRL",
+      link_type: "single_use",
+      customer_name: order.buyer_name,
+      customer_document: DocumentValidator.clean(order.buyer_document),
+      customer_phone: order.buyer_phone.presence,
+      customer_email: order.buyer_email.presence,
+      client_reference: client_reference(order),
+      # Sobrepoe o callback do merchant para este link, garantindo que a
+      # confirmacao chegue no mesmo endereco por tenant que o Pix usa.
+      notification_url: callback_url
+    }.compact
+
+    response = post_json(PAYMENT_LINKS_PATH, body, idempotency_key: payment.idempotency_key)
+    raise GatewayError, "resposta sem slug do link" if response["slug"].blank?
+
+    response
+  end
+
+  def apply_payment_link!(payment, link)
+    payment.update!(
+      gateway_reference: link["slug"].to_s,
+      status: normalize_status(link["status"] == "active" ? "pending" : link["status"]),
+      checkout_url: checkout_url_for(link),
+      raw_response: link
+    )
+    payment
+  end
+
+  # O endereco vindo do gateway ganha do construido: se a Casetec hospedar o
+  # checkout em outro dominio, isso continua valendo sem mexer no codigo.
+  def checkout_url_for(link)
+    link["checkout_url"].presence ||
+      link["url"].presence ||
+      "#{DEFAULT_CHECKOUT_HOST}/pay/#{link['slug']}"
   end
 
   def apply_charge!(payment, charge)

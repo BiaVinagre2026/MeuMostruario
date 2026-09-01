@@ -78,6 +78,24 @@ module Api
         }, status: :created
       end
 
+      # Link de pagamento para o pedido, criado sob demanda.
+      #
+      # O pedido precisa ter nascido deste mesmo link: sem essa checagem,
+      # qualquer pessoa com um token valido poderia emitir cobranca para o
+      # pedido de outra pessoa so acertando o id.
+      def payment_link
+        unless @catalog_link.allow_payment?
+          return render json: { errors: ["este link nao permite pagamento"] }, status: :unprocessable_entity
+        end
+
+        order = Order.find_by(id: params[:order_id], catalog_link_id: @catalog_link.id)
+        return render json: { errors: ["pedido nao encontrado neste link"] }, status: :not_found if order.nil?
+
+        payment = GatewayPaymentService.new(config: current_tenant&.tenant_config).create_payment_link!(order: order)
+
+        render json: { payment: payment_json(payment) }, status: :created
+      end
+
       private
 
       def set_catalog_link

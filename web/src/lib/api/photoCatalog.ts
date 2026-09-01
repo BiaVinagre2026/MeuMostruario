@@ -138,3 +138,19 @@ export interface TokenOrderResponse {
 export async function createTokenOrder(token: string, payload: unknown): Promise<TokenOrderResponse> {
   return apiClient.post<TokenOrderResponse>(`/api/v1/catalog_links/${token}/orders`, payload);
 }
+
+export type TokenPayment = NonNullable<TokenOrderResponse["payment"]>;
+
+/**
+ * Pede o link de pagamento hospedado para um pedido ja registrado.
+ *
+ * Criado sob demanda, e nao junto do pedido, para nao abrir duas cobrancas
+ * para a mesma compra quando o comprador escolhe pagar por Pix.
+ */
+export async function createOrderPaymentLink(token: string, orderId: number): Promise<TokenPayment> {
+  const res = await apiClient.post<{ payment: TokenPayment }>(
+    `/api/v1/catalog_links/${token}/orders/${orderId}/payment_link`,
+    {}
+  );
+  return res.payment;
+}
