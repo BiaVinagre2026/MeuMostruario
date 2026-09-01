@@ -27,7 +27,15 @@ git checkout feature/catalogo-fotos-fabrica
 |---|---|
 | `api/` | Rails 7.2 API-only, Ruby 3.3, PostgreSQL (schema-per-tenant), Redis, Sidekiq |
 | `web/` | React 18 + Vite + TypeScript |
-| Local | Docker e Docker Compose; frontend roda fora do Docker |
+| Local | Docker e Docker Compose em grupos separados para backend e BEFIT |
+
+## Organização no Docker
+
+- `meumostruario`: API Rails, PostgreSQL e Redis compartilhados por todos os tenants.
+- `befit`: frontend da loja atacadista BEFIT, conectado ao backend compartilhado.
+- `marecoral`: loja varejista Maré Coral, mantida em repositório e grupo Docker separados.
+
+Não crie banco, Redis ou API próprios dentro dos grupos BEFIT ou Maré Coral. Os dois frontends usam a mesma API global, com isolamento por tenant.
 
 ## Subindo o ambiente
 
@@ -69,17 +77,21 @@ As fotos vêm de `api/public/uploads/seed_source/`, que é versionada. O seed co
 uma pasta por tenant e imprime no final os links públicos e de atacado gerados —
 **os tokens são aleatórios a cada execução**, então use os que aparecerem no seu terminal.
 
-### 4. Frontend
+### 4. Frontend atacadista BEFIT
 
-Rode **fora do Docker**. No Windows o hot reload não funciona com o volume montado.
+O frontend roda em um grupo Docker próprio e não é mais iniciado pelo compose do backend:
 
 ```bash
-cd web
-npm install
-npm run dev
+docker compose -f docker-compose.befit.yml up -d
 ```
 
-Abra <http://localhost:3000>.
+Abra <http://localhost:3000>. O container usa polling para manter o hot reload no Windows e encaminha as chamadas da API para `http://host.docker.internal:8000`.
+
+Para encerrar somente a BEFIT:
+
+```bash
+docker compose -f docker-compose.befit.yml down
+```
 
 ## Acessos de demonstração
 
@@ -132,7 +144,7 @@ rm -f api/tmp/pids/server.pid
 docker compose restart api
 ```
 
-**Porta ocupada.** `docker compose down` libera as portas antes de subir de novo.
+**Porta ocupada.** O backend usa a 8000 e a BEFIT usa a 3000. Ajuste `BEFIT_WEB_PORT` somente se a 3000 estiver realmente ocupada; não desligue o backend compartilhado para liberar a porta da loja.
 
 **Imagens quebradas no catálogo.** O `db:seed` não rodou, ou rodou sem
 `api/public/uploads/seed_source/` presente.
