@@ -51,12 +51,12 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
   );
 
   /**
-   * Descobre a foto ativa medindo os filhos, nao chutando a largura.
+   * Primeira foto visivel, medida pela borda esquerda do trilho.
    *
-   * A foto tem 82% do trilho mais o espacamento; qualquer porcentagem fixa
-   * erra o indice depois de algumas fotos e o ponto para de acompanhar.
+   * Medindo os filhos, nao chutando a largura: a foto muda de tamanho entre
+   * celular e desktop, e qualquer porcentagem fixa erra o indice depois de
+   * algumas fotos, deixando o ponto ativo para tras.
    */
-  /** Primeira foto visivel, medida pela borda esquerda do trilho. */
   function indicePelaEsquerda(): number {
     const trilho = trilhoRef.current;
     if (!trilho) return 0;
@@ -151,7 +151,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
         </div>
         {pecasNoModelo > 0 && (
           <span style={{
-            background: t.accent, color: "white",
+            background: t.accent, color: t.onAccent,
             fontSize: 12, fontWeight: 700,
             padding: "5px 11px", borderRadius: radius.pilula,
             whiteSpace: "nowrap",
@@ -229,7 +229,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
               {pecas > 0 && (
                 <span style={{
                   position: "absolute", top: 12, left: 12,
-                  background: t.accent, color: "white",
+                  background: t.accent, color: t.onAccent,
                   fontSize: 12, fontWeight: 700,
                   padding: "5px 11px", borderRadius: radius.pilula,
                 }}>

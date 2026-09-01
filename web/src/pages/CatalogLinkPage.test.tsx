@@ -2,6 +2,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import CatalogLinkPage, { montarMensagemDoPedido } from "./CatalogLinkPage";
+import { variaveisDoAcento } from "./catalogLink/showcaseTheme";
 
 import {
   createTokenOrder,
@@ -243,6 +244,29 @@ describe("CatalogLinkPage", () => {
     expect(screen.getByText(/Seu pedido foi salvo/)).toBeInTheDocument();
     expect(screen.getByText(/customer_document invalido/)).toBeInTheDocument();
     expect(screen.queryByText("Pague com Pix")).not.toBeInTheDocument();
+  });
+});
+
+describe("variaveisDoAcento", () => {
+  it("usa a cor do tenant e escreve em branco sobre cor escura", () => {
+    const vars = variaveisDoAcento("#1B3A6B") as Record<string, string>;
+
+    expect(vars["--cat-acento"]).toBe("rgb(27, 58, 107)");
+    expect(vars["--cat-acento-texto"]).toBe("#FFFFFF");
+  });
+
+  it("escreve em preto sobre cor clara, para o rotulo nao sumir", () => {
+    // Um tenant de marca amarela deixaria "3 pç" ilegivel em branco.
+    const vars = variaveisDoAcento("#FFD54F") as Record<string, string>;
+
+    expect(vars["--cat-acento-texto"]).toBe("#17161B");
+  });
+
+  it("aceita a forma curta e ignora valor invalido, mantendo a reserva", () => {
+    expect((variaveisDoAcento("#0AF") as Record<string, string>)["--cat-acento"]).toBe("rgb(0, 170, 255)");
+    // Sem variavel definida, o var() do tema cai no valor de reserva.
+    expect(variaveisDoAcento("azul")).toEqual({});
+    expect(variaveisDoAcento(null)).toEqual({});
   });
 });
 

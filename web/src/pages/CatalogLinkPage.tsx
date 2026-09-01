@@ -21,7 +21,7 @@ import { openWhatsapp, whatsappUrl } from "@/lib/whatsapp";
 import { useTenant } from "@/providers/TenantProvider";
 import { ModelCarousel, agruparPorModelo, type ModelGroup } from "./catalogLink/ModelCarousel";
 import { PhotoViewer } from "./catalogLink/PhotoViewer";
-import { radius, rotulo, sombra, t } from "./catalogLink/showcaseTheme";
+import { radius, rotulo, sombra, t, variaveisDoAcento } from "./catalogLink/showcaseTheme";
 import { sizeLabel } from "@/lib/sizeGroups";
 
 type QtyMap = Record<number, Record<string, number>>;
@@ -562,7 +562,11 @@ function CatalogShowcase(props: {
   }
 
   return (
-    <>
+    // A cor da marca desce por variavel CSS deste contêiner. Ele existe para
+    // envolver tambem o visor de foto, o botao de pedido e a folha de checkout,
+    // que ficam fora do <main> e, presos ali dentro, continuariam com a cor de
+    // reserva enquanto o resto da tela ja usava a cor do tenant.
+    <div style={variaveisDoAcento(marca?.color_primary)}>
       <main
         style={{
           minHeight: "100dvh",
@@ -672,7 +676,7 @@ function CatalogShowcase(props: {
           temPedido={temPedido}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -800,7 +804,7 @@ function CheckoutFab({ publicOnly, piecesCount, selecionadas, onOpen }: {
     >
       <ShoppingBag size={20} />
       <span style={{
-        background: t.accent, color: "white",
+        background: t.accent, color: t.onAccent,
         minWidth: 24, height: 24, padding: "0 7px",
         borderRadius: radius.pilula,
         display: "grid", placeItems: "center",
