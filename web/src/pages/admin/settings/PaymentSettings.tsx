@@ -11,7 +11,6 @@ import { updateAdminConfig, type AdminConfig } from "@/lib/api/config";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 
 const DEFAULT_API_URL = "https://api.casetec.com.br";
-const DEFAULT_SIGNATURE_HEADER = "X-Gateway-Signature";
 
 function Section({ title, icon, description, children }: {
   title: string;
@@ -82,14 +81,14 @@ export default function PaymentSettings({ config }: { config?: AdminConfig }) {
   const [merchantId, setMerchantId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [callbackSecret, setCallbackSecret] = useState("");
-  const [signatureHeader, setSignatureHeader] = useState(DEFAULT_SIGNATURE_HEADER);
+  const [signatureHeader, setSignatureHeader] = useState("");
   const [minOrder, setMinOrder] = useState("");
 
   useEffect(() => {
     if (!config) return;
     setApiUrl(config.psp_api_url || "");
     setMerchantId(config.psp_merchant_id || "");
-    setSignatureHeader(config.psp_signature_header || DEFAULT_SIGNATURE_HEADER);
+    setSignatureHeader(config.psp_signature_header || "");
     const minimo = Number(config.min_order_amount ?? 0);
     setMinOrder(minimo > 0 ? String(minimo) : "");
   }, [config]);
@@ -99,7 +98,9 @@ export default function PaymentSettings({ config }: { config?: AdminConfig }) {
       const payload: Record<string, unknown> = {
         psp_api_url: apiUrl.trim() || null,
         psp_merchant_id: merchantId.trim() || null,
-        psp_signature_header: signatureHeader.trim() || DEFAULT_SIGNATURE_HEADER,
+        // Em branco de proposito: o backend passa a procurar a assinatura nos
+        // cabecalhos conhecidos. Gravar um palpite aqui desligaria essa busca.
+        psp_signature_header: signatureHeader.trim() || null,
         // Vazio significa sem minimo, que e o mesmo que zero no backend.
         min_order_amount: minOrder.trim() === "" ? 0 : Number(minOrder.replace(",", ".")),
       };
@@ -234,17 +235,19 @@ export default function PaymentSettings({ config }: { config?: AdminConfig }) {
 
         <Field
           label="Header da assinatura"
-          hint="Nome do cabeçalho onde o gateway envia a assinatura"
+          hint="Deixe em branco se não souber o nome"
         >
           <Input
             value={signatureHeader}
             aria-label="Header da assinatura"
             onChange={(event) => setSignatureHeader(event.target.value)}
-            placeholder={DEFAULT_SIGNATURE_HEADER}
+            placeholder="detectar automaticamente"
             className="font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Confirme o nome com a Casetec. Se estiver errado, toda confirmação de pagamento é recusada.
+            Em branco, a assinatura é procurada nos cabeçalhos usados no mercado — a confirmação
+            funciona sem você saber o nome. Preencha só depois de confirmar com a Casetec, para
+            aceitar apenas aquele cabeçalho.
           </p>
         </Field>
       </Section>

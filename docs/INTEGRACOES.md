@@ -40,20 +40,37 @@ aviso explicando que precisa combinar o pagamento.
 `captured`, `paid`, `failed`, `cancelled` e `expired`. `captured` significa dinheiro
 capturado; antes caía no ramo genérico e virava pendente.
 
-**O header da assinatura é configurável.** A documentação diz que o callback é assinado com
-HMAC-SHA256 mas não diz em qual header. O valor fica em `psp_signature_header`, com
-`X-Gateway-Signature` como padrão. **Confirme o nome real com a Casetec** — se estiver
-errado, toda confirmação de pagamento é recusada com 401.
+**O header da assinatura não é mais um palpite.** A documentação diz que o callback é
+assinado com HMAC-SHA256 mas não diz em qual header. Antes o campo nascia com
+`X-Gateway-Signature` como default da coluna, e um palpite errado recusaria **100%** das
+confirmações com 401 — o sintoma seria "pedido pago que nunca consta como pago". Hoje
+`psp_signature_header` vazio significa procurar a assinatura nos nomes usados no mercado,
+aceitando hex ou base64, com ou sem prefixo `sha256=`. Continua exigindo o HMAC do segredo
+do tenant. Depois que a Casetec confirmar o nome, preencha o campo para aceitar só aquele.
+
+**Callback fora de ordem não rebaixa pagamento confirmado.** O gateway reentrega, e nada
+garante a ordem: um `processing` atrasado depois do `paid` devolvia o pedido para pendente
+com o estoque já baixado. Do `paid` só se sai por cancelamento.
+
+### Como verificar quando a credencial chegar
+
+```bash
+docker compose exec api bin/rails gateway:check TENANT=demo
+```
+
+Lista o que falta e imprime o endereço de callback para registrar na Orbe. Com
+`COBRAR=1` emite uma cobrança real de R$ 1,00 (ajustável com `VALOR=`) e diz se a Orbe
+respondeu com Pix.
 
 ### O que ainda não foi validado
 
 A integração tem testes com resposta simulada do gateway (`gateway_payment_service_spec.rb`
-e `payments_spec.rb`), mas **nunca falou com a Orbe de verdade**. Falta:
+e `payments_spec.rb`), mas **nunca falou com a Orbe de verdade**. Falta, e nada disso
+depende de código:
 
 - Credenciais reais de um merchant.
 - Um endereço público para o callback: `localhost` não recebe. Use túnel (ngrok,
   cloudflared) ou um ambiente publicado, e aponte `PSP_CALLBACK_BASE_URL` para ele.
-- Confirmar o nome do header da assinatura.
 
 ### Dado sensível
 
@@ -96,18 +113,18 @@ O formato é livre — o admin pode digitar link ou número.
 | `web/src/components/showroom/Footer.tsx` | Botão "Falar com o atacado" |
 | `web/src/pages/ProductDetail.tsx` | Botão de interesse na peça |
 
-### Onde falta plugar
+| `web/src/pages/CatalogLinkPage.tsx` | Envia o pedido do comprador atacado, **depois** de registrado |
 
-| Arquivo | Situação |
-|---|---|
-| `web/src/pages/CatalogLinkPage.tsx` | Não envia por WhatsApp. **É o principal** — é a tela do comprador atacado. |
+### A mensagem do link de atacado
 
-### Sugestão para o link de atacado
+O pedido é registrado no backend primeiro; o WhatsApp é o passo seguinte, nunca o
+substituto — assim o pedido não se perde se o comprador fechar a aba.
 
-O pedido já é registrado no backend antes de qualquer coisa — o WhatsApp deve ser o passo
-seguinte, não substituto. Depois do `createTokenOrder` responder, monte a mensagem com os
-itens e quantidades por tamanho e abra o `wa.me`. Assim o pedido não se perde se o
-comprador fechar a aba do WhatsApp.
+A mensagem sai com modelo, Pantone, grade e valor. **Foto não vai como anexo**: o `wa.me`
+transporta só texto. O WhatsApp monta pré-visualização do primeiro endereço do texto, e só
+de um endereço público — por isso a foto entra apenas quando o catálogo estiver publicado
+fora da rede local. Em `localhost` ou IP interno ela vira um calhau de texto sem imagem, e
+por isso é omitida.
 
 ---
 
