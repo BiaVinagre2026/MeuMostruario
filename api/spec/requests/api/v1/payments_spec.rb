@@ -34,8 +34,7 @@ RSpec.describe "Api::V1::Payments", type: :request do
           photo_id: fixture[:photo].id,
           qty: 1,
           unit_price: 149.9
-        }],
-        total: 149.9
+        }]
       )
       payment = GatewayPaymentService.new.create_intent!(order: order, payment_method: "pix")
 
@@ -100,6 +99,67 @@ RSpec.describe "Api::V1::Payments", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
       within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("pending") }
+    end
+
+    it "aceita a assinatura em qualquer cabecalho conhecido enquanto a Casetec nao confirma o nome" do
+      fixture = create_payment_fixture
+      payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+
+      post webhook_path, params: payload, headers: json_headers.merge("X-Orbe-Signature" => sign(payload))
+
+      expect(response).to have_http_status(:ok)
+      within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("paid") }
+    end
+
+    it "aceita a assinatura em base64 e com o prefixo sha256=" do
+      fixture = create_payment_fixture
+      payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+      base64 = Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", secret, payload))
+
+      post webhook_path, params: payload,
+           headers: json_headers.merge("X-Signature" => "sha256=#{base64}")
+
+      expect(response).to have_http_status(:ok)
+      within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("paid") }
+    end
+
+    it "recusa cabecalho conhecido com assinatura errada" do
+      fixture = create_payment_fixture
+      payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+
+      post webhook_path, params: payload,
+           headers: json_headers.merge("X-Orbe-Signature" => sign(payload, with: "outro-segredo"))
+
+      expect(response).to have_http_status(:unauthorized)
+      within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("pending") }
+    end
+
+    it "nao rebaixa um pagamento pago quando o callback atrasado chega depois" do
+      fixture = create_payment_fixture
+      referencia = fixture[:payment].gateway_reference
+      pago = { data: { id: referencia, status: "paid" } }.to_json
+      atrasado = { data: { id: referencia, status: "processing" } }.to_json
+
+      post webhook_path, params: pago, headers: json_headers.merge("X-Gateway-Signature" => sign(pago))
+      post webhook_path, params: atrasado, headers: json_headers.merge("X-Gateway-Signature" => sign(atrasado))
+
+      expect(response).to have_http_status(:ok)
+      within_tenant(tenant) do
+        expect(fixture[:payment].reload.status).to eq("paid")
+        expect(fixture[:order].reload.payment_status).to eq("paid")
+      end
+    end
+
+    it "aceita o cancelamento depois do pagamento, que e caminho de volta legitimo" do
+      fixture = create_payment_fixture
+      referencia = fixture[:payment].gateway_reference
+      pago = { data: { id: referencia, status: "paid" } }.to_json
+      cancelado = { data: { id: referencia, status: "cancelled" } }.to_json
+
+      post webhook_path, params: pago, headers: json_headers.merge("X-Gateway-Signature" => sign(pago))
+      post webhook_path, params: cancelado, headers: json_headers.merge("X-Gateway-Signature" => sign(cancelado))
+
+      within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("cancelled") }
     end
 
     it "responde 404 para tenant inexistente" do

@@ -27,6 +27,35 @@ RSpec.describe "Api::V1::CatalogLinks payment_link", type: :request do
     fixture.merge(order_id: json_response.dig("order", "id"))
   end
 
+  it "ignora subtotal, desconto e total enviados pelo comprador" do
+    fixture = create_catalog_fixture(
+      tenant: tenant, link_type: "wholesale_buyer",
+      show_prices: true, allow_order: true, allow_payment: true
+    )
+    preco = within_tenant(tenant) { fixture[:product].price_wholesale.to_d }
+
+    post "/api/v1/catalog_links/#{fixture[:link].token}/orders",
+         params: {
+           order: {
+             buyer_name: "Loja Mar",
+             buyer_phone: "11999990000",
+             buyer_document: "11222333000181",
+             items: [{ catalog_item_id: fixture[:item].id, qty: 2 }],
+             # O furo: bastava alegar desconto para o total do cliente valer, e
+             # a cobranca saia pelo valor falso.
+             subtotal: 999_999,
+             discount: 0.01,
+             discount_pct: 99,
+             total: 1.00
+           }
+         },
+         headers: headers
+
+    expect(response).to have_http_status(:created)
+    expect(json_response.dig("order", "total_value").to_d).to eq(preco * 2)
+    expect(json_response.dig("payment", "amount").to_d).to eq(preco * 2)
+  end
+
   it "recusa quando o link nao permite pagamento" do
     fixture = fixture_com_pedido(allow_payment: false)
 

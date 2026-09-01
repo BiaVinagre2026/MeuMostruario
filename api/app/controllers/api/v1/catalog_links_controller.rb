@@ -58,11 +58,7 @@ module Api
           catalog_link: @catalog_link,
           buyer: buyer_params.to_h,
           items: items,
-          notes: params.dig(:order, :notes),
-          subtotal: params.dig(:order, :subtotal),
-          discount: params.dig(:order, :discount),
-          discount_pct: params.dig(:order, :discount_pct),
-          total: params.dig(:order, :total)
+          notes: params.dig(:order, :notes)
         )
 
         payment = if @catalog_link.allow_payment?

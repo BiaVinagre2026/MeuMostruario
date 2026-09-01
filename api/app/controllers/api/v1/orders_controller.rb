@@ -21,15 +21,13 @@ module Api
         return render json: { errors: ["items não pode estar vazio"] },
                       status: :unprocessable_entity if items.empty?
 
-        p = order_base_params
+        # Subtotal, desconto e total nao sao mais aceitos da requisicao: o
+        # carrinho mostra a faixa por volume, o servidor e quem a aplica.
         order = OrderBuilderService.build(
-          member_id:    current_member.id,
-          items:        items,
-          notes:        p[:notes],
-          subtotal:     p[:subtotal],
-          discount:     p[:discount],
-          discount_pct: p[:discount_pct],
-          total:        p[:total]
+          member_id:       current_member.id,
+          items:           items,
+          notes:           order_base_params[:notes],
+          volume_discount: true
         )
 
         tc = current_tenant.tenant_config
@@ -48,7 +46,7 @@ module Api
       private
 
       def order_base_params
-        params.require(:order).permit(:notes, :subtotal, :discount, :discount_pct, :total)
+        params.require(:order).permit(:notes)
       end
 
       def raw_items

@@ -91,6 +91,15 @@ class GatewayPaymentService
     payment = Payment.find_by!(gateway_reference: reference.to_s)
     status = normalize_status(data["status"] || payload["status"])
 
+    # Gateway reentrega callback, e nada garante a ordem de chegada: um
+    # `processing` atrasado depois do `paid` devolveria o pedido para pendente
+    # com o estoque ja baixado. O caminho de volta de um pagamento confirmado e
+    # cancelamento ou estorno, nunca "voltou a processar".
+    if payment.status == "paid" && status == "pending"
+      payment.update!(webhook_payload: payload)
+      return payment
+    end
+
     Payment.transaction do
       if status == "paid"
         MareCoralInventoryService.commit!(payment.order)
