@@ -7,6 +7,32 @@ RSpec.describe "Api::V1::CatalogLinks", type: :request do
   let(:headers) { tenant_headers(tenant) }
 
   describe "GET /api/v1/catalog_links/:token" do
+    it "manda a identidade da loja junto com o link" do
+      tenant.tenant_config.update!(
+        company_name: "Loja da Marca",
+        color_primary: "#1E40AF",
+        favicon_url: "/uploads/favicon.png",
+        font_primary: "Poppins",
+        font_heading: "Poppins"
+      )
+      fixture = create_catalog_fixture(
+        tenant: tenant, link_type: "wholesale_buyer",
+        show_prices: true, allow_order: true, allow_payment: false
+      )
+
+      get "/api/v1/catalog_links/#{fixture[:link].token}", headers: headers
+
+      marca = json_response.dig("catalog_link", "brand")
+      # O link e aberto de qualquer lugar, por WhatsApp inclusive. Sem estes
+      # campos viajando junto, o comprador do tenant via a aba do navegador com
+      # o nome da plataforma e a tipografia da plataforma.
+      expect(marca["company_name"]).to eq("Loja da Marca")
+      expect(marca["color_primary"]).to eq("#1E40AF")
+      expect(marca["favicon_url"]).to eq("/uploads/favicon.png")
+      expect(marca["font_primary"]).to eq("Poppins")
+      expect(marca["font_heading"]).to eq("Poppins")
+    end
+
     it "does not expose prices for public links" do
       fixture = create_catalog_fixture(
         tenant: tenant,

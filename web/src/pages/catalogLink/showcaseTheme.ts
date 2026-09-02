@@ -14,6 +14,16 @@ export const ACENTO_RESERVA = "#E0356E";
 export const ACENTO_SUAVE_RESERVA = "#FCE9F0";
 export const ACENTO_TEXTO_RESERVA = "#FFFFFF";
 
+/**
+ * Tipografia do catalogo, tambem por tenant.
+ *
+ * O titulo precisa ser declarado onde e usado: uma regra global aplica
+ * `font-display` a todo h1..h6, e sem sobrepor no elemento a fonte escolhida
+ * pela marca nao chegaria nos titulos.
+ */
+export const FONTE_CORPO = "var(--cat-fonte-corpo, Inter, system-ui, sans-serif)";
+export const FONTE_TITULO = 'var(--cat-fonte-titulo, "Space Grotesk", system-ui, sans-serif)';
+
 export const t = {
   ground: "#F6F6F4",
   surface: "#FFFFFF",

@@ -260,6 +260,13 @@ module Api
           company_name: config.company_name,
           logo_url: config.logo_url,
           color_primary: config.color_primary,
+          # Aba do navegador e tipografia tambem sao a marca. Sem isso o
+          # comprador do tenant abre o link e le "Meu Mostruario" na aba — o
+          # nome da plataforma vazando para o cliente do cliente.
+          favicon_url: config.favicon_url,
+          favicon_mode: config.favicon_mode,
+          font_primary: config.font_primary,
+          font_heading: config.font_heading,
           whatsapp: config.social_whatsapp,
           instagram: config.social_instagram,
           address: config.company_address,

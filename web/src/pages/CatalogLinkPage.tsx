@@ -21,7 +21,8 @@ import { openWhatsapp, whatsappUrl } from "@/lib/whatsapp";
 import { useTenant } from "@/providers/TenantProvider";
 import { ModelCarousel, agruparPorModelo, type ModelGroup } from "./catalogLink/ModelCarousel";
 import { PhotoViewer } from "./catalogLink/PhotoViewer";
-import { radius, rotulo, sombra, t, variaveisDoAcento } from "./catalogLink/showcaseTheme";
+import { FONTE_CORPO, FONTE_TITULO, radius, rotulo, sombra, t, variaveisDoAcento } from "./catalogLink/showcaseTheme";
+import { useIdentidadeDaLoja, variaveisDaTipografia } from "./catalogLink/useIdentidadeDaLoja";
 import { sizeLabel } from "@/lib/sizeGroups";
 
 type QtyMap = Record<number, Record<string, number>>;
@@ -148,8 +149,8 @@ export default function CatalogLinkPage() {
           price: Number(item.price ?? 0),
           qty: itemQty,
         })),
-        subtotal: total,
-        total,
+        // Sem subtotal nem total: quem soma e o servidor, pelo preco do banco.
+        // Mandar daqui so daria a impressao de que o valor vem do comprador.
         payment_method: "pix",
       },
     }),
@@ -317,7 +318,7 @@ function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas, token }: {
             <div style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "#6f665e" }}>
               Pedido #{response.order.id}
             </div>
-            <h2 style={{ margin: "4px 0 0", fontSize: 20 }}>
+            <h2 style={{ margin: "4px 0 0", fontSize: 20, fontFamily: FONTE_TITULO }}>
               {failed ? "Pedido registrado, cobranca pendente" : pixCode ? "Pague com Pix" : "Pedido registrado"}
             </h2>
           </div>
@@ -552,21 +553,30 @@ function CatalogShowcase(props: {
   // Qual grupo esta aberto em tela cheia, e em que foto.
   const [visor, setVisor] = useState<{ grupo: ModelGroup; indice: number } | null>(null);
   const marca = data.brand;
+  // Antes do return condicional: a aba tem que trazer a loja tambem na tela de
+  // pagamento, e hook nao pode ficar depois de um caminho que retorna cedo.
+  useIdentidadeDaLoja(marca, data.catalog.name);
+
+  // A cor e as fontes da marca descem por variavel CSS. O contêiner existe para
+  // envolver tambem o visor de foto, o botao de pedido e a folha de checkout,
+  // que ficam fora do <main> e, presos ali dentro, continuariam com a
+  // aparencia de reserva enquanto o resto da tela ja teria mudado.
+  const identidade: React.CSSProperties = {
+    ...variaveisDoAcento(marca?.color_primary),
+    ...variaveisDaTipografia(marca),
+    fontFamily: FONTE_CORPO,
+  };
 
   if (placedOrder) {
     return (
-      <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto" }}>
+      <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto", ...identidade }}>
         <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={marca?.whatsapp ?? props.whatsapp} linhasEnviadas={props.linhasEnviadas} token={props.token} />
       </main>
     );
   }
 
   return (
-    // A cor da marca desce por variavel CSS deste contêiner. Ele existe para
-    // envolver tambem o visor de foto, o botao de pedido e a folha de checkout,
-    // que ficam fora do <main> e, presos ali dentro, continuariam com a cor de
-    // reserva enquanto o resto da tela ja usava a cor do tenant.
-    <div style={variaveisDoAcento(marca?.color_primary)}>
+    <div style={identidade}>
       <main
         style={{
           minHeight: "100dvh",
@@ -612,6 +622,7 @@ function CatalogShowcase(props: {
               fontSize: isMobile ? 28 : 44,
               fontWeight: 680, letterSpacing: "-0.03em",
               margin: "8px 0 0", lineHeight: 1.05,
+              fontFamily: FONTE_TITULO,
             }}>
               {data.catalog.name}
             </h1>

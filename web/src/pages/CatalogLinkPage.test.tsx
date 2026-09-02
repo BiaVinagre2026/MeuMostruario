@@ -208,10 +208,16 @@ describe("CatalogLinkPage", () => {
           buyer_name: "Loja Mar",
           buyer_phone: "11999990000",
           buyer_document: "11222333000181",
-          total: 299.8,
         }),
       }));
     });
+
+    // O valor nao sai daqui: quem soma e o servidor, pelo preco do banco.
+    // Mandar total do navegador foi o que permitiu fechar R$ 318 por R$ 1,00.
+    const enviado = vi.mocked(createTokenOrder).mock.calls[0][1] as { order: Record<string, unknown> };
+    expect(enviado.order).not.toHaveProperty("total");
+    expect(enviado.order).not.toHaveProperty("subtotal");
+    expect(enviado.order).not.toHaveProperty("discount");
   });
 
   it("avisa que a cobranca falhou sem esconder que o pedido foi salvo", async () => {

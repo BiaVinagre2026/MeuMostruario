@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { brl } from "@/data/catalog";
 import type { PublicCatalogItem } from "@/types/photoCatalog";
-import { TOQUE, radius, rotulo, sombra, t } from "./showcaseTheme";
+import { FONTE_TITULO, TOQUE, radius, rotulo, sombra, t } from "./showcaseTheme";
 import { sizeInfo } from "@/lib/sizeGroups";
 
 export interface ModelGroup {
@@ -141,7 +141,7 @@ export function ModelCarousel({ grupo, showPrices, allowOrder, qty, onQty, selec
     <section style={{ scrollSnapAlign: "start", padding: "8px 0 28px" }}>
       <div style={{ padding: "0 16px", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <h2 style={{ fontSize: 21, fontWeight: 650, letterSpacing: "-0.02em", margin: 0, lineHeight: 1.2 }}>
+          <h2 style={{ fontSize: 21, fontWeight: 650, letterSpacing: "-0.02em", margin: 0, lineHeight: 1.2, fontFamily: FONTE_TITULO }}>
             {grupo.nome}
           </h2>
           <div style={{ ...rotulo, marginTop: 5 }}>

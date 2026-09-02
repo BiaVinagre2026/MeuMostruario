@@ -127,6 +127,10 @@ export interface PublicCatalogLink {
     company_name?: string | null;
     logo_url?: string | null;
     color_primary?: string | null;
+    favicon_url?: string | null;
+    favicon_mode?: string | null;
+    font_primary?: string | null;
+    font_heading?: string | null;
     whatsapp?: string | null;
     instagram?: string | null;
     address?: string | null;
