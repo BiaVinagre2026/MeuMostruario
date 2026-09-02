@@ -20,6 +20,18 @@ services:
   redis:
     image: redis:7
     container_name: mostruario-redis
+    # Persistencia explicita, e nao o padrao da imagem: aqui mora a fila do
+    # Sidekiq, e fila perdida significa lote de fotos que nunca e analisado e
+    # e-mail de pedido que nunca sai — sem erro em lugar nenhum.
+    #
+    # Sem maxmemory-policy de despejo, tambem de proposito: com allkeys-lru o
+    # Redis descartaria as proprias filas para liberar memoria.
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
     ports:
       - "6379:6379"
     volumes:

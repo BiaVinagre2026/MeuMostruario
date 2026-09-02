@@ -159,6 +159,23 @@ docker compose restart api
 - **Deploy**: o projeto nunca foi publicado. O backend tem Dockerfile de produção, mas o
   frontend é uma SPA sem forma de ser servida, e faltam hospedagem, domínio e o DNS
   curinga que o subdomínio por tenant exige.
+
+### O que a imagem de produção exige
+
+Além do PostgreSQL, o container precisa de duas coisas que **não sobem com ele**:
+
+- **Redis externo, com persistência.** Ele já morou dentro da imagem, sem persistência e
+  com despejo por LRU — a fila do Sidekiq morria a cada restart e podia ser descartada sob
+  pressão de memória, sem erro nenhum. Aponte `REDIS_URL` para um Redis com `appendonly
+  yes` e **sem** política de despejo. Sem a variável, a aplicação não sobe.
+- **Chaves de criptografia.** `AR_ENCRYPTION_PRIMARY_KEY`,
+  `AR_ENCRYPTION_DETERMINISTIC_KEY` e `AR_ENCRYPTION_KEY_DERIVATION_SALT` protegem os
+  segredos dos tenants (chave do gateway, segredo do callback, senha SMTP, chave S3).
+  Gere com `bin/rails db:encryption:init`. Sem elas, a aplicação não sobe — de propósito,
+  para nunca voltar a gravar segredo em texto puro em silêncio.
+
+  **Perder essas chaves torna os segredos ilegíveis.** Guarde junto do resto dos segredos
+  de infraestrutura, não no repositório.
 - **WhatsApp no catálogo por link**: as demais telas já usam o número do tenant; falta a
   tela do comprador atacado, onde a mensagem precisa sair depois do pedido registrado.
 

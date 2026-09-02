@@ -3,6 +3,27 @@
 class TenantConfig < ApplicationRecord
   belongs_to :tenant
 
+  # Segredos de terceiros, cifrados no banco.
+  #
+  # O sufixo `_enc` estava nas colunas desde o inicio, mas nada cifrava nada: o
+  # valor ficava em texto puro e o nome fazia qualquer revisao presumir o
+  # contrario. Esta tabela e do schema publico, entao um unico dump entregava a
+  # chave de gateway, o segredo de callback e a senha de e-mail de todos os
+  # tenants de uma vez.
+  #
+  # Nao deterministico de proposito: nenhum destes campos e usado em busca, so
+  # lido para chamar o servico, entao nao ha razao para abrir mao do sal por
+  # registro.
+  ATRIBUTOS_SECRETOS = %i[
+    psp_api_key_enc
+    psp_callback_secret_enc
+    smtp_password_enc
+    ses_secret_key_enc
+    s3_secret_access_key_enc
+  ].freeze
+
+  ATRIBUTOS_SECRETOS.each { |atributo| encrypts atributo }
+
   PAYMENT_METHODS = %w[pix boleto credit_card credit_card_3ds credit_card_installments debit_card].freeze
 
   MULTIPLIER_RULES_DEFAULTS = {

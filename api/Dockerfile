@@ -3,11 +3,15 @@
 # Multitenant Whitelabel Template — API (Ruby on Rails 7.2 / Ruby 3.3)
 #
 # Single-container image running:
-#   1. Redis (in-memory broker for Sidekiq)
-#   2. Sidekiq (background job worker)
-#   3. Puma (Rails web server)
+#   1. Sidekiq (background job worker)
+#   2. Puma (Rails web server)
 #
-# PostgreSQL is the only external dependency.
+# External dependencies: PostgreSQL and Redis.
+#
+# O Redis era embutido nesta imagem, sem persistencia e com despejo por LRU:
+# a fila do Sidekiq morria a cada restart e podia ser descartada sob pressao
+# de memoria. Fila de trabalho precisa de um Redis proprio, que sobreviva ao
+# ciclo de vida da aplicacao. Aponte REDIS_URL para ele.
 # =============================================================================
 
 ARG RUBY_VERSION=3.3.0
@@ -22,7 +26,6 @@ RUN apt-get update -qq && \
         libjemalloc2 \
         libvips \
         postgresql-client \
-        redis-server \
         supervisor && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
@@ -30,8 +33,7 @@ ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development test" \
-    RAILS_LOG_TO_STDOUT="true" \
-    REDIS_URL="redis://127.0.0.1:6379/0"
+    RAILS_LOG_TO_STDOUT="true"
 
 FROM base AS build
 
@@ -63,9 +65,8 @@ COPY --from=build /rails /rails
 RUN groupadd --system --gid 1000 rails && \
     useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
     mkdir -p db log storage tmp/pids tmp/cache public/uploads \
-             /var/log/supervisor /var/run/redis /var/lib/redis && \
-    chown -R rails:rails db log storage tmp public/uploads && \
-    chown -R rails:rails /var/run/redis /var/lib/redis
+             /var/log/supervisor && \
+    chown -R rails:rails db log storage tmp public/uploads
 
 COPY config/docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
