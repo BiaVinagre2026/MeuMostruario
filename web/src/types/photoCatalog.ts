@@ -114,6 +114,7 @@ export interface PublicCatalogItem {
 export interface PublicCatalogLink {
   id: number;
   token: string;
+  url?: string;
   slug?: string | null;
   link_type: CatalogLinkType;
   show_prices: boolean;

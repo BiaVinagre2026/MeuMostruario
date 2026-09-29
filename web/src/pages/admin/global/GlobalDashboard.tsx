@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/api/client";
 import { useTenantWorkspace } from "@/hooks/useTenantWorkspace";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import type { AdminTenant } from "@/types/operator";
+import { PLATFORM_NAME } from "@/lib/platformBranding";
 
 interface TenantListResponse {
   tenants: AdminTenant[];
@@ -56,7 +57,7 @@ export default function GlobalDashboard() {
       <div className="px-4 md:px-6 py-3 md:py-4 border-b">
         <h1 className="text-base md:text-lg font-semibold">Painel global</h1>
         <p className="text-xs md:text-sm text-muted-foreground">
-          Gestão white-label dos tenants e da operação multitenant
+          {PLATFORM_NAME} · gestão de clientes independentes
         </p>
       </div>
 

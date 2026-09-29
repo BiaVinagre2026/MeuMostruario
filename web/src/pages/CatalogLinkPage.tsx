@@ -9,6 +9,7 @@ import {
   createOrderPaymentLink,
   createSelectionLink,
   createTokenOrder,
+  catalogLinkPath,
   getPublicCatalogLink,
   sendCatalogInterest,
 } from "@/lib/api/photoCatalog";
@@ -30,7 +31,7 @@ type LinhaPedido = { item: PublicCatalogItem; qty: Record<string, number>; total
 const PHONE_MIN_DIGITS = 10;
 
 export default function CatalogLinkPage() {
-  const { token = "" } = useParams<{ token: string }>();
+  const { tenantSlug, token = "" } = useParams<{ tenantSlug?: string; token: string }>();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [qty, setQty] = useState<QtyMap>({});
   const [buyerName, setBuyerName] = useState("");
@@ -71,8 +72,8 @@ export default function CatalogLinkPage() {
   }, [placedOrder, generatedLink]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["catalog-link", token],
-    queryFn: () => getPublicCatalogLink(token),
+    queryKey: ["catalog-link", tenantSlug, token],
+    queryFn: () => getPublicCatalogLink(token, tenantSlug),
     enabled: token.length > 0,
   });
 
@@ -107,7 +108,7 @@ export default function CatalogLinkPage() {
       phone: buyerPhoneDigits,
       catalog_item_ids: selectedIds,
       message: "Tenho interesse nessas fotos.",
-    }),
+    }, tenantSlug),
     onSuccess: () => {
       toast.success("Interesse enviado.");
       clearSelection();
@@ -116,9 +117,10 @@ export default function CatalogLinkPage() {
   });
 
   const selection = useMutation({
-    mutationFn: () => createSelectionLink(token, selectedIds),
+    mutationFn: () => createSelectionLink(token, selectedIds, tenantSlug),
     onSuccess: (res) => {
-      const url = `${window.location.origin}/link/${res.catalog_link.token}`;
+      const path = res.catalog_link.url || catalogLinkPath(res.catalog_link.token, tenantSlug);
+      const url = path.startsWith("http") ? path : `${window.location.origin}${path}`;
       // A copia acontece depois da resposta da rede, fora do gesto do toque:
       // o Safari do iOS recusa, e por http a API de clipboard nem existe. Por
       // isso o link tambem fica visivel na tela, em vez de so prometer que foi
@@ -153,7 +155,7 @@ export default function CatalogLinkPage() {
         // Mandar daqui so daria a impressao de que o valor vem do comprador.
         payment_method: "pix",
       },
-    }),
+    }, tenantSlug),
     onSuccess: (response) => {
       toast.success("Pedido registrado.");
       setPlacedOrder(response);
@@ -250,6 +252,7 @@ export default function CatalogLinkPage() {
       onClosePayment={() => setPlacedOrder(null)}
       whatsapp={tenant.social.whatsapp}
       token={token}
+      tenantSlug={tenantSlug}
       linhasEnviadas={linhasEnviadas}
       minOrderAmount={minOrderAmount}
       belowMinimum={belowMinimum}
@@ -269,17 +272,18 @@ export default function CatalogLinkPage() {
  * falha na emissao (o pedido existe, a cobranca nao) e pedido sem cobranca,
  * quando o link nao cobra.
  */
-function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas, token }: {
+function PaymentPanel({ response, onClose, whatsapp, linhasEnviadas, token, tenantSlug }: {
   response: TokenOrderResponse;
   onClose: () => void;
   whatsapp?: string | null;
   linhasEnviadas?: LinhaPedido[];
   token: string;
+  tenantSlug?: string;
 }) {
   const [linkPagamento, setLinkPagamento] = useState<string | null>(null);
 
   const pedirLink = useMutation({
-    mutationFn: () => createOrderPaymentLink(token, response.order.id),
+    mutationFn: () => createOrderPaymentLink(token, response.order.id, tenantSlug),
     onSuccess: (pagamento) => {
       if (pagamento.checkout_url) {
         setLinkPagamento(pagamento.checkout_url);
@@ -507,6 +511,7 @@ function urlAbsoluta(url: string): string {
 function CatalogShowcase(props: {
   isMobile: boolean;
   token: string;
+  tenantSlug?: string;
   whatsapp?: string | null;
   linhasEnviadas: LinhaPedido[];
   minOrderAmount: number;
@@ -570,7 +575,7 @@ function CatalogShowcase(props: {
   if (placedOrder) {
     return (
       <main style={{ minHeight: "100dvh", background: t.ground, overflowY: "auto", ...identidade }}>
-        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={marca?.whatsapp ?? props.whatsapp} linhasEnviadas={props.linhasEnviadas} token={props.token} />
+        <PaymentPanel response={placedOrder} onClose={props.onClosePayment} whatsapp={marca?.whatsapp ?? props.whatsapp} linhasEnviadas={props.linhasEnviadas} token={props.token} tenantSlug={props.tenantSlug} />
       </main>
     );
   }

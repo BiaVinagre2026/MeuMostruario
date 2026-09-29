@@ -23,6 +23,7 @@ vi.mock("@/components/admin/AdminLayout", () => ({
 }));
 
 vi.mock("@/lib/api/photoCatalog", () => ({
+  catalogLinkPath: (token: string, tenantSlug?: string) => tenantSlug ? `/link/${tenantSlug}/${token}` : `/link/${token}`,
   createCatalogLink: vi.fn(),
   getCatalogs: vi.fn(),
   updateCatalog: vi.fn(),
@@ -107,6 +108,7 @@ describe("CatalogList", () => {
           {
             id: 9,
             token: "wholesale-9",
+            url: "/link/mare-coral/wholesale-9",
             link_type: "wholesale_buyer",
             show_prices: true,
             allow_order: true,
@@ -148,7 +150,7 @@ describe("CatalogList", () => {
     const scope = within(card as HTMLElement);
 
     expect(scope.getByText("Atacado · com preco · pedido · pagamento")).toBeInTheDocument();
-    expect(scope.getByRole("link", { name: "Abrir" })).toHaveAttribute("href", `${window.location.origin}/link/wholesale-9`);
+    expect(scope.getByRole("link", { name: "Abrir" })).toHaveAttribute("href", `${window.location.origin}/link/mare-coral/wholesale-9`);
     expect(scope.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
   });
 

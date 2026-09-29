@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   createCatalogLink,
+  catalogLinkPath,
   deleteCatalog,
   deleteCatalogLink,
   getCatalogs,
@@ -435,7 +436,8 @@ export default function CatalogList() {
                 {catalog.links.length > 0 && (
                   <div className="mt-4 grid gap-2">
                     {catalog.links.map((link) => {
-                      const url = `${window.location.origin}/link/${link.token}`;
+                      const path = link.url || catalogLinkPath(link.token);
+                      const url = path.startsWith("http") ? path : `${window.location.origin}${path}`;
                       const expired = isExpired(link);
                       return (
                         <div

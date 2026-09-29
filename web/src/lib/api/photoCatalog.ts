@@ -99,8 +99,19 @@ export async function createCatalogLink(catalogId: number, payload: {
   return res.catalog_link;
 }
 
-export async function getPublicCatalogLink(token: string): Promise<PublicCatalogLink> {
-  const res = await apiClient.get<{ catalog_link: PublicCatalogLink }>(`/api/v1/catalog_links/${token}`);
+function publicTenantRequest(tenantSlug?: string): RequestInit | undefined {
+  return tenantSlug ? { headers: { "X-Tenant-ID": tenantSlug } } : undefined;
+}
+
+export function catalogLinkPath(token: string, tenantSlug?: string): string {
+  return tenantSlug ? `/link/${tenantSlug}/${token}` : `/link/${token}`;
+}
+
+export async function getPublicCatalogLink(token: string, tenantSlug?: string): Promise<PublicCatalogLink> {
+  const res = await apiClient.get<{ catalog_link: PublicCatalogLink }>(
+    `/api/v1/catalog_links/${token}`,
+    publicTenantRequest(tenantSlug)
+  );
   return res.catalog_link;
 }
 
@@ -110,14 +121,14 @@ export async function sendCatalogInterest(token: string, payload: {
   email?: string;
   message?: string;
   catalog_item_ids: number[];
-}) {
-  return apiClient.post(`/api/v1/catalog_links/${token}/interests`, payload);
+}, tenantSlug?: string) {
+  return apiClient.post(`/api/v1/catalog_links/${token}/interests`, payload, publicTenantRequest(tenantSlug));
 }
 
-export async function createSelectionLink(token: string, catalog_item_ids: number[]) {
+export async function createSelectionLink(token: string, catalog_item_ids: number[], tenantSlug?: string) {
   return apiClient.post<{ catalog_link: CatalogLink }>(`/api/v1/catalog_links/${token}/selections`, {
     catalog_item_ids,
-  });
+  }, publicTenantRequest(tenantSlug));
 }
 
 export interface TokenOrderResponse {
@@ -135,8 +146,12 @@ export interface TokenOrderResponse {
   } | null;
 }
 
-export async function createTokenOrder(token: string, payload: unknown): Promise<TokenOrderResponse> {
-  return apiClient.post<TokenOrderResponse>(`/api/v1/catalog_links/${token}/orders`, payload);
+export async function createTokenOrder(token: string, payload: unknown, tenantSlug?: string): Promise<TokenOrderResponse> {
+  return apiClient.post<TokenOrderResponse>(
+    `/api/v1/catalog_links/${token}/orders`,
+    payload,
+    publicTenantRequest(tenantSlug)
+  );
 }
 
 export type TokenPayment = NonNullable<TokenOrderResponse["payment"]>;
@@ -147,10 +162,11 @@ export type TokenPayment = NonNullable<TokenOrderResponse["payment"]>;
  * Criado sob demanda, e nao junto do pedido, para nao abrir duas cobrancas
  * para a mesma compra quando o comprador escolhe pagar por Pix.
  */
-export async function createOrderPaymentLink(token: string, orderId: number): Promise<TokenPayment> {
+export async function createOrderPaymentLink(token: string, orderId: number, tenantSlug?: string): Promise<TokenPayment> {
   const res = await apiClient.post<{ payment: TokenPayment }>(
     `/api/v1/catalog_links/${token}/orders/${orderId}/payment_link`,
-    {}
+    {},
+    publicTenantRequest(tenantSlug)
   );
   return res.payment;
 }

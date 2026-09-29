@@ -59,7 +59,7 @@ module Api
             allow_order: link.allow_order,
             allow_payment: link.allow_payment,
             expires_at: link.expires_at,
-            url: "/link/#{link.token}"
+            url: "/link/#{current_tenant.slug}/#{link.token}"
           }
         end
       end

@@ -121,7 +121,8 @@ module Api
             show_prices: link.show_prices,
             allow_order: link.allow_order,
             allow_payment: link.allow_payment,
-            expires_at: link.expires_at
+            expires_at: link.expires_at,
+            url: "/link/#{current_tenant.slug}/#{link.token}"
           }
         end
       end

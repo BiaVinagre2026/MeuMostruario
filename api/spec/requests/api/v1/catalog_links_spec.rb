@@ -31,6 +31,7 @@ RSpec.describe "Api::V1::CatalogLinks", type: :request do
       expect(marca["favicon_url"]).to eq("/uploads/favicon.png")
       expect(marca["font_primary"]).to eq("Poppins")
       expect(marca["font_heading"]).to eq("Poppins")
+      expect(json_response.dig("catalog_link", "url")).to eq("/link/#{tenant.slug}/#{fixture[:link].token}")
     end
 
     it "does not expose prices for public links" do

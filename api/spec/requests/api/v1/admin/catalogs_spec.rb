@@ -64,6 +64,8 @@ RSpec.describe "Api::V1::Admin::Catalogs", type: :request do
       "public_links_count" => 1,
       "wholesale_links_count" => 1
     )
+    expect(json_response.dig("catalogs", 0, "links", 0, "url"))
+      .to eq("/link/#{tenant.slug}/#{json_response.dig("catalogs", 0, "links", 0, "token")}")
   end
 
   it "updates catalog status through the existing update endpoint" do

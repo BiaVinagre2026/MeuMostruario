@@ -230,6 +230,7 @@ module Api
         {
           id: link.id,
           token: link.token,
+          url: "/link/#{current_tenant.slug}/#{link.token}",
           slug: link.slug,
           link_type: link.link_type,
           show_prices: link.show_prices,
@@ -339,7 +340,7 @@ module Api
           show_prices: link.show_prices,
           allow_order: link.allow_order,
           allow_payment: link.allow_payment,
-          url: "/link/#{link.token}"
+          url: "/link/#{current_tenant.slug}/#{link.token}"
         }
       end
 

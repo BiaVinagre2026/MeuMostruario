@@ -37,7 +37,9 @@ function buildHeaders(path: string, extra?: HeadersInit): Record<string, string>
 
   if (!path.startsWith("/api/v1/admin/") && !path.startsWith("/api/v1/partner/")) {
     const tenantId = TENANT_ID ?? getActiveTenantSlug();
-    if (tenantId) headers["X-Tenant-ID"] = tenantId;
+    // Links compartilhados carregam o tenant na propria URL. O valor explicito
+    // precisa vencer o contexto da aba (que no localhost costuma ser "demo").
+    if (!headers["X-Tenant-ID"] && tenantId) headers["X-Tenant-ID"] = tenantId;
   }
 
   if (isAdminTenantScopedPath(path)) {

@@ -18,10 +18,12 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/lib/api/photoCatalog", () => ({
+  catalogLinkPath: (token: string, tenantSlug?: string) => tenantSlug ? `/link/${tenantSlug}/${token}` : `/link/${token}`,
   getPublicCatalogLink: vi.fn(),
   sendCatalogInterest: vi.fn(),
   createSelectionLink: vi.fn(),
   createTokenOrder: vi.fn(),
+  createOrderPaymentLink: vi.fn(),
 }));
 
 function renderPage(initialPath = "/link/demo-token") {
@@ -36,6 +38,7 @@ function renderPage(initialPath = "/link/demo-token") {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
+          <Route path="/link/:tenantSlug/:token" element={<CatalogLinkPage />} />
           <Route path="/link/:token" element={<CatalogLinkPage />} />
         </Routes>
       </MemoryRouter>
@@ -135,7 +138,7 @@ describe("CatalogLinkPage", () => {
         phone: "11999990000",
         catalog_item_ids: [101],
         message: "Tenho interesse nessas fotos.",
-      });
+      }, undefined);
     });
   });
 
@@ -209,7 +212,7 @@ describe("CatalogLinkPage", () => {
           buyer_phone: "11999990000",
           buyer_document: "11222333000181",
         }),
-      }));
+      }), undefined);
     });
 
     // O valor nao sai daqui: quem soma e o servidor, pelo preco do banco.
@@ -250,6 +253,15 @@ describe("CatalogLinkPage", () => {
     expect(screen.getByText(/Seu pedido foi salvo/)).toBeInTheDocument();
     expect(screen.getByText(/customer_document invalido/)).toBeInTheDocument();
     expect(screen.queryByText("Pague com Pix")).not.toBeInTheDocument();
+  });
+
+  it("leva o tenant da URL para a leitura do link compartilhado", async () => {
+    vi.mocked(getPublicCatalogLink).mockResolvedValue(publicLink);
+
+    renderPage("/link/mare-coral/demo-token");
+
+    expect(await screen.findByText("Catalogo Cliente")).toBeInTheDocument();
+    expect(getPublicCatalogLink).toHaveBeenCalledWith("demo-token", "mare-coral");
   });
 });
 
