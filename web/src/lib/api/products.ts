@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { uploadAsset } from "./uploads";
 import type {
   Product,
   ProductListResponse,
@@ -111,19 +112,5 @@ export function deleteProductImage(
 }
 
 export async function uploadFile(file: File): Promise<UploadResponse> {
-  const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? "";
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch(`${BASE_URL}/api/v1/admin/upload`, {
-    method: "POST",
-    credentials: "include",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
-  }
-
-  return response.json() as Promise<UploadResponse>;
+  return { url: await uploadAsset(file) };
 }
