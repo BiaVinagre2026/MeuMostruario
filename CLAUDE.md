@@ -1,6 +1,14 @@
 ﻿# CLAUDE.md
 
-Guia operacional para trabalhar neste repositório.
+Contexto de produto e decisões deste repositório.
+
+> **Leia [AGENTS.md](AGENTS.md) primeiro.** Ele é a fonte única sobre arquitetura,
+> fronteiras Core ↔ tenant, git, Docker, banco e testes — e vale para qualquer agente.
+> Este arquivo cobre o contexto de produto. Onde os dois divergirem, vale o AGENTS.md.
+>
+> Regras que o AGENTS.md carrega e que já custaram caro aqui: a suíte nunca roda contra
+> banco de desenvolvimento, o Core nunca cita tenant pelo nome, e `git add -A` varre o
+> trabalho do outro agente.
 
 ## Contexto Atual
 
@@ -99,10 +107,14 @@ Fluxo do MVP completo e validado no navegador. O que falta para operar de verdad
 - **Pagamento nunca falou com a Orbe.** Código e testes prontos com resposta simulada.
   Faltam credencial de merchant, endereço público para o callback e a confirmação do nome
   do header da assinatura. Ver `docs/INTEGRACOES.md`.
-- **Deploy não existe.** O `api/Dockerfile` é de produção e o supervisord sobe Puma,
-  Sidekiq e Redis juntos, mas o frontend não tem como ser servido: é SPA Vite sem
-  Dockerfile, sem nginx e sem rota de fallback na API. Também faltam hospedagem, banco
-  gerenciado, domínio e o DNS curinga que o subdomínio por tenant exige.
+- **Deploy não existe.** O `api/Dockerfile` é de produção e o supervisord sobe Puma e
+  Sidekiq, mas o frontend não tem como ser servido: é SPA Vite sem Dockerfile, sem nginx
+  e sem rota de fallback na API. Também faltam hospedagem, banco gerenciado, domínio e o
+  DNS curinga que o subdomínio por tenant exige.
+
+  A imagem exige, e não sobe junto: **Redis externo com persistência** (`REDIS_URL`) e as
+  **chaves de criptografia** (`AR_ENCRYPTION_*`) que protegem os segredos dos tenants.
+  Sem qualquer uma delas a aplicação não sobe, de propósito. Ver [README](README.md).
 - **WhatsApp no `CatalogLinkPage`.** As demais telas já usam `lib/whatsapp.ts` com o número
   do tenant. Na tela do comprador atacado a mensagem deve sair **depois** do pedido
   registrado, nunca no lugar dele.
