@@ -24,19 +24,24 @@ class MareCoralShippingQuoteService
     validate_postal_code!(postal_code)
     shipping = storefront_settings.fetch("shipping", {})
 
-    unless shipping["enabled"] == true && !shipping["flat_rate"].nil?
+    unless shipping["enabled"] == true
       return Quote.new(configured: false, amount: 0.to_d, method: "Frete a combinar", estimated_days: nil)
     end
 
-    flat_rate = decimal(shipping["flat_rate"], "valor do frete")
+    flat_rate = optional_decimal(shipping["flat_rate"], "valor do frete")
     threshold = optional_decimal(shipping["free_shipping_threshold"], "limite de frete gratis")
-    amount = threshold&.positive? && subtotal.to_d >= threshold ? 0.to_d : flat_rate
+    # A regra da Maré Coral é ACIMA do limite, não a partir dele.
+    free_shipping = threshold&.positive? && subtotal.to_d > threshold
+    unless free_shipping || !flat_rate.nil?
+      return Quote.new(configured: false, amount: 0.to_d, method: "Frete a combinar", estimated_days: nil)
+    end
+    amount = free_shipping ? 0.to_d : flat_rate
 
     Quote.new(
       configured: true,
       amount: amount,
       method: amount.zero? ? "Frete gratis" : "Entrega nacional",
-      estimated_days: shipping["estimated_days"].to_i.positive? ? shipping["estimated_days"].to_i : 7
+      estimated_days: shipping["estimated_days"].to_i.positive? ? shipping["estimated_days"].to_i : nil
     )
   end
 
@@ -53,7 +58,7 @@ class MareCoralShippingQuoteService
 
   def decimal(value, label)
     number = BigDecimal(value.to_s)
-    raise ArgumentError if number.negative?
+    raise ArgumentError unless number.finite? && !number.negative?
     number
   rescue ArgumentError
     raise ValidationError, "#{label} invalido"

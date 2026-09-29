@@ -36,6 +36,7 @@ const PhotoBatchReview = lazy(() => import("@/pages/admin/photos/PhotoBatchRevie
 const CatalogList = lazy(() => import("@/pages/admin/catalogs/CatalogList"));
 const GlobalDashboard = lazy(() => import("@/pages/admin/global/GlobalDashboard"));
 const TenantListPage = lazy(() => import("@/pages/admin/global/TenantListPage"));
+const MareCoralStorefront = lazy(() => import("@/pages/admin/storefront/MareCoralStorefront"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,11 +55,11 @@ function AdminHomeRedirect() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <TenantProvider>
         <TooltipProvider>
           <AuthProvider>
             <OperatorAuthProvider>
-              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <Suspense fallback={<RouteFallback />}>
                   <Routes>
                     <Route element={<ShowroomLayout />}>
@@ -66,6 +67,7 @@ export default function App() {
                       <Route path="/catalog" element={<Catalog />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                     </Route>
+                    <Route path="/link/:tenantSlug/:token" element={<CatalogLinkPage />} />
                     <Route path="/link/:token" element={<CatalogLinkPage />} />
 
                     <Route path="/login" element={<Login />} />
@@ -88,6 +90,7 @@ export default function App() {
                         <Route path="/admin/photo-batches" element={<PhotoBatchList />} />
                         <Route path="/admin/photo-batches/:id" element={<PhotoBatchReview />} />
                         <Route path="/admin/catalogs" element={<CatalogList />} />
+                        <Route path="/admin/storefront" element={<MareCoralStorefront />} />
 
                         <Route path="/admin/collections" element={<CollectionList />} />
                         <Route path="/admin/collections/new" element={<CollectionForm />} />
@@ -106,11 +109,11 @@ export default function App() {
                   </Routes>
                 </Suspense>
                 <Toaster />
-              </BrowserRouter>
             </OperatorAuthProvider>
           </AuthProvider>
         </TooltipProvider>
       </TenantProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

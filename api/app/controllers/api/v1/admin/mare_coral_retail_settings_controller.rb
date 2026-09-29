@@ -40,9 +40,13 @@ module Api
           enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
           flat_rate = decimal_or_nil(params[:flat_rate], "valor do frete")
           threshold = decimal_or_nil(params[:free_shipping_threshold], "limite de frete gratis")
-          days = Integer(params[:estimated_days].presence || 7, exception: false)
-          raise ArgumentError, "prazo deve ficar entre 1 e 90 dias" unless days&.between?(1, 90)
-          raise ArgumentError, "informe o valor do frete para ativar" if enabled && flat_rate.nil?
+          days = params[:estimated_days].present? ? Integer(params[:estimated_days], exception: false) : nil
+          if params[:estimated_days].present? && !days&.between?(1, 90)
+            raise ArgumentError, "prazo deve ficar entre 1 e 90 dias"
+          end
+          if enabled && flat_rate.nil? && !threshold&.positive?
+            raise ArgumentError, "informe o valor do frete ou o limite de frete gratis para ativar"
+          end
 
           postal_code = params[:origin_postal_code].to_s.gsub(/\D/, "").presence
           raise ArgumentError, "CEP de origem deve ter 8 digitos" if postal_code && !postal_code.match?(/\A\d{8}\z/)
@@ -59,7 +63,7 @@ module Api
         def decimal_or_nil(value, label)
           return nil if value.blank?
           number = BigDecimal(value.to_s.tr(",", "."))
-          raise ArgumentError if number.negative?
+          raise ArgumentError unless number.finite? && !number.negative?
           number
         rescue ArgumentError
           raise ArgumentError, "#{label} invalido"
@@ -72,7 +76,7 @@ module Api
             enabled: shipping["enabled"] == true,
             flat_rate: shipping["flat_rate"],
             free_shipping_threshold: shipping["free_shipping_threshold"],
-            estimated_days: shipping["estimated_days"] || 7,
+            estimated_days: shipping["estimated_days"],
             origin_postal_code: shipping["origin_postal_code"]
           }
         end

@@ -22,7 +22,7 @@ export default function MareCoralShippingSettings() {
   const [enabled, setEnabled] = useState(false);
   const [flatRate, setFlatRate] = useState("");
   const [freeThreshold, setFreeThreshold] = useState("");
-  const [estimatedDays, setEstimatedDays] = useState("7");
+  const [estimatedDays, setEstimatedDays] = useState("");
   const [originPostalCode, setOriginPostalCode] = useState("");
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function MareCoralShippingSettings() {
     setEnabled(data.enabled);
     setFlatRate(data.flat_rate ?? "");
     setFreeThreshold(data.free_shipping_threshold ?? "");
-    setEstimatedDays(String(data.estimated_days || 7));
+    setEstimatedDays(data.estimated_days == null ? "" : String(data.estimated_days));
     setOriginPostalCode(data.origin_postal_code ?? "");
   }, [data]);
 
@@ -48,7 +48,7 @@ export default function MareCoralShippingSettings() {
       enabled,
       flat_rate: flatRate.trim() || null,
       free_shipping_threshold: freeThreshold.trim() || null,
-      estimated_days: Number(estimatedDays) || 7,
+      estimated_days: estimatedDays.trim() ? Number(estimatedDays) : null,
       origin_postal_code: originPostalCode.replace(/\D/g, "") || null,
     });
   }
@@ -98,13 +98,13 @@ export default function MareCoralShippingSettings() {
           </label>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Valor fixo nacional" hint="Ex.: 24,90">
+            <Field label="Valor fixo nacional" hint="Deixe vazio enquanto a tarifa não estiver aprovada. Não significa frete zero.">
               <Input value={flatRate} onChange={(event) => setFlatRate(event.target.value)} inputMode="decimal" placeholder="24,90" />
             </Field>
-            <Field label="Frete grátis a partir de" hint="Deixe vazio para não oferecer">
-              <Input value={freeThreshold} onChange={(event) => setFreeThreshold(event.target.value)} inputMode="decimal" placeholder="299,00" />
+            <Field label="Frete grátis acima de" hint="O valor exato do limite não recebe frete grátis. Deixe vazio para não oferecer.">
+              <Input value={freeThreshold} onChange={(event) => setFreeThreshold(event.target.value)} inputMode="decimal" placeholder="200,00" />
             </Field>
-            <Field label="Prazo estimado" hint="Dias úteis de transporte">
+            <Field label="Prazo estimado" hint="Dias úteis de transporte. Deixe vazio até confirmar com a transportadora.">
               <Input type="number" min={1} max={90} value={estimatedDays} onChange={(event) => setEstimatedDays(event.target.value)} />
             </Field>
             <Field label="CEP de origem" hint="Usado na futura integração com transportadoras">

@@ -67,6 +67,8 @@ Rails.application.routes.draw do
         patch "tenant/config", to: "tenant_config#update"
         get   "mare_coral/retail_settings", to: "mare_coral_retail_settings#show"
         patch "mare_coral/retail_settings", to: "mare_coral_retail_settings#update"
+        get   "mare_coral/storefront", to: "mare_coral_storefront#show"
+        patch "mare_coral/storefront", to: "mare_coral_storefront#update"
 
         # Members (simplified)
         resources :members, only: [:index, :show, :update, :destroy] do
