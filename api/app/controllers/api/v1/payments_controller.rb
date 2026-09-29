@@ -8,13 +8,9 @@ module Api
       # montamos por tenant ao criar cada cobranca.
       skip_before_action :require_tenant!
 
-      # A documentacao da Orbe diz que o callback e assinado com HMAC-SHA256 mas
-      # nao diz em qual cabecalho. Um palpite unico e errado recusaria 100% das
-      # confirmacoes com 401 — e o sintoma seria "pedido pago que nunca consta
-      # como pago". Entao procuramos a assinatura nos nomes usados no mercado.
-      # Isso nao afrouxa nada: o valor ainda precisa bater com o HMAC do segredo
-      # do tenant. Quando a Casetec confirmar o nome, basta gravar em
-      # psp_signature_header e a busca passa a olhar so aquele.
+      # Compatibilidade dos tenants existentes. O contrato atual da Orbe usa
+      # timestamp + corpo e e ativado explicitamente por tenant ao configurar
+      # X-PSP-Signature; nao alterar implicitamente a operacao dos demais.
       CANDIDATE_SIGNATURE_HEADERS = [
         "X-Gateway-Signature",
         "X-Orbe-Signature",
@@ -46,19 +42,38 @@ module Api
       end
 
       def verify_gateway_signature!
+        if @tenant.tenant_config&.psp_signature_header.to_s.casecmp?(OrbeWebhookSignature::HEADER_NAME)
+          return verify_orbe_signature!
+        end
+
         secret = @tenant.tenant_config&.psp_callback_secret_enc.presence ||
                  ENV["GATEWAY_WEBHOOK_SECRET"].presence
 
         return render json: { error: "webhook secret not configured" }, status: :service_unavailable if secret.blank?
 
         digest = OpenSSL::HMAC.digest("SHA256", secret, request.raw_post)
-        # Hex e base64 sao as duas formas de escrever o mesmo HMAC, e a
-        # documentacao nao diz qual a Orbe usa.
+        # Formatos legados preservados para os tenants que ainda os utilizam.
+        # A Orbe atual e verificada separadamente com timestamp e hexadecimal.
         esperados = [digest.unpack1("H*"), Base64.strict_encode64(digest)]
 
         return if assinaturas_recebidas.any? { |recebida|
           esperados.any? { |esperado| iguais?(esperado, recebida) }
         }
+
+        render json: { error: "invalid signature" }, status: :unauthorized
+      end
+
+      def verify_orbe_signature!
+        # O segredo pertence ao endpoint deste tenant. Nao reutilizar o segredo
+        # global nem aceitar o formato legado como alternativa a uma falha.
+        secret = @tenant.tenant_config&.psp_callback_secret_enc.presence
+        return render json: { error: "webhook secret not configured" }, status: :service_unavailable if secret.blank?
+
+        return if OrbeWebhookSignature.valid?(
+          header: request.headers[OrbeWebhookSignature::HEADER_NAME],
+          secret: secret,
+          body: request.raw_post
+        )
 
         render json: { error: "invalid signature" }, status: :unauthorized
       end

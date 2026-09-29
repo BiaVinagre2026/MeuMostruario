@@ -51,6 +51,96 @@ RSpec.describe "Api::V1::Payments", type: :request do
   end
 
   describe "POST /api/v1/payments/webhook/:tenant_slug" do
+    context "com o contrato Orbe PSP 1.1.0 selecionado pelo tenant" do
+      before { tenant.tenant_config.update!(psp_signature_header: "X-PSP-Signature") }
+
+      def timestamped_signature(payload, timestamp: Time.now.to_i, with: secret)
+        "t=#{timestamp},v1=#{sign("#{timestamp}.#{payload}", with: with)}"
+      end
+
+      it "confirma o pagamento com X-PSP-Signature sem exigir header de tenant" do
+        fixture = create_payment_fixture
+        payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+
+        post webhook_path, params: payload, headers: json_headers.merge("X-PSP-Signature" => timestamped_signature(payload))
+
+        expect(response).to have_http_status(:ok)
+        within_tenant(tenant) do
+          expect(fixture[:payment].reload.status).to eq("paid")
+          expect(fixture[:order].reload.payment_status).to eq("paid")
+        end
+      end
+
+      it "aceita assinatura valida na janela de rotacao de segredos" do
+        fixture = create_payment_fixture
+        payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+        header = timestamped_signature(payload).sub(",v1=", ",v1=#{'0' * 64},v1=")
+
+        post webhook_path, params: payload, headers: json_headers.merge("X-PSP-Signature" => header)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      [-601, 601].each do |offset|
+        it "recusa timestamp distante #{offset} segundos sem alterar o pagamento" do
+          fixture = create_payment_fixture
+          payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+          header = timestamped_signature(payload, timestamp: Time.now.to_i + offset)
+
+          post webhook_path, params: payload, headers: json_headers.merge("X-PSP-Signature" => header)
+
+          expect(response).to have_http_status(:unauthorized)
+          within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("pending") }
+        end
+      end
+
+      it "recusa segredo de outro tenant mesmo no novo formato" do
+        fixture = create_payment_fixture
+        payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+
+        post webhook_path, params: payload,
+             headers: json_headers.merge("X-PSP-Signature" => timestamped_signature(payload, with: "outro-segredo"))
+
+        expect(response).to have_http_status(:unauthorized)
+        within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("pending") }
+      end
+
+      it "nao aceita assinatura legada como alternativa ao formato novo" do
+        fixture = create_payment_fixture
+        payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+
+        post webhook_path, params: payload,
+             headers: json_headers.merge("X-PSP-Signature" => "invalida", "X-Gateway-Signature" => sign(payload))
+
+        expect(response).to have_http_status(:unauthorized)
+        within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("pending") }
+      end
+
+      it "exige segredo exclusivo do tenant mesmo havendo segredo global" do
+        tenant.tenant_config.update!(psp_callback_secret_enc: nil)
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("GATEWAY_WEBHOOK_SECRET").and_return(secret)
+        payload = { data: { id: "nao-deve-consultar", status: "paid" } }.to_json
+
+        post webhook_path, params: payload, headers: json_headers.merge("X-PSP-Signature" => timestamped_signature(payload))
+
+        expect(response).to have_http_status(:service_unavailable)
+      end
+
+      it "nao encontra no outro tenant uma cobranca assinada corretamente" do
+        fixture = create_payment_fixture
+        outro = provision_test_tenant(slug: "orbe-outro-#{SecureRandom.hex(3)}")
+        outro.tenant_config.update!(psp_signature_header: "X-PSP-Signature", psp_callback_secret_enc: "outro-segredo")
+        payload = { data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json
+
+        post webhook_path(outro.slug), params: payload,
+             headers: json_headers.merge("X-PSP-Signature" => timestamped_signature(payload, with: "outro-segredo"))
+
+        expect(response).to have_http_status(:not_found)
+        within_tenant(tenant) { expect(fixture[:payment].reload.status).to eq("pending") }
+      end
+    end
+
     it "confirma o pagamento quando a assinatura confere" do
       fixture = create_payment_fixture
       payload = { type: "charge.updated", data: { id: fixture[:payment].gateway_reference, status: "paid" } }.to_json

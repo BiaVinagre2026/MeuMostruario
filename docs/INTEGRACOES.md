@@ -40,13 +40,17 @@ aviso explicando que precisa combinar o pagamento.
 `captured`, `paid`, `failed`, `cancelled` e `expired`. `captured` significa dinheiro
 capturado; antes caía no ramo genérico e virava pendente.
 
-**O header da assinatura não é mais um palpite.** A documentação diz que o callback é
-assinado com HMAC-SHA256 mas não diz em qual header. Antes o campo nascia com
-`X-Gateway-Signature` como default da coluna, e um palpite errado recusaria **100%** das
-confirmações com 401 — o sintoma seria "pedido pago que nunca consta como pago". Hoje
-`psp_signature_header` vazio significa procurar a assinatura nos nomes usados no mercado,
-aceitando hex ou base64, com ou sem prefixo `sha256=`. Continua exigindo o HMAC do segredo
-do tenant. Depois que a Casetec confirmar o nome, preencha o campo para aceitar só aquele.
+**Contrato de assinatura conferido em 03/09/2026.** A documentação pública Orbe PSP 1.1.0
+define `X-PSP-Signature: t=<unix>,v1=<hex>[,v1=<hex>]`. O HMAC-SHA256 usa o segredo do
+endpoint do merchant e a mensagem `<timestamp>.<corpo bruto>`. Entregas com diferença
+absoluta de horário maior que 300 segundos são rejeitadas; qualquer `v1` válida pode
+confirmar a entrega durante uma rotação de segredos. Não reserializar o JSON.
+
+Para ativar esse contrato, configurar `psp_signature_header=X-PSP-Signature` no tenant.
+Nesse modo, `OrbeWebhookSignature` exige o segredo exclusivo do tenant e não aceita
+segredo global, HMAC legado ou outro header como alternativa. A configuração antiga dos
+outros tenants permanece intacta: header vazio ou legado conserva o comportamento
+anterior. Não trocar configurações de outro tenant durante a homologação da Maré Coral.
 
 **Callback fora de ordem não rebaixa pagamento confirmado.** O gateway reentrega, e nada
 garante a ordem: um `processing` atrasado depois do `paid` devolvia o pedido para pendente
@@ -71,6 +75,14 @@ depende de código:
 - Credenciais reais de um merchant.
 - Um endereço público para o callback: `localhost` não recebe. Use túnel (ngrok,
   cloudflared) ou um ambiente publicado, e aponte `PSP_CALLBACK_BASE_URL` para ele.
+
+Na documentação pública consultada em 03/09/2026, somente `https://api.casetec.com.br`
+está listado como servidor, explicitamente marcado **Production**. Não tratá-lo como
+sandbox. Para Maré Coral, falta acesso administrativo ao PSP para obter a conta merchant,
+a API key, o segredo do endpoint de webhook e confirmar um modo/ambiente de homologação.
+Não criar túnel, alterar a base compartilhada de callbacks ou emitir cobrança real sem
+autorização específica. A tarefa `gateway:check` só é consulta quando `COBRAR` está ausente;
+qualquer valor não vazio nessa variável ativa a emissão de cobrança.
 
 ### Dado sensível
 
