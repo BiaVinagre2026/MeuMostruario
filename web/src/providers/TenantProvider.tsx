@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
+import { useOperatorStore } from "@/stores/useOperatorStore";
+import { PLATFORM_NAME, resolveBrandingScope } from "@/lib/platformBranding";
 import { updateFavicon, type FaviconMode } from "@/lib/favicon";
 import { setActiveTenantSlug, resolveTenantSlugFromHost } from "@/lib/tenantContext";
 
@@ -82,6 +85,13 @@ const defaultConfig: TenantConfig = {
   faviconUrl: null,
   faviconMode: "auto",
   companyName: "App",
+  companyCnpj: null,
+  companyAddress: null,
+  companyEmail: null,
+  companyPhone: null,
+  companyWebsite: null,
+  termsUrl: null,
+  privacyUrl: null,
   tenantSlug: "demo",
   tenantName: "App",
   footerText: null,
@@ -92,6 +102,13 @@ const defaultConfig: TenantConfig = {
   coinBrlRate: 0,
   coinPackages: [],
   enabledPaymentMethods: ["pix", "boleto", "credit_card"],
+};
+
+const platformConfig: TenantConfig = {
+  ...defaultConfig,
+  companyName: PLATFORM_NAME,
+  tenantName: PLATFORM_NAME,
+  tenantSlug: "",
 };
 
 // ---------------------------------------------------------------------------
@@ -237,15 +254,13 @@ function loadGoogleFont(fontName: string): void {
   document.head.appendChild(link);
 }
 
-function fetchBranding(): Promise<RawBrandingResponse> {
-  const tenantId = resolveTenantSlugFromHost(window.location.hostname)
-    ?? (import.meta.env.VITE_TENANT_SLUG as string | undefined);
+function fetchBranding(tenantId?: string, signal?: AbortSignal): Promise<RawBrandingResponse> {
   const apiUrl = (import.meta.env.VITE_API_URL as string) ?? "";
 
   const headers: Record<string, string> = { Accept: "application/json" };
   if (tenantId) headers["X-Tenant-ID"] = tenantId;
 
-  return fetch(`${apiUrl}/api/v1/tenant/config`, { credentials: "include", headers }).then((r) => {
+  return fetch(`${apiUrl}/api/v1/tenant/config`, { credentials: "include", headers, signal }).then((r) => {
     if (!r.ok) throw new Error(`Tenant config fetch failed: ${r.status}`);
     return r.json() as Promise<RawBrandingResponse>;
   });
@@ -256,22 +271,28 @@ function fetchBranding(): Promise<RawBrandingResponse> {
 // ---------------------------------------------------------------------------
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const operator = useOperatorStore((state) => state.operator);
+  const activeTenantSlug = useOperatorStore((state) => state.activeTenantSlug);
+  const scope = resolveBrandingScope(pathname, operator, activeTenantSlug,
+    resolveTenantSlugFromHost(window.location.hostname)
+      ?? (import.meta.env.VITE_TENANT_SLUG as string | undefined));
   const { data } = useQuery<RawBrandingResponse>({
-    queryKey: tenantBrandingKey,
-    queryFn: fetchBranding,
+    queryKey: [...tenantBrandingKey, scope.platform ? "platform" : scope.tenantSlug || "host-default"],
+    queryFn: ({ signal }) => fetchBranding(scope.tenantSlug, signal),
+    enabled: !scope.platform,
     staleTime: 5 * 60 * 1000,
     retry: false,
     throwOnError: false,
   });
 
   const config = useMemo<TenantConfig>(() => {
+    if (scope.platform) return platformConfig;
     if (!data) {
-      setActiveTenantSlug(defaultConfig.tenantSlug);
-      return defaultConfig;
+      return { ...defaultConfig, tenantSlug: scope.tenantSlug || defaultConfig.tenantSlug };
     }
     const c = data.config;
     const t = data.tenant;
-    setActiveTenantSlug(t.slug);
     return {
       colorPrimary: c.color_primary,
       colorSecondary: c.color_secondary,
@@ -310,60 +331,34 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       coinPackages: c.coin_packages ?? [],
       enabledPaymentMethods: c.enabled_payment_methods ?? ["pix", "boleto", "credit_card"],
     };
-  }, [data]);
+  }, [data, scope.platform, scope.tenantSlug]);
 
   useEffect(() => {
-    if (!data) {
-      updateFavicon({
-        mode: "auto",
-        name: "App",
-        primaryColor: "#1E40AF",
-        secondaryColor: "#FFFFFF",
-      });
-      return;
-    }
-    const c = data.config;
-    const t = data.tenant;
-
+    if (config.tenantSlug) setActiveTenantSlug(config.tenantSlug);
     injectCssVars({
-      color_primary: c.color_primary,
-      color_secondary: c.color_secondary,
-      color_accent: c.color_accent,
-      color_header_bg: c.color_header_bg ?? "#FFFFFF",
-      color_header_text: c.color_header_text ?? "#64748B",
-      color_header_text_hover: c.color_header_text_hover ?? "#1E40AF",
-      color_footer_text: c.color_footer_text ?? "#94A3B8",
-      color_footer_text_hover: c.color_footer_text_hover ?? "#0F172A",
+      color_primary: config.colorPrimary,
+      color_secondary: config.colorSecondary,
+      color_accent: config.colorAccent,
+      color_header_bg: config.colorHeaderBg,
+      color_header_text: config.colorHeaderText,
+      color_header_text_hover: config.colorHeaderTextHover,
+      color_footer_text: config.colorFooterText,
+      color_footer_text_hover: config.colorFooterTextHover,
     });
-
-    loadGoogleFont(c.font_primary);
-    if (c.font_heading !== c.font_primary) {
-      loadGoogleFont(c.font_heading);
-      document.documentElement.style.setProperty(
-        "--font-heading",
-        `'${c.font_heading}', sans-serif`
-      );
-    }
-    if (c.font_primary !== "Inter") {
-      document.documentElement.style.setProperty(
-        "--font-primary",
-        `'${c.font_primary}', sans-serif`
-      );
-    }
-
-    if (t.name) {
-      document.title = t.name;
-    }
-
+    loadGoogleFont(config.fontPrimary);
+    if (config.fontHeading !== config.fontPrimary) loadGoogleFont(config.fontHeading);
+    document.documentElement.style.setProperty("--font-primary", `'${config.fontPrimary}', sans-serif`);
+    document.documentElement.style.setProperty("--font-heading", `'${config.fontHeading}', sans-serif`);
+    document.title = config.tenantName;
     updateFavicon({
-      mode: (c.favicon_mode as FaviconMode) || "auto",
-      faviconUrl: c.favicon_url,
-      coinSymbol: c.coin_symbol,
-      name: t.name || t.slug || "A",
-      primaryColor: c.color_primary || "#1E40AF",
-      secondaryColor: c.color_secondary || "#FFFFFF",
+      mode: config.faviconMode,
+      faviconUrl: config.faviconUrl,
+      coinSymbol: config.coinSymbol,
+      name: config.tenantName || config.tenantSlug || "A",
+      primaryColor: config.colorPrimary,
+      secondaryColor: scope.platform ? "#FFFFFF" : config.colorSecondary,
     });
-  }, [data]);
+  }, [config, scope.platform]);
 
   return (
     <TenantContext.Provider value={config}>{children}</TenantContext.Provider>

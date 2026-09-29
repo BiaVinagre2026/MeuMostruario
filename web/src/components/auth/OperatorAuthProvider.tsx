@@ -6,6 +6,7 @@ import { useCurrentOperator } from "@/hooks/useOperatorAuth";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { useSessionValidator } from "@/hooks/useSessionValidator";
+import { operatorSessionHeaders } from "@/lib/operatorSessionHeaders";
 
 interface OperatorAuthProviderProps {
   children: ReactNode;
@@ -72,7 +73,7 @@ export default function OperatorAuthProvider({ children }: OperatorAuthProviderP
     validateFn: () =>
       fetch("/api/v1/admin/auth/me", {
         credentials: "include",
-        headers: { Accept: "application/json" },
+        headers: operatorSessionHeaders(),
       }).then((res) => {
         if (!res.ok) throw { status: res.status };
         return res.json();

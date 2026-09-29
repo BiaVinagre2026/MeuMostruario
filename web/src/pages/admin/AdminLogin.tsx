@@ -13,6 +13,7 @@ import { useOperatorLogin } from "@/hooks/useOperatorAuth";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import type { Operator } from "@/types/operator";
 import { resolveTenantSlugFromHost } from "@/lib/tenantContext";
+import { PLATFORM_NAME } from "@/lib/platformBranding";
 
 // Terceira copia da mesma logica no projeto, agora unificada: abrindo pelo IP
 // da rede (o caminho do celular) o "192" era tomado como tenant, o campo de
@@ -76,7 +77,7 @@ export default function AdminLogin() {
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Painel White-Label</CardTitle>
+          <CardTitle className="text-2xl">{PLATFORM_NAME}</CardTitle>
           <CardDescription>
             Entre como admin do tenant ou super-admin global
           </CardDescription>

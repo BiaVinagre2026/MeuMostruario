@@ -1,5 +1,6 @@
 const FAVICON_SIZE = 32;
 const LINK_ID = "dynamic-favicon";
+let activeRequest = 0;
 
 export type FaviconMode = "auto" | "upload" | "coin_symbol";
 
@@ -53,11 +54,13 @@ function setFaviconFromImage(
   imageUrl: string,
   fallbackName: string,
   bgColor: string,
-  textColor: string
+  textColor: string,
+  requestId: number,
 ) {
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
+    if (requestId !== activeRequest) return;
     const canvas = document.createElement("canvas");
     canvas.width = FAVICON_SIZE;
     canvas.height = FAVICON_SIZE;
@@ -73,6 +76,7 @@ function setFaviconFromImage(
     setFaviconHref(canvas.toDataURL("image/png"));
   };
   img.onerror = () => {
+    if (requestId !== activeRequest) return;
     setFaviconHref(
       generateTextFavicon(fallbackName.charAt(0).toUpperCase(), bgColor, textColor)
     );
@@ -90,10 +94,11 @@ export interface DynamicFaviconOptions {
 }
 
 export function updateFavicon(opts: DynamicFaviconOptions) {
+  const requestId = ++activeRequest;
   const mode = opts.mode || "auto";
 
   if (mode === "upload" && opts.faviconUrl) {
-    setFaviconFromImage(opts.faviconUrl, opts.name, opts.primaryColor, opts.secondaryColor);
+    setFaviconFromImage(opts.faviconUrl, opts.name, opts.primaryColor, opts.secondaryColor, requestId);
     return;
   }
 

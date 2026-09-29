@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useOperatorStore } from "@/stores/useOperatorStore";
+import { operatorSessionHeaders } from "@/lib/operatorSessionHeaders";
 import type { Operator, OperatorLoginCredentials } from "@/types/operator";
 
 export const operatorAuthKeys = {
@@ -12,7 +13,7 @@ export const operatorAuthKeys = {
 async function fetchCurrentOperator(): Promise<Operator> {
   const response = await fetch("/api/v1/admin/auth/me", {
     credentials: "include",
-    headers: { Accept: "application/json" },
+    headers: operatorSessionHeaders(),
   });
 
   if (!response.ok) {
@@ -57,7 +58,7 @@ async function deleteOperatorSession(): Promise<void> {
   await fetch("/api/v1/admin/auth/logout", {
     method: "DELETE",
     credentials: "include",
-    headers: { Accept: "application/json" },
+    headers: operatorSessionHeaders(),
   });
 }
 

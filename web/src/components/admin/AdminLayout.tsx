@@ -1,10 +1,13 @@
 ﻿import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { BookOpen, Building2, Globe2, Images, LayoutDashboard, Link2, LogOut, Menu, Package, Settings, ShoppingBag, Store, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TenantWorkspaceTabs } from "@/components/admin/TenantWorkspaceTabs";
 import { useOperatorStore } from "@/stores/useOperatorStore";
 import { useOperatorLogout } from "@/hooks/useOperatorAuth";
+import { PLATFORM_NAME } from "@/lib/platformBranding";
+import { adminStorefrontUrl } from "@/lib/adminStorefrontUrl";
+import { useTenant } from "@/providers/TenantProvider";
 
 interface NavItem {
   label: string;
@@ -34,18 +37,30 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
-  const navigate = useNavigate();
+  const tenant = useTenant();
   const operator = useOperatorStore((s) => s.operator);
   const activeTenantSlug = useOperatorStore((s) => s.activeTenantSlug);
   const logout = useOperatorLogout();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isSuperAdmin = operator?.role === "super_admin";
+  const isGlobalWorkspace = location.pathname === "/admin/global" || location.pathname.startsWith("/admin/global/");
+  const workspaceSlug = isGlobalWorkspace ? null : activeTenantSlug;
+  const storefrontUrl = adminStorefrontUrl(tenant.companyWebsite, workspaceSlug);
+  const brandName = isSuperAdmin ? PLATFORM_NAME : tenant.tenantName;
+  const mareCoralNavItems = workspaceSlug === "mare-coral"
+    ? [{ label: "Vitrine da loja", href: "/admin/storefront", icon: <Store className="h-4 w-4" /> }]
+    : [];
+  const tenantNavItems = [
+    ...TENANT_NAV_ITEMS.slice(0, 3),
+    ...mareCoralNavItems,
+    ...TENANT_NAV_ITEMS.slice(3),
+  ];
   const navItems = isSuperAdmin
-    ? activeTenantSlug
-      ? [...SUPER_ADMIN_NAV_ITEMS, ...TENANT_NAV_ITEMS]
+    ? workspaceSlug
+      ? [...SUPER_ADMIN_NAV_ITEMS, ...tenantNavItems]
       : SUPER_ADMIN_NAV_ITEMS
-    : TENANT_NAV_ITEMS;
+    : tenantNavItems;
 
   const isActive = (href: string) =>
     href === "/admin/global"
@@ -64,11 +79,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <>
       <div className="px-4 py-5 border-b flex items-center justify-between">
         <div>
-          <span className="font-semibold text-sm tracking-wide">MeuMostruário</span>
+          <span className="font-semibold text-sm tracking-wide">{brandName}</span>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {isSuperAdmin && !activeTenantSlug
+            {isSuperAdmin && !workspaceSlug
               ? "Painel global white-label"
-              : `Cliente ativo: ${activeTenantSlug ?? "demo"}`}
+              : `Cliente ativo: ${workspaceSlug ?? operator?.tenant_slug ?? "—"}`}
           </p>
         </div>
         <button
@@ -95,10 +110,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </nav>
 
       <div className="px-4 py-4 border-t space-y-2">
-        {activeTenantSlug && (
+        {workspaceSlug && storefrontUrl && (
+          <a
+            className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            href={storefrontUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Store className="h-3.5 w-3.5" />
+            Abrir loja varejista
+          </a>
+        )}
+        {workspaceSlug && (
           <div className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
             <Store className="h-3 w-3" />
-            {activeTenantSlug}
+            {workspaceSlug}
           </div>
         )}
         <p className="text-xs text-muted-foreground truncate">{operator?.name}</p>
@@ -145,19 +171,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-semibold text-sm">
-            MeuMostruário{activeTenantSlug ? ` · ${activeTenantSlug}` : ""}
+          <span className="min-w-0 font-semibold text-sm leading-tight">
+            {brandName}{workspaceSlug ? ` · ${workspaceSlug}` : ""}
           </span>
-          <div className="ml-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground text-xs"
-              onClick={() => navigate("/")}
-            >
-              Ver vitrine
-            </Button>
-          </div>
+          {workspaceSlug && storefrontUrl && (
+            <a className="ml-auto shrink-0 text-xs text-muted-foreground" href={storefrontUrl} target="_blank" rel="noreferrer">Ver loja</a>
+          )}
         </div>
 
         {isSuperAdmin && <TenantWorkspaceTabs />}
