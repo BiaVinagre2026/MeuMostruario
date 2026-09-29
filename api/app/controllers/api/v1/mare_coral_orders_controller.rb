@@ -3,7 +3,7 @@
 module Api
   module V1
     class MareCoralOrdersController < ApplicationController
-      before_action :require_mare_coral_tenant!
+      before_action :require_retail_storefront!
       before_action :set_catalog_link
 
       def shipping_quote
@@ -41,8 +41,8 @@ module Api
 
       private
 
-      def require_mare_coral_tenant!
-        render json: { error: "not found" }, status: :not_found unless current_tenant&.slug == "mare-coral"
+      def require_retail_storefront!
+        render json: { error: "not found" }, status: :not_found unless current_tenant&.feature?(:retail_storefront)
       end
 
       def set_catalog_link

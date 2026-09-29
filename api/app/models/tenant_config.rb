@@ -54,6 +54,13 @@ class TenantConfig < ApplicationRecord
     (enabled_payment_methods.presence || %w[pix boleto credit_card]).include?(method.to_s)
   end
 
+  # Capacidade do tenant, nao identidade. Substitui checagens do tipo
+  # `slug == "mare-coral"` que amarravam regra de negocio a um cliente
+  # especifico dentro do Core.
+  def feature?(nome)
+    (enabled_features || []).include?(nome.to_s)
+  end
+
   def coin_packages_list
     (coin_packages || []).map(&:symbolize_keys)
   end

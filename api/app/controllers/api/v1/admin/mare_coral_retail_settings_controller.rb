@@ -4,7 +4,7 @@ module Api
   module V1
     module Admin
       class MareCoralRetailSettingsController < BaseController
-        before_action :require_mare_coral_tenant!
+        before_action :require_retail_storefront!
         before_action :set_retail_link
 
         def show
@@ -25,8 +25,8 @@ module Api
 
         private
 
-        def require_mare_coral_tenant!
-          render json: { error: "not found" }, status: :not_found unless current_tenant&.slug == "mare-coral"
+        def require_retail_storefront!
+          render json: { error: "not found" }, status: :not_found unless current_tenant&.feature?(:retail_storefront)
         end
 
         def set_retail_link

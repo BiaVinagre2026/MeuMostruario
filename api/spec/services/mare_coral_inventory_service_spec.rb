@@ -3,7 +3,10 @@
 require "rails_helper"
 
 RSpec.describe MareCoralInventoryService do
-  let!(:tenant) { provision_test_tenant(slug: "mare-coral") }
+  # Slug aleatorio de proposito: o servico reconhece o pedido pelo canal na
+  # metadata, nao pelo nome do tenant — o isolamento por schema ja garante
+  # que este `order` so pertence a este tenant.
+  let!(:tenant) { provision_test_tenant }
   let!(:fixture) do
     create_catalog_fixture(
       tenant: tenant,
@@ -23,7 +26,6 @@ RSpec.describe MareCoralInventoryService do
         total_value: 439.8,
         metadata: {
           "channel" => "retail_storefront",
-          "tenant_slug" => "mare-coral",
           "inventory" => {
             "state" => "reserved",
             "lines" => [{ "variant_id" => variant.id, "qty" => 2 }]

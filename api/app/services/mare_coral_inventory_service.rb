@@ -74,8 +74,10 @@ class MareCoralInventoryService
   end
 
   def self.mare_coral_order?(order)
-    metadata = order.metadata.to_h
-    metadata["channel"] == "retail_storefront" && metadata["tenant_slug"] == "mare-coral"
+    # Conferir o slug do tenant aqui era redundante: o schema-per-tenant ja
+    # garante que este `order` so pode ter sido carregado dentro do schema do
+    # proprio tenant. O canal e o unico dado que falta checar.
+    order.metadata.to_h["channel"] == "retail_storefront"
   end
 
   def self.ensure_mare_coral_order!(order)

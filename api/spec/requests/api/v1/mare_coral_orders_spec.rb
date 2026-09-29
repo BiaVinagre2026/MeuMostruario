@@ -4,7 +4,13 @@ require "rails_helper"
 require "webmock/rspec"
 
 RSpec.describe "Api::V1::MareCoralOrders", type: :request do
-  let!(:tenant) { provision_test_tenant(slug: "mare-coral", name: "Maré Coral") }
+  # Slug aleatorio: o endpoint e liberado pela capacidade retail_storefront,
+  # nao por current_tenant.slug == "mare-coral".
+  let!(:tenant) do
+    provision_test_tenant(name: "Maré Coral").tap do |t|
+      t.tenant_config.update!(enabled_features: ["retail_storefront"])
+    end
+  end
   let(:headers) { tenant_headers(tenant) }
   let!(:fixture) do
     create_catalog_fixture(
@@ -132,7 +138,7 @@ RSpec.describe "Api::V1::MareCoralOrders", type: :request do
     within_tenant(tenant) { expect(Order.count).to eq(0) }
   end
 
-  it "recusa o endpoint em outro tenant" do
+  it "recusa o endpoint em tenant sem a capacidade retail_storefront" do
     other_tenant = provision_test_tenant(slug: "outra-loja")
 
     post "/api/v1/mare_coral/storefront/#{fixture[:link].token}/orders",
@@ -140,6 +146,27 @@ RSpec.describe "Api::V1::MareCoralOrders", type: :request do
          headers: tenant_headers(other_tenant)
 
     expect(response).to have_http_status(:not_found)
+  end
+
+  it "aceita mesmo um tenant que nao se chama mare-coral, desde que tenha a capacidade" do
+    outro = provision_test_tenant(name: "Segunda Loja de Varejo").tap do |t|
+      t.tenant_config.update!(enabled_features: ["retail_storefront"])
+    end
+    outro_fixture = create_catalog_fixture(
+      tenant: outro, link_type: "wholesale_buyer",
+      show_prices: true, allow_order: true, allow_payment: false
+    ).tap do |data|
+      within_tenant(outro) do
+        data[:link].update!(metadata: { "retail_storefront" => { "enabled" => true, "shipping" => { "enabled" => true, "flat_rate" => "10.00" } } })
+      end
+    end
+    outro_variant = within_tenant(outro) { outro_fixture[:product].variants.first }
+
+    post "/api/v1/mare_coral/storefront/#{outro_fixture[:link].token}/orders",
+         params: order_params(catalog_item_id: outro_fixture[:item].id, variant_id: outro_variant.id),
+         headers: tenant_headers(outro)
+
+    expect(response).to have_http_status(:created)
   end
 
   describe "configuração exclusiva de entrega" do
@@ -190,7 +217,7 @@ RSpec.describe "Api::V1::MareCoralOrders", type: :request do
     def signed_callback(status)
       payload = { data: { id: "mare-test-9001", status: status } }.to_json
       signature = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
-      post "/api/v1/payments/webhook/mare-coral", params: payload,
+      post "/api/v1/payments/webhook/#{tenant.slug}", params: payload,
            headers: { "CONTENT_TYPE" => "application/json", "X-Gateway-Signature" => signature }
       expect(response).to have_http_status(:ok)
     end

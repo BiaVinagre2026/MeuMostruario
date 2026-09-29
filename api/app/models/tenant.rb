@@ -15,6 +15,13 @@ class Tenant < ApplicationRecord
     status == "active"
   end
 
+  # Repassa para TenantConfig#feature?, tratando o tenant sem config ainda
+  # provisionada (super-admin acabou de criar, antes do wizard terminar) como
+  # "nenhuma capacidade ligada" em vez de estourar.
+  def feature?(nome)
+    tenant_config&.feature?(nome) || false
+  end
+
   private
 
   def set_schema_name

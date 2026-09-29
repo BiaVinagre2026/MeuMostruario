@@ -3,7 +3,14 @@
 require "rails_helper"
 
 RSpec.describe "Api::V1::Admin::MareCoralStorefront", type: :request do
-  let!(:tenant) { provision_test_tenant(slug: "mare-coral", name: "Maré Coral") }
+  # Slug aleatorio de proposito: o recurso e liberado pela capacidade
+  # retail_storefront, nao pelo nome do tenant. Um slug fixo aqui faria este
+  # spec colidir com qualquer outro que tambem precisasse criar "mare-coral".
+  let!(:tenant) do
+    provision_test_tenant(name: "Maré Coral").tap do |t|
+      t.tenant_config.update!(enabled_features: ["retail_storefront"])
+    end
+  end
   let(:headers) { tenant_headers(tenant) }
   let!(:fixture) do
     create_catalog_fixture(
@@ -94,7 +101,7 @@ RSpec.describe "Api::V1::Admin::MareCoralStorefront", type: :request do
     within_tenant(tenant) { expect(fixture[:item].reload.visible).to be(true) }
   end
 
-  it "não abre o recurso em outro tenant" do
+  it "não abre o recurso em tenant sem a capacidade retail_storefront" do
     other = provision_test_tenant(slug: "outra-loja")
     other_operator = Operator.create!(name: "Outro admin", email: "outro-storefront@example.com", password: "teste-seguro", role: "admin", status: "active", tenant: other)
     delete "/api/v1/admin/auth/logout", headers: headers
@@ -103,5 +110,25 @@ RSpec.describe "Api::V1::Admin::MareCoralStorefront", type: :request do
     get "/api/v1/admin/mare_coral/storefront", headers: tenant_headers(other)
 
     expect(response).to have_http_status(:not_found)
+  end
+
+  it "abre para qualquer tenant com a capacidade, nao so para quem se chama mare-coral" do
+    # A prova de que o portao e por capacidade: um tenant com nome qualquer,
+    # sem nenhuma relacao com "mare-coral", entra desde que tenha a feature.
+    outro_varejo = provision_test_tenant(name: "Outra Loja de Varejo").tap do |t|
+      t.tenant_config.update!(enabled_features: ["retail_storefront"])
+    end
+    outro_fixture = create_catalog_fixture(
+      tenant: outro_varejo, link_type: "wholesale_buyer",
+      show_prices: true, allow_order: true, allow_payment: false
+    ).tap { |data| within_tenant(outro_varejo) { data[:link].update!(metadata: { "retail_storefront" => { "enabled" => true } }) } }
+    outro_operator = Operator.create!(name: "Admin varejo", email: "outro-varejo@example.com", password: "teste-seguro", role: "admin", status: "active", tenant: outro_varejo)
+    delete "/api/v1/admin/auth/logout", headers: headers
+    post "/api/v1/admin/auth/login", params: { email: outro_operator.email, password: "teste-seguro" }, headers: tenant_headers(outro_varejo)
+
+    get "/api/v1/admin/mare_coral/storefront", headers: tenant_headers(outro_varejo)
+
+    expect(response).to have_http_status(:ok)
+    expect(json_response.dig("catalog", "id")).to eq(outro_fixture[:catalog].id)
   end
 end

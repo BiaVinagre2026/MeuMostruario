@@ -41,7 +41,7 @@ class MareCoralOrderService
         total_value: subtotal + quote.amount.to_d,
         metadata: {
           "channel" => "retail_storefront",
-          "tenant_slug" => "mare-coral",
+          "tenant_slug" => @tenant.slug,
           "items_subtotal" => subtotal.to_s("F"),
           "shipping" => quote.as_json.stringify_keys,
           "shipping_address" => normalized_address.stringify_keys
@@ -83,7 +83,7 @@ class MareCoralOrderService
 
   def validate_scope!
     settings = @catalog_link.metadata.to_h["retail_storefront"]
-    unless @tenant&.slug == "mare-coral" && settings.is_a?(Hash) && settings["enabled"] == true
+    unless @tenant&.feature?(:retail_storefront) && settings.is_a?(Hash) && settings["enabled"] == true
       raise ValidationError, "vitrine varejista nao autorizada"
     end
     raise ValidationError, "este link nao permite pedido" unless @catalog_link.allow_order?

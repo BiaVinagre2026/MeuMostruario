@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_02_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_29_163000) do
   create_schema "tenant_demo"
 
   # These are extensions that must be enabled in order to support this database
@@ -165,6 +165,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_02_120000) do
     t.string "psp_callback_secret_enc"
     t.string "psp_signature_header"
     t.decimal "min_order_amount", precision: 10, scale: 2, default: "0.0", null: false
+    t.jsonb "enabled_features", default: [], null: false
     t.index ["tenant_id"], name: "index_tenant_configs_on_tenant_id", unique: true
   end
 
