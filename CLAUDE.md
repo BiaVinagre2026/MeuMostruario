@@ -12,9 +12,18 @@ Contexto de produto e decisões deste repositório.
 
 ## Contexto Atual
 
-**MeuMostruário** voltou ao trilho de produto **white-label multitenant**. Cada tenant representa uma marca, fábrica ou operação comercial que usa o catálogo para vender no atacado com identidade própria.
+**MeuMostruário** é o Core **white-label multitenant**. Cada tenant representa uma marca, fábrica ou operação comercial com identidade própria — catálogo, branding, compradores e pedidos isolados por schema.
 
-O objetivo é permitir que cada tenant:
+Dois tenants reais rodam sobre o mesmo Core hoje, com propósitos diferentes:
+
+| Tenant | Slug | Modo | Frontend |
+|---|---|---|---|
+| BEFIT - Fitness | `befit` | atacado (link tokenizado, pedido mínimo, grade por tamanho) | `web/` (neste repositório) |
+| Maré Coral | `mare-coral` | varejo (carrinho, checkout, frete) | repositório próprio (`github.com/BiaVinagre2026/MareCoral`) |
+
+O que cada tenant pode fazer é **capacidade**, não identidade — `TenantConfig#feature?(:retail_storefront)`, nunca `slug == "mare-coral"` escrito no Core. Ver AGENTS.md, seção de fronteira.
+
+O objetivo do atacado (BEFIT) é permitir que o tenant:
 
 - faça upload de muitas fotos de uma vez;
 - revise uma triagem automática por cor, Pantone, modelo e tamanho;
@@ -23,6 +32,12 @@ O objetivo é permitir que cada tenant:
 - gere links de atacado com preço, pedido e pagamento para compradores/lojistas B2B;
 - receba interesses e pedidos no admin do tenant;
 - envie seleções e pedidos por WhatsApp.
+
+O varejo (Maré Coral) usa o mesmo catálogo de produtos do Core, mas com um admin próprio
+(`/admin/storefront`) para escolher **quais** produtos publicados entram na vitrine pública —
+publicar um produto no admin não o coloca automaticamente na loja; alguém precisa selecioná-lo
+em `/admin/storefront`. Isso é curadoria deliberada: a vitrine tem uma regra de negócio de
+5 a 10 produtos por drop (`scripts/validate-catalog-integration.mjs` no repo da Maré Coral).
 
 Existe também um papel de **super-admin**, responsável por criar, ativar, suspender e acompanhar tenants.
 
@@ -83,6 +98,10 @@ Nesta fase, isso deixa de ser apenas compatibilidade e volta a ser parte do prod
 - Modelos tenant-scoped: `api/app/models/`.
 - DDL tenant-scoped: `api/app/services/tenant_schema_sql.rb`.
 - Gateway de pagamento: `api/app/services/gateway_payment_service.rb` e `docs/INTEGRACOES.md`.
+- Vitrine varejista (Maré Coral): `api/app/controllers/api/v1/admin/mare_coral_storefront_controller.rb`
+  e `web/src/pages/admin/storefront/MareCoralStorefront.tsx` — seleção de produtos publicados.
+- Frontend da Maré Coral: repositório próprio, fora deste. Consome `/api/v1/*` com
+  `X-Tenant-ID: mare-coral` e o token do link de atacado (`VITE_MOSTRUARIO_CATALOG_TOKEN`).
 
 ## Fluxos do MVP
 
@@ -102,25 +121,42 @@ Nesta fase, isso deixa de ser apenas compatibilidade e volta a ser parte do prod
 
 ## Estado Atual
 
-Fluxo do MVP completo e validado no navegador. O que falta para operar de verdade:
+Fluxo completo dos dois tenants validado no navegador, ponta a ponta: upload de foto →
+catálogo → link → pedido (BEFIT); catálogo → vitrine curada → carrinho → checkout (Maré
+Coral). O que falta para operar de verdade:
 
-- **Pagamento nunca falou com a Orbe.** Código e testes prontos com resposta simulada.
-  Faltam credencial de merchant, endereço público para o callback e a confirmação do nome
-  do header da assinatura. Ver `docs/INTEGRACOES.md`.
-- **Deploy não existe.** O `api/Dockerfile` é de produção e o supervisord sobe Puma e
-  Sidekiq, mas o frontend não tem como ser servido: é SPA Vite sem Dockerfile, sem nginx
-  e sem rota de fallback na API. Também faltam hospedagem, banco gerenciado, domínio e o
-  DNS curinga que o subdomínio por tenant exige.
+- **Pagamento nunca falou com a Orbe de verdade.** O contrato real de assinatura
+  (`X-PSP-Signature`, HMAC sobre timestamp+corpo) está implementado e testado com resposta
+  simulada — falta credencial de merchant e endereço público para o callback. Rode
+  `bin/rails gateway:check TENANT=befit` para ver exatamente o que falta por tenant. Ver
+  `docs/INTEGRACOES.md`.
+- **Deploy do Core/BEFIT não existe.** O `api/Dockerfile` é de produção e o supervisord
+  sobe Puma e Sidekiq, mas `web/` (BEFIT) não tem Dockerfile nem Nginx — é SPA Vite sem
+  forma de ser servida. Faltam hospedagem, banco gerenciado, domínio e o DNS curinga que o
+  subdomínio por tenant exige. O repositório da Maré Coral **já tem** esse caminho pronto
+  (`Dockerfile` + `docker-compose.prod.yml`) — assimetria a resolver quando o BEFIT for
+  publicado.
 
   A imagem exige, e não sobe junto: **Redis externo com persistência** (`REDIS_URL`) e as
   **chaves de criptografia** (`AR_ENCRYPTION_*`) que protegem os segredos dos tenants.
   Sem qualquer uma delas a aplicação não sobe, de propósito. Ver [README](README.md).
-- **WhatsApp no `CatalogLinkPage`.** As demais telas já usam `lib/whatsapp.ts` com o número
-  do tenant. Na tela do comprador atacado a mensagem deve sair **depois** do pedido
-  registrado, nunca no lugar dele.
+- **Sem rate limiting nem observabilidade de erro.** Nada entre a aplicação e um cliente
+  mal-comportado (`rack-attack` ausente), e nenhum agregador de erro (Sentry ou
+  equivalente). Levantado na auditoria de segurança; não bloqueia demonstração, bloqueia
+  produção.
 
 Storefront SSR (`api/app/views/public/`) está funcionando e é dirigido pelos dados do
 tenant — não tem conteúdo fixo da fase anterior.
+
+### Fronteira Core ↔ tenant
+
+`current_tenant.slug == "mare-coral"` hardcoded em 6 lugares do Core virou
+`current_tenant.feature?(:retail_storefront)` (`enabled_features` jsonb em
+`tenant_configs`, mesmo padrão de `enabled_payment_methods`). Isso não foi só limpeza:
+era a causa raiz do "Slug já está em uso" que quebrava a suíte de testes — os specs eram
+obrigados a criar um tenant com aquele slug exato para passar pelo portão. Continua
+havendo arquivos nomeados `mare_coral_*` no Core (`app/services/`, `app/controllers/`);
+renomear para `retail_*` é dívida pendente, mecânica, separada desta mudança.
 
 ## Comandos
 
@@ -157,8 +193,10 @@ rm -f api/tmp/pids/server.pid && docker compose restart api
 - Isolamento entre tenants tem cobertura dedicada em
   `api/spec/requests/api/v1/tenant_isolation_spec.rb`. Todo teste ali afirma os dois lados:
   o tenant dono responde e o outro não. Sem isso um 404 poderia vir de qualquer motivo.
-- `bin/rails catalog:repair_legacy_products TENANT=demo` conserta produtos cujo nome e SKU
+- `bin/rails catalog:repair_legacy_products TENANT=befit` conserta produtos cujo nome e SKU
   foram sobrescritos por uma importação antiga.
+- `bin/rails gateway:check TENANT=<slug>` diz se um tenant está pronto para cobrar na Orbe
+  — credencial configurada, endereço de callback alcançável, header de assinatura.
 
 ## Versionamento
 
