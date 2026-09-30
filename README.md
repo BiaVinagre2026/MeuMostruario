@@ -99,13 +99,14 @@ Senha de todos: `password123`.
 
 | Perfil | Entrar em | Tenant | E-mail |
 |---|---|---|---|
-| Super-admin | `/admin/login` | `demo` | `super@admin.com` |
-| Admin do tenant | `/admin/login` | `demo` | `admin@demo.com` |
+| Super-admin | `/admin/login` | `befit` | `super@admin.com` |
+| Admin do tenant | `/admin/login` | `befit` | `admin@befit.com` |
 | Admin do tenant | `/admin/login` | `acme` | `admin@acme.com` |
-| Comprador B2B | `/login` | `demo` | CPF `52998224725` |
+| Admin do tenant | `/admin/login` | `mare-coral` | `admin@marecoral.com.br` |
+| Comprador B2B | `/login` | `befit` | CPF `52998224725` |
 
-Os tenants `demo` e `acme` são operações isoladas — servem para conferir que um não
-enxerga o catálogo, os compradores nem os pedidos do outro.
+Os tenants `befit`, `acme` e `mare-coral` são operações isoladas — servem para conferir
+que uma não enxerga o catálogo, os compradores nem os pedidos da outra.
 
 ## Roteiro de avaliação
 

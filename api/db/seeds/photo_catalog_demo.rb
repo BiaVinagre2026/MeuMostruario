@@ -24,7 +24,7 @@ module SeedPhotoCatalogDemo
   ].freeze
 
   MEMBER_FIXTURES = {
-    "demo" => [
+    "befit" => [
       { cpf: "52998224725", full_name: "Alice Silva", email: "alice@demo.com" },
       { cpf: "11144477735", full_name: "Bob Santos", email: "bob@demo.com" },
       { cpf: "98765432100", full_name: "Carol Oliveira", email: "carol@demo.com" }
@@ -84,10 +84,10 @@ module SeedPhotoCatalogDemo
   ].freeze
 
   TENANT_DEMOS = {
-    "demo" => {
-      batch_name: "Triagem Demo Meu Mostruario",
-      catalog_name: "Meu Mostruario | Catalogo Atacado",
-      description: "Demo multitenant com catalogo de fotos locais, links publico e atacado."
+    "befit" => {
+      batch_name: "Triagem BEFIT",
+      catalog_name: "BEFIT | Catalogo Atacado",
+      description: "Catalogo de atacado da BEFIT, com links publico e de atacado."
     },
     "acme" => {
       batch_name: "Triagem Demo Acme",

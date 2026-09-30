@@ -44,8 +44,8 @@ puts "\n[Tenants]"
 
 tenants_data = [
   {
-    slug: "demo",
-    name: "Meu Mostruário",
+    slug: "befit",
+    name: "BEFIT - Fitness",
     plan: "growth",
     config: {
       color_primary: "#1E40AF",
@@ -72,11 +72,11 @@ tenants_data = [
       timezone: "America/Sao_Paulo",
       locale: "pt-BR",
     },
-    admin: { email: "admin@demo.com", name: "Demo Admin" },
+    admin: { email: "admin@befit.com", name: "BEFIT Admin" },
     members: [
-      { cpf: "52998224725", full_name: "Alice Silva", email: "alice@demo.com" },
-      { cpf: "11144477735", full_name: "Bob Santos", email: "bob@demo.com" },
-      { cpf: "98765432100", full_name: "Carol Oliveira", email: "carol@demo.com" },
+      { cpf: "52998224725", full_name: "Alice Silva", email: "alice@befit.com" },
+      { cpf: "11144477735", full_name: "Bob Santos", email: "bob@befit.com" },
+      { cpf: "98765432100", full_name: "Carol Oliveira", email: "carol@befit.com" },
     ],
   },
   {
@@ -217,11 +217,11 @@ puts " ────────────────────────�
 puts ""
 puts " ADMIN PANEL (use your frontend dev server, ex.: http://localhost:3004/admin/login)"
 puts "   Super admin:  super@admin.com"
-puts "   Demo admin:   admin@demo.com     (tenant: demo)"
+puts "   BEFIT admin:  admin@befit.com    (tenant: befit)"
 puts "   Acme admin:   admin@acme.com     (tenant: acme)"
 puts ""
 puts " MEMBER PORTAL"
-puts "   Demo tenant:  http://demo.app.local:8080/login"
+puts "   BEFIT tenant: http://befit.app.local:8080/login"
 puts "     Alice:  CPF 529.982.247-25"
 puts "     Bob:    CPF 111.444.777-35"
 puts "     Carol:  CPF 987.654.321-00"
@@ -245,5 +245,5 @@ puts " EMAILS (development)"
 puts "   http://localhost:3000/letter_opener"
 puts ""
 puts " NOTE: Add to /etc/hosts for subdomain tenant resolution:"
-puts "   127.0.0.1  demo.app.local acme.app.local"
+puts "   127.0.0.1  befit.app.local acme.app.local"
 puts ""
