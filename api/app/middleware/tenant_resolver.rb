@@ -57,7 +57,7 @@ class TenantResolver
 
     # Priority 4 (dev only): localhost → DEFAULT_DEV_TENANT (evita editar /etc/hosts)
     if Rails.env.development? && %w[localhost 127.0.0.1].include?(host)
-      default_slug = ENV.fetch("DEFAULT_DEV_TENANT", "demo")
+      default_slug = ENV.fetch("DEFAULT_DEV_TENANT", "befit")
       return Tenant.active.find_by(slug: default_slug)
     end
 

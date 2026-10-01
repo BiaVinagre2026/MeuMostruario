@@ -110,7 +110,7 @@ que uma não enxerga o catálogo, os compradores nem os pedidos da outra.
 
 ## Roteiro de avaliação
 
-1. Entre no admin como `admin@demo.com` e abra **Catálogos**.
+1. Entre no admin como `admin@befit.com` e abra **Catálogos**.
 2. Em qualquer catálogo, gere um **link público** e um **link de atacado**.
 3. Abra os dois em aba anônima. O público não mostra preço nem botão de pedido; o de
    atacado mostra preço, aceita quantidade por tamanho e fecha pedido.
@@ -177,7 +177,8 @@ Além do PostgreSQL, o container precisa de duas coisas que **não sobem com ele
 
   **Perder essas chaves torna os segredos ilegíveis.** Guarde junto do resto dos segredos
   de infraestrutura, não no repositório.
-- **WhatsApp no catálogo por link**: as demais telas já usam o número do tenant; falta a
-  tela do comprador atacado, onde a mensagem precisa sair depois do pedido registrado.
+- **Rate limiting e observabilidade**: nada entre a API e um cliente mal-comportado
+  (`rack-attack` ausente), e nenhum agregador de erro. Não bloqueia demonstração local,
+  bloqueia produção.
 
 Para o contexto de produto e as decisões de arquitetura, veja [CLAUDE.md](CLAUDE.md).
